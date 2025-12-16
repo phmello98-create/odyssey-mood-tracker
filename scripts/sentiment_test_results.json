@@ -1,0 +1,114 @@
+{
+  "timestamp": "2025-12-15T03:37:23.231281",
+  "model": "cardiffnlp/twitter-xlm-roberta-base-sentiment-multilingual",
+  "accuracy": 86.66666666666667,
+  "total_tests": 15,
+  "correct": 13,
+  "results": [
+    {
+      "text": "Hoje foi um dia maravilhoso! Consegui completar todas as minhas tarefas.",
+      "expected": "positive",
+      "predicted": "positive",
+      "score": 0.9889495372772217,
+      "correct": true
+    },
+    {
+      "text": "Estou muito feliz com meu progresso no trabalho.",
+      "expected": "positive",
+      "predicted": "positive",
+      "score": 0.9866630434989929,
+      "correct": true
+    },
+    {
+      "text": "Que dia incrível, fiz exercícios e me sinto ótimo!",
+      "expected": "positive",
+      "predicted": "positive",
+      "score": 0.9893234372138977,
+      "correct": true
+    },
+    {
+      "text": "Gratidão por tudo de bom que aconteceu hoje.",
+      "expected": "positive",
+      "predicted": "positive",
+      "score": 0.963296115398407,
+      "correct": true
+    },
+    {
+      "text": "Adoro minha família, eles são incríveis!",
+      "expected": "positive",
+      "predicted": "positive",
+      "score": 0.9882646799087524,
+      "correct": true
+    },
+    {
+      "text": "Estou muito cansado e frustrado com tudo.",
+      "expected": "negative",
+      "predicted": "negative",
+      "score": 0.9723970890045166,
+      "correct": true
+    },
+    {
+      "text": "Dia terrível, nada deu certo.",
+      "expected": "negative",
+      "predicted": "negative",
+      "score": 0.9744112491607666,
+      "correct": true
+    },
+    {
+      "text": "Me sinto triste e sem motivação.",
+      "expected": "negative",
+      "predicted": "negative",
+      "score": 0.9777899980545044,
+      "correct": true
+    },
+    {
+      "text": "Ansiedade está me consumindo hoje.",
+      "expected": "negative",
+      "predicted": "negative",
+      "score": 0.9675931930541992,
+      "correct": true
+    },
+    {
+      "text": "Odeio quando as coisas não funcionam.",
+      "expected": "negative",
+      "predicted": "negative",
+      "score": 0.9792861342430115,
+      "correct": true
+    },
+    {
+      "text": "Hoje acordei, tomei café e fui trabalhar.",
+      "expected": "neutral",
+      "predicted": "positive",
+      "score": 0.6917902231216431,
+      "correct": false
+    },
+    {
+      "text": "Reunião às 10h, almoço às 12h.",
+      "expected": "neutral",
+      "predicted": "neutral",
+      "score": 0.9526419639587402,
+      "correct": true
+    },
+    {
+      "text": "Preciso ir ao mercado comprar algumas coisas.",
+      "expected": "neutral",
+      "predicted": "neutral",
+      "score": 0.9344758987426758,
+      "correct": true
+    },
+    {
+      "text": "Segunda-feira, início de semana.",
+      "expected": "neutral",
+      "predicted": "neutral",
+      "score": 0.888270378112793,
+      "correct": true
+    },
+    {
+      "text": "O tempo está nublado lá fora.",
+      "expected": "neutral",
+      "predicted": "negative",
+      "score": 0.8434426188468933,
+      "correct": false
+    }
+  ]
+}

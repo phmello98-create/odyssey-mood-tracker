@@ -1,0 +1,90 @@
+Rascunho: Plano de Notificações Locais e Timer (para o analista)
+
+Resumo
+- Objetivo: Implementar notificações locais confiáveis para lembretes diários, tarefas/hábitos e timers (Pomodoro) sem depender de FCM para a maior parte dos casos; usar FCM apenas como fallback/serve‑side quando necessário.
+- Escopo: Android e iOS, com foco em experiência nativa (persistência do timer no Android via Foreground Service; agendamento local no iOS).
+
+Requisitos funcionais
+- Lembretes diários recorrentes (ex.: mood reminder, task reminders).
+- Notificações de tarefas pontuais (quando o usuário marca um lembrete).
+- Timer / Pomodoro:
+  - Contagem confiável mesmo com app em background ou kill.
+  - Notificação persistente com ações (pausar, resumir, parar).
+  - Notificação ao término do período (pomodoro complete / break complete).
+- Ações na notificação devem disparar comandos no app (ou no serviço nativo) mesmo se app estiver morto.
+- Permissões e explicação UX para o usuário sobre por que pedir permissão.
+- Consideração de restrições de OEM e políticas de background.
+
+Arquitetura proposta (resumo)
+- Local-first:
+  - Usar notificações locais (Awesome Notifications) para agendamento e exibição.
+  - No Android, usar um Foreground Service nativo para timers persistentes e notificação nativa lockada.
+  - No iOS, agendar notificações locais para o horário de término do timer; aceitar limitações de execução em background.
+- Server fallback (opcional):
+  - Caso o produto precise enviar lembretes do servidor (ex.: sincronizar entre dispositivos ou enviar lembretes se o dispositivo estiver offline), usar FCM (Cloud Functions agendadas) para enviar mensagens push dirigidas. Mas não é necessário para notificações locais baseadas no horário do dispositivo.
+
+Implementação existente (referências no repo)
+- Notificações locais (Awesome Notifications): `lib/src/utils/services/notification_service.dart` — contém métodos:
+  - `scheduleDailyMoodReminder`
+  - `schedulePomodoroTimer`, `scheduleBreakTimer`, `showPomodoroComplete`
+  - `showTimerRunningNotification`, `updateTimerNotification`, `cancelTimerNotification`
+- Foreground Service Android (nativo): `android/app/src/main/kotlin/com/example/odyssey/ForegroundTimerService.kt` — serviço que:
+  - Mantém timer rodando em foreground.
+  - Gera notificação nativa persistente com ações (pausar/resumir/parar).
+  - Persiste estado em `SharedPreferences` para restauração após reboot/app kill.
+- Bridge Flutter ↔ Native: `lib/src/utils/services/foreground_service.dart` (MethodChannel) — inicia/pára/atualiza serviço nativo.
+- Inicialização e agendamento padrão: `lib/src/providers/app_initializer_provider.dart` — agenda reminders ao iniciar.
+- FCM (apenas token/remote bridge): `lib/src/utils/services/firebase_service.dart` — obtém token; presente como ponte para notificações remotas, mas não necessário para lembretes locais.
+
+Detalhes por plataforma
+- Android
+  - Usar o `ForegroundTimerService` já implementado para timers long-running. Ele cria notificação persistente que aceita ações via `PendingIntent` e interage com o método channel para atualizar o estado no Flutter.
+  - Garantir que `BootReceiver` restaure timers após reboot (validar `RECEIVE_BOOT_COMPLETED` no `AndroidManifest.xml`).
+  - Testar interação com ações da notificação quando o app está morto.
+  - Tratar otimizações de bateria (Xiaomi/Huawei): adicionar instruções/UX para pedir ao usuário para desativar otimização de bateria para o app quando necessário.
+- iOS
+  - Não existe Foreground Service; agendar notificação local para o horário de término do timer (usando Awesome Notifications).
+  - Lidar com suspensões do sistema: quando o app entra em background, calcular e agendar localmente a notificação de término com base no tempo restante.
+  - Explicar ao analista que a contagem “ao segundo” com UI atualizada em background não é garantida no iOS — aceitar a solução de agendamento local + recuperação de estado ao reabrir o app.
+- Ambos
+  - Permissões: pedir permissões de notificação explicitamente (com explicação clara), e persistir a escolha do usuário.
+  - Ações na notificação: usar botões para ações rápidas (concluir tarefa, pausar timer, iniciar pausa, voltar ao app).
+
+Plano de trabalho recomendado (passos)
+1. Confirmar requisitos exatos com o analista
+   - Confirmar comportamento desejado: notificações ao device mesmo com app morto, ações disponíveis, sincronização entre dispositivos, precisão necessária no iOS.
+2. Android — estabilizar fluxo
+   - Testar inicio/parada/pausa/resume do `ForegroundTimerService` em cenários: app em foreground, background, app morto, reboot de dispositivo.
+   - Validar restauração via `BootReceiver` e salvar estado em `SharedPreferences`.
+   - Documentar permissões necessárias e instruções para lidar com otimização de bateria.
+3. iOS — estratégia de agendamento local
+   - Garantir que ao iniciar/pausar/stopping timer, o app agende/cancele uma notificação local para o tempo de término.
+   - Testar comportamento em simulador e dispositivo real (iOS suspende execução em background — testar recuperação de estado na reabertura).
+4. Lembretes e tarefas
+   - Verificar a lógica de criação/edição/cancelamento de lembretes (usar `NotificationService.createNotification` e `NotificationCalendar` para repetição).
+   - Adicionar UI para o usuário gerenciar permissões e ver lembretes agendados.
+5. QA e testes
+   - Testes manuais em dispositivos reais Android (incluindo Xiaomi/Huawei/Samsung) e iOS.
+   - Testar reboot, atualização do app, e instalação limpa.
+6. Fallback server (opcional)
+   - Definir se será necessário enviar notificações do servidor (ex.: sincronizar entre dispositivos). Caso sim, usar FCM + Cloud Functions ou serviço de scheduling.
+
+Observações e riscos
+- iOS não garante execução contínua em background; a solução robusta é agendar notificações locais para o horário de término e atualizar estado quando o app for reaberto.
+- Alguns fabricantes Android matam apps e restringem serviços; o Foreground Service ajuda, mas é preciso orientar usuários em dispositivos agressivos de otimização de bateria.
+- Uso de FCM implica em lógica server-side para agendar mensagens e em garantir que o token do dispositivo esteja registrado e atualizado.
+
+Recomendações finais
+- Seguir a estratégia local-first: usar notificações locais para a maioria dos casos; adotar FCM apenas quando necessário (sync ou notificações server-driven).
+- Priorizar testes em dispositivos reais e documentar flows que exigem intervenção do usuário (desativar otimização de bateria).
+- Preparar comunicados/UX para o usuário explicando permissões e justificativa das notificações.
+
+Referências de arquivos relevantes no repo
+- lib/src/utils/services/notification_service.dart
+- lib/src/utils/services/foreground_service.dart
+- android/app/src/main/kotlin/com/example/odyssey/ForegroundTimerService.kt
+- lib/src/providers/app_initializer_provider.dart
+- lib/src/utils/services/firebase_service.dart
+
+
+-- fim do rascunho --

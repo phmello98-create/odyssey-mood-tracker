@@ -1,0 +1,38 @@
+Estrutura de Monetização Criada:
+
+   2. Provider de Subscription
+   (lib/src/features/subscription/subscription_provider.dart)
+   •  Estados: FREE (com ads) e PRO (sem ads)
+   •  Suporte a PRO Vitalício e PRO por Assinatura
+   •  Providers: subscriptionProvider, isProProvider,
+      showAdsProvider
+
+   3. Tela PRO
+   (lib/src/features/subscription/presentation/pro_screen.dart)
+   •  Lista de benefícios PRO (sem anúncios, análises avançadas,
+       backup ilimitado, temas, widgets, lembretes)
+   •  Opções de plano: Vitalício (R$ 29,90) e Mensal (R$ 4,90)
+   •  Botão restaurar compra
+   •  Preparado para integração com Play Store/App Store
+
+   4. Tela de Doação (lib/src/features/subscription/presentation
+   /donation_screen.dart)
+   •  Opções: PIX, PayPal, Buy Me a Coffee
+   •  Valores sugeridos (R$ 5, 10, 25, 50)
+   •  Modal de cópia da chave PIX
+   •  Aviso de que doação não libera recursos
+
+   5. Widget de Ads (lib/src/features/subscription/presentation/
+   ad_banner_widget.dart)
+   •  AdBannerWidget - banner placeholder (substituir por AdMob)
+   •  InterstitialAdManager - anúncios de tela cheia
+   •  RewardedAdManager - anúncios recompensados
+
+   6. Settings Atualizado
+   •  Banner PRO destacado (aparece só se não for PRO)
+   •  Seção "Apoie o App" com links para PRO e Doação
+
+   Para integrar os anúncios reais, você precisará:
+   1. Adicionar google_mobile_ads ao pubspec.yaml
+   2. Configurar IDs do AdMob no Android/iOS
+   3. Substituir os placeholders nos widgets de ads

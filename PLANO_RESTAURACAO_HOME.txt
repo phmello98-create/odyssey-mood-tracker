@@ -1,0 +1,196 @@
+================================================================================
+PLANO DE RESTAURACAO DA HOME SCREEN + SHOWCASEVIEW
+Data: 15/12/2025
+================================================================================
+
+CONTEXTO:
+- Home atual: 1568 linhas (versao simplificada, com ShowcaseView basico)
+- Backup completo: 4414 linhas (todos os widgets originais, sem ShowcaseView)
+- Meta final: ~8000 linhas com funcoes robustas
+
+================================================================================
+ETAPA 1: BACKUP DA HOME ATUAL
+================================================================================
+
+Arquivo: /home/agyspc1/Documentos/app com opus 4.5 copia atual/lib/src/features/home/presentation/home_screen.dart
+Destino: home_screen.dart.backup-YYYYMMDD_HHMMSS
+
+================================================================================
+ETAPA 2: RESTAURAR DO BACKUP COMPLETO
+================================================================================
+
+Origem: /home/agyspc1/Documentos/backups do projeto app inicial/Backup Atual  8dez/app com opus 4.5 copia atual11/lib/src/features/home/presentation/home_screen.dart
+Destino: /home/agyspc1/Documentos/app com opus 4.5 copia atual/lib/src/features/home/presentation/home_screen.dart
+
+================================================================================
+ETAPA 3: ADICIONAR SHOWCASEVIEW AO ARQUIVO RESTAURADO
+================================================================================
+
+3.1 IMPORTS (adicionar apos os imports existentes):
+---------------------------------------------------
+import 'package:showcaseview/showcaseview.dart';
+import 'package:odyssey/src/features/onboarding/services/showcase_service.dart' as showcase;
+
+3.2 GLOBALKEYS (adicionar dentro de _HomeScreenState):
+------------------------------------------------------
+// Showcase keys
+final GlobalKey _showcaseMood = GlobalKey();
+final GlobalKey _showcaseHabits = GlobalKey();
+final GlobalKey _showcaseStats = GlobalKey();
+final GlobalKey _showcaseAdd = GlobalKey();
+
+3.3 METODOS SHOWCASE (adicionar na classe):
+-------------------------------------------
+void _initShowcase() {
+  final keys = [_showcaseMood, _showcaseHabits, _showcaseStats, _showcaseAdd];
+  showcase.ShowcaseService.registerForScreen(
+    tour: showcase.ShowcaseTour.home,
+    firstAndLastKeys: [keys.first, keys.last],
+  );
+  showcase.ShowcaseService.startIfNeeded(showcase.ShowcaseTour.home, keys);
+}
+
+void _startTour() {
+  final keys = [_showcaseMood, _showcaseHabits, _showcaseStats, _showcaseAdd];
+  showcase.ShowcaseService.start(showcase.ShowcaseTour.home, keys);
+}
+
+3.4 INIT STATE (adicionar _initShowcase() no initState):
+--------------------------------------------------------
+@override
+void initState() {
+  super.initState();
+  _initShowcase();  // <-- ADICIONAR AQUI
+  // ... resto do codigo
+}
+
+3.5 DISPOSE (adicionar unregister):
+-----------------------------------
+@override
+void dispose() {
+  showcase.ShowcaseService.unregisterScreen(showcase.ShowcaseTour.home);
+  // ... resto do codigo
+}
+
+================================================================================
+ETAPA 4: VERIFICACAO DE DEPENDENCIAS
+================================================================================
+
+TODAS AS DEPENDENCIAS JA EXISTEM NO PROJETO:
+
+[✓] odyssey_card.dart
+[✓] animated_stats.dart
+[✓] feedback_widgets.dart
+[✓] sound_service.dart
+[✓] smart_classifier.dart
+[✓] smart_quick_add.dart
+[✓] news_image_fetcher.dart
+[✓] home_widgets_provider.dart
+[✓] quick_notes_widget.dart
+[✓] streak_widget.dart
+[✓] today_tasks_widget.dart
+[✓] quick_pomodoro_widget.dart
+[✓] current_reading_widget.dart
+[✓] daily_goals_widget.dart
+
+================================================================================
+ETAPA 5: WIDGETS QUE SERAO RESTAURADOS
+================================================================================
+
+| Secao            | Linhas Aprox | Descricao                           |
+|------------------|--------------|-------------------------------------|
+| Header           | 250-400      | Logo, acoes, saudacao               |
+| Daily Reminders  | 580-800      | Lembretes dinamicos                 |
+| Dynamic Widgets  | 801-850      | Sistema de widgets personalizaveis  |
+| Mood Section     | 1015-1095    | Registro de humor                   |
+| Week Calendar    | 1150-1212    | Calendario semanal                  |
+| Habits List      | 1215-1614    | Lista de habitos expansivel         |
+| Quick Stats      | 1663-1803    | Estatisticas rapidas animadas       |
+| Weekly Chart     | 1849-1992    | Grafico semanal                     |
+| Data Insights    | 1995-2143    | Insights de dados                   |
+| Monthly Overview | 2146-2342    | Visao mensal                        |
+| Tasks Widget     | 3134-3440    | Widget de tarefas                   |
+| Notes Widget     | 3443-3527    | Widget de notas                     |
+| Readings Widget  | 3530-3642    | Widget de leituras/livros           |
+| News Carousel    | 4014-4414    | Widget de noticias com carousel     |
+| FAB Expandido    | 2352-2452    | Botao flutuante com acoes rapidas   |
+
+================================================================================
+ETAPA 6: APRIMORAMENTOS PARA ATINGIR ~8K LINHAS
+================================================================================
+
+NOVOS RECURSOS A IMPLEMENTAR:
+
+1. SECAO DE METAS DIARIAS EXPANDIDA
+   - Progresso visual com animacoes
+   - Sistema de micro-conquistas
+   - Integracao com gamificacao
+
+2. WIDGET DE CLIMA/TEMPO
+   - Mostrar clima atual
+   - Sugestoes baseadas no clima
+
+3. CITACOES EXPANDIDAS
+   - Mais citacoes de pensadores
+   - Sistema de favoritar citacoes
+   - Historico de citacoes vistas
+
+4. ANALYTICS DASHBOARD
+   - Graficos de produtividade
+   - Comparacao com semanas anteriores
+   - Tendencias de humor
+
+5. CALENDARIO INTEGRADO
+   - Eventos do dia
+   - Compromissos proximos
+   - Integracao com sistema de tarefas
+
+6. SISTEMA DE NOTIFICACOES NA HOME
+   - Feed de atividades recentes
+   - Lembretes pendentes
+   - Alertas importantes
+
+7. SHOWCASE COMPLETO
+   - Todos os widgets com Showcase
+   - Tour guiado interativo
+   - Dicas contextuais
+
+8. WIDGETS REORDENÁVEIS
+   - Drag and drop
+   - Salvar preferencias
+   - Reset para padrao
+
+================================================================================
+COMANDOS UTEIS
+================================================================================
+
+# Verificar compilacao
+cd "/home/agyspc1/Documentos/app com opus 4.5 copia atual"
+/home/agyspc1/flutter/bin/flutter analyze lib/src/features/home/presentation/home_screen.dart 2>&1 | grep error
+
+# Contar linhas
+wc -l lib/src/features/home/presentation/home_screen.dart
+
+# Build APK debug
+/home/agyspc1/flutter/bin/flutter build apk --debug
+
+================================================================================
+BACKUP AUTOMATICO COM GIT (PARA CONFIGURAR DEPOIS)
+================================================================================
+
+Opcao 1: Script com inotify-tools
+---------------------------------
+#!/bin/bash
+inotifywait -m -r -e modify,create,delete /path/to/project |
+while read path action file; do
+  cd /path/to/project
+  git add -A
+  git commit -m "Auto-save: $file $action"
+  git push origin main
+done
+
+Opcao 2: Cron job a cada 5 minutos
+----------------------------------
+*/5 * * * * cd /path/to/project && git add -A && git commit -m "Auto-save $(date)" && git push
+
+================================================================================

@@ -1,0 +1,19 @@
+# Alias para o sistema de backup automático do projeto Odyssey
+alias auto_backup_start='"/home/agyspc1/Documentos/app com opus 4.5 copia atual/start_auto_backup.sh" start'
+alias auto_backup_stop='"/home/agyspc1/Documentos/app com opus 4.5 copia atual/start_auto_backup.sh" stop'
+alias auto_backup_status='"/home/agyspc1/Documentos/app com opus 4.5 copia atual/start_auto_backup.sh" status'
+alias auto_commit='"/home/agyspc1/Documentos/app com opus 4.5 copia atual/auto_backup.sh" commit'
+
+# Função para verificar status do backup automático rapidamente
+check_backup() {
+    echo "Status do backup automático:"
+    "/home/agyspc1/Documentos/app com opus 4.5 copia atual/start_auto_backup.sh" status
+}
+
+# Alias para outras utilidades do projeto
+alias project_status='cd "/home/agyspc1/Documentos/app com opus 4.5 copia atual" && git status'
+alias project_log='cd "/home/agyspc1/Documentos/app com opus 4.5 copia atual" && git log --oneline -n 10'
+alias project_diff='cd "/home/agyspc1/Documentos/app com opus 4.5 copia atual" && git diff'
+alias flutter_clean='cd "/home/agyspc1/Documentos/app com opus 4.5 copia atual" && flutter clean && flutter pub get'
+alias flutter_analyze='cd "/home/agyspc1/Documentos/app com opus 4.5 copia atual" && flutter analyze'
+alias flutter_test='cd "/home/agyspc1/Documentos/app com opus 4.5 copia atual" && flutter test'

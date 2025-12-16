@@ -1,0 +1,113 @@
+================================================================================
+                        TELA DE LOGIN - ODYSSEY
+================================================================================
+
+ARQUIVO CRIADO:
+lib/src/features/auth/presentation/login_screen.dart
+
+--------------------------------------------------------------------------------
+COMO USAR:
+--------------------------------------------------------------------------------
+
+1. Importar no arquivo onde precisar:
+   import 'package:odyssey/src/features/auth/presentation/login_screen.dart';
+
+2. Navegar para a tela:
+   Navigator.push(context, MaterialPageRoute(builder: (_) => const LoginScreen()));
+   
+   OU com go_router:
+   context.go('/login');
+
+--------------------------------------------------------------------------------
+O QUE PRECISA IMPLEMENTAR (TODOs):
+--------------------------------------------------------------------------------
+
+Os handlers de login estao preparados mas precisam da logica real:
+
+1. _handleGoogleSignIn()
+   - Implementar autenticacao com Google usando google_sign_in
+   - Navegar para home apos sucesso
+
+2. _handleFacebookSignIn()  
+   - Implementar autenticacao com Facebook
+   - Navegar para home apos sucesso
+
+3. _handleGuestMode()
+   - Salvar flag de usuario visitante (SharedPreferences)
+   - Navegar direto para home sem autenticacao
+
+--------------------------------------------------------------------------------
+RECURSOS DA TELA:
+--------------------------------------------------------------------------------
+
+- Background com imagem splash_focus.png (personagem anime)
+- Animacao breathing suave no background
+- Orbs flutuantes coloridos com blur
+- Logo ODYSSEY com glow pulsante
+- Botao Google - design escuro com borda azul
+- Botao Facebook - gradient azul classico
+- Botao Visitante - borda gradient roxo/azul pulsante
+- Animacoes staggered (elementos aparecem em sequencia)
+- Termos de uso e privacidade no rodape
+- Estados de loading nos botoes
+
+--------------------------------------------------------------------------------
+EXEMPLO DE IMPLEMENTACAO DO GOOGLE SIGN IN:
+--------------------------------------------------------------------------------
+
+Future<void> _handleGoogleSignIn() async {
+  setState(() {
+    _isLoading = true;
+    _loadingMethod = 'google';
+  });
+  
+  try {
+    final GoogleSignIn googleSignIn = GoogleSignIn();
+    final GoogleSignInAccount? account = await googleSignIn.signIn();
+    
+    if (account != null) {
+      // Salvar dados do usuario
+      // Navegar para home
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const OdysseyHome()),
+      );
+    }
+  } catch (e) {
+    // Mostrar erro
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Erro ao fazer login: $e')),
+    );
+  } finally {
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+        _loadingMethod = null;
+      });
+    }
+  }
+}
+
+--------------------------------------------------------------------------------
+EXEMPLO DE MODO VISITANTE:
+--------------------------------------------------------------------------------
+
+Future<void> _handleGuestMode() async {
+  setState(() {
+    _isLoading = true;
+    _loadingMethod = 'guest';
+  });
+  
+  // Salvar que usuario entrou como visitante
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setBool('isGuest', true);
+  
+  if (mounted) {
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => const OdysseyHome()),
+    );
+  }
+}
+
+================================================================================

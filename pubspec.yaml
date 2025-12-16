@@ -1,0 +1,137 @@
+name: odyssey
+description: A simple mood tracker application.
+
+# Prevent accidental publishing to pub.dev.
+publish_to: 'none'
+
+version: 1.0.0+2002
+
+environment:
+  sdk: '>=3.10.0 <4.0.0'
+
+dependencies:
+
+  collection: ^1.17.0
+  dynamic_color: ^1.6.3
+  fl_chart: ^1.1.1
+  flutter:
+    sdk: flutter
+
+  flutter_localizations:
+    sdk: flutter
+  flutter_riverpod: ^2.3.5
+  flutter_svg: ^2.0.5
+  freezed_annotation: ^2.2.0
+  go_router: ^7.1.1
+  hive: ^2.2.3
+  hive_flutter: ^1.1.0
+  intl: ^0.20.2  # Required by flutter_localizations
+  timeline_tile: ^2.0.0
+  flutter_task_time_tracker: ^1.0.1
+  table_calendar: ^3.2.0  # For the calendar page
+  appflowy_editor: ^6.1.0
+  flutter_quill: ^11.5.0  # Editor de texto rico para Diary
+  awesome_notifications: ^0.10.0
+  timezone: ^0.10.0
+  lottie: ^3.1.0  # Para animações dos emojis
+  image_picker: ^1.0.4  # Para avatar personalizado
+  shared_preferences: ^2.2.2  # Para persistir configurações
+  path_provider: ^2.1.1  # Para salvar imagens localmente
+  motor: ^1.0.0-dev.0  # Animações spring avançadas
+  visibility_detector: ^0.4.0+2  # Detectar visibilidade para animações
+  toastification: ^3.0.3
+  flutter_staggered_grid_view: ^0.7.0
+  countup: ^0.1.4  # Números animados com contagem
+  http: ^1.6.0
+  url_launcher: ^6.2.1  # Para abrir links externos
+  flutter_inappwebview: ^6.0.0
+  flex_color_scheme: ^8.4.0
+  flutter_soloud: ^3.4.6
+  googleapis: ^15.0.0
+  file_picker: ^10.3.7
+  share_plus: ^12.0.1
+  google_sign_in: ^6.2.1
+  extension_google_sign_in_as_googleapis_auth: ^2.0.12
+  speech_to_text: ^7.0.0
+  crypto: ^3.0.3
+  
+  # Segurança LGPD/GDPR
+  flutter_secure_storage: ^9.0.0
+  encrypt: ^5.0.3
+  
+  # ShowcaseView para tutoriais interativos
+  showcaseview: ^5.0.1
+
+  # Firebase para Push Notifications Modernas
+  firebase_core: ^3.8.1
+  firebase_messaging: ^15.1.6
+  firebase_analytics: ^11.3.6
+  firebase_remote_config: ^5.1.6
+  
+  # Firebase Auth e Firestore para sistema de usuários
+  firebase_auth: ^5.3.3
+  cloud_firestore: ^5.5.2
+  
+  # Firebase Storage para imagens na nuvem
+  firebase_storage: ^12.3.7
+  
+  # Conectividade para sync offline
+  connectivity_plus: ^6.1.1
+  
+  # UUID para geração de IDs únicos
+  uuid: ^4.5.1
+  
+  # JSON annotation para serialização
+  json_annotation: ^4.9.0
+  
+  # AdMob para monetização com anúncios
+  google_mobile_ads: ^6.0.0
+  
+  # In-App Purchases para assinaturas PRO
+  in_app_purchase: ^3.2.0
+  tflite_flutter: ^0.12.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  freezed: ^2.3.2
+  build_runner: ^2.3.3
+  hive_generator: ^2.0.0
+  flutter_lints: ^2.0.0
+  json_serializable: ^6.6.1
+  # flutter_gen_runner: ^5.3.0  # Temporariamente desabilitado - conflito de versão
+  flutter_launcher_icons: ^0.14.3
+
+flutter_launcher_icons:
+  android: true
+  ios: false
+  image_path: "assets/app_icon/icon.png"
+  adaptive_icon_background: "#1A1A2E"
+  adaptive_icon_foreground: "assets/app_icon/icon_foreground.png"
+  min_sdk_android: 21
+
+flutter:
+  uses-material-design: true
+
+  # Enable generation of localized Strings from arb files.
+  generate: true
+
+  assets:
+    # Add assets from the images directory to the application.
+    - assets/mood_icons/
+    - assets/emojis/
+    - assets/sounds/
+    - assets/sounds/ambient/
+    - assets/sounds/ui/clicks/
+    - assets/sounds/ui/transitions/
+    - assets/sounds/ui/feedback/
+    - assets/sounds/ui/popups/
+    - assets/sounds/ui/notifications/
+    - assets/sounds/ui/mood/
+    - assets/sounds/timer/
+    - assets/app_icon/
+    - assets/images/
+    - assets/icons/
+
+dependency_overrides:
+  intl: 0.20.2  # Override to use the same intl version required by flutter_localizations

@@ -1,0 +1,62 @@
+================================================================================
+                        TELA DE LOGIN - ODYSSEY v2
+                           DESIGN MODERNO E SIMPLES
+================================================================================
+
+ARQUIVO: lib/src/features/auth/presentation/login_screen.dart
+
+================================================================================
+                              RECURSOS
+================================================================================
+
+[OK] Imagem de fundo em tela cheia (splash_focus.png)
+[OK] Gradient overlay leve - imagem bem visivel
+[OK] Seletor de idioma PT/EN no canto superior direito
+[OK] Login com Google - funcional
+[OK] Modo Visitante - funcional
+[OK] Design moderno e minimalista
+[OK] Animacoes suaves de entrada
+[OK] Botoes com glassmorphism sutil
+
+================================================================================
+                           FLUXO
+================================================================================
+
+1. Usuario abre o app
+2. Splash verifica SharedPreferences.isLoggedIn
+3. Se FALSE -> LoginScreen
+4. Se TRUE -> OdysseyHome
+
+Na LoginScreen:
+- Pode trocar idioma clicando em PT/EN
+- Pode logar com Google (salva dados)
+- Pode entrar como Visitante (acesso limitado)
+
+Para sair:
+- Configuracoes > Conta > Sair da Conta
+
+================================================================================
+                        DESIGN DA TELA
+================================================================================
+
++------------------------------------------+
+|                                    [PT v]|  <- Seletor idioma
+|                                          |
+|         (imagem de fundo visivel)        |
+|                                          |
+|              [LOGO]                      |
+|             ODYSSEY                      |
+|     Sua jornada de foco comeca aqui     |
+|                                          |
+|    +------------------------------+      |
+|    |  G  Continuar com Google    |      |  <- Botao branco
+|    +------------------------------+      |
+|                                          |
+|    +------------------------------+      |
+|    |  O  Entrar como Visitante   |      |  <- Botao glass
+|    +------------------------------+      |
+|                                          |
+|     Ao continuar, voce concorda...      |
++------------------------------------------+
+
+================================================================================

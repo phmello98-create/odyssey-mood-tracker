@@ -1,0 +1,137 @@
+PLANO ULTRATHINKING — Notificações Avançadas (FCM + Awesome + Foreground Service)
+
+Objetivo geral:
+- Garantir notificações remotas (FCM) e locais (Awesome Notifications) consistentes e sincronizadas entre dispositivos.
+- Garantir que timers e funcionalidades críticas continuem executando e notificando corretamente com o app em background ou fechado (Android foreground service, fallback schedule).
+- Implementar regras inteligentes, A/B testing, analytics e consentimento granular.
+
+Resumo de decisões arquiteturais:
+- Híbrido: FCM para push remoto + Awesome Notifications para exibição local e ações interativas.
+- Foreground Service (Android): para timers ativos que precisam rodar continuamente e atualizar status de notificação persistente.
+- WorkManager/AlarmManager: para agendamentos pontuais (ex.: lembretes com atraso ou quando o app não precisa de contagem em tempo real).
+- Backend (Cloud Functions/Servidor): para enviar campanhas, regras baseadas em usuário, cron jobs e segmentação.
+- Analytics e Remote Config: Firebase Analytics + Remote Config para A/B e telemetria.
+
+Detalhes técnicos e trade-offs:
+- FCM message types:
+  - "notification" payload: O SO exibe automaticamente a notificação quando app estiver em background ou morto — bom fallback, porém menos controle (não aciona bridge para Awesome para ações customizadas).
+  - "data-only" payload: Entrega ao app para processamento: ideal para criar notificações com Awesome e adicionar ações/telemetria. Porém, em alguns OEMs, data-only pode não ser entregue quando app é kill (e.g., Xiaomi) — por isso usar fallback "notification" quando necessário.
+- Handler background do Flutter:
+  - FirebaseMessaging.onBackgroundMessage(handler) deve ser uma função top-level (ou static) e sincronizada com a inicialização de plugins. Lembre que o handler roda em uma isolate separado — recursos limitados (ex.: plugins que não suportam execução em background podem falhar).
+  - Ao processar data-only no background handler, use Awesome Notifications para criar a notificação local. Isso garante ações uniformes entre push remotos e notificações locais geradas pelo app.
+- Foreground Service para timers:
+  - Recomendação: Usar um serviço nativo Android (Kotlin) ou um plugin maduro (flutter_foreground_task) que suporte serviços nativos e atualizar a notificação periodicamente.
+  - Vantagem nativa: Service startForeground() garante maior resistência a kills do SO e continuidade do timer.
+  - Alternativa leve: Agendar AlarmManager/WorkManager para quando o timer terminar; adequado para timers não precisa de contagem em tempo real e para reduzir consumo de bateria.
+- Android 13+ (API 33): novo runtime permission POST_NOTIFICATIONS: solicitar permissão antes de exibir notificações.
+- iOS: Apple limita processos em segundo plano; não existe um Service persistente como Android. Use background fetch, silent push (APNs com content-available), e local scheduling para suportar funcionalidade offline e re-sincronização.
+
+Configurações e permissões importantes:
+- AndroidManifest.xml:
+  - Permissões: INTERNET, ACCESS_NETWORK_STATE, RECEIVE_BOOT_COMPLETED, VIBRATE, WAKE_LOCK
+  - Para Android 13+, solicitar POST_NOTIFICATIONS runtime permission.
+  - Registrar <service android:name=".YourForegroundService" android:foregroundServiceType="mediaPlayback|" ...> e <receiver android:name=".BootReceiver" ...>
+- Gradle:
+  - google-services plugin e classpath no build.gradle
+- iOS:
+  - Habilitar Push Notifications e Background Modes (remote notifications) em Xcode
+  - Info.plist: UIBackgroundModes including fetch and remote-notification
+  - Certificados APNs, provision profiles e SHA-1 key para Android/Google; atualizar no Firebase console
+
+Processos recomendados (código e integração):
+1) Inicialização e registro de mensagens (lib/src/utils/services/firebase_service.dart)
+   - Firebase.initializeApp()
+   - FirebaseMessaging.instance.requestPermission() (iOS + Android 13)
+   - Registrar FirebaseMessaging.onMessage, onMessageOpenedApp e onBackgroundMessage
+   - Obter/atualizar token e enviar para backend
+
+2) Bridge FCM → Awesome (lib/src/utils/services/notification_manager.dart)
+   - Converter payload data do FCM em NotificationRequest do Awesome
+   - Criar canais persistentes com importância e ações (pause/resume/stop)
+   - Registrar ações e callbacks para DeepLink/rota / analytics
+
+3) Foreground Service (Android) (lib/src/utils/services/foreground_service.dart e serviço nativo em android/)
+   - Implementar com plugin (flutter_foreground_task) ou serviço nativo Kotlin exposto via MethodChannel
+   - Expor controle do timer (start/pause/stop/update) via MethodChannel
+   - Atualizar notificação persistente com tempo restante, ação customizada
+   - Adicionar BootReceiver para re-agendar timers após reboot
+
+4) Mensagens programadas e alarmes
+   - Para lembretes e timers que não precisam de estado em tempo real: AlarmManager (Android) ou WorkManager para agendamento repetitivo e robusto
+   - Na entrega, disparar local notification com Awesome
+
+5) Política de payload (Server → FCM)
+   - Fallback: enviar um "notification" + "data" payload. Notification garante entrega, data garante controle quando app processa.
+   - Payload examples:
+     - data: {"type":"timer_end", "timerId":"...", "action":"open_timer", "silent":false}
+     - notification: {title, body}
+   - Para ações e deeplinks, enviar a rota e parâmetros no campo data
+
+6) Analytics e telemetria (lib/src/utils/services/notification_analytics.dart)
+   - Logar eventos: notification_sent, notification_received, notification_opened, notification_action
+   - Usar Firebase Analytics e BigQuery export para análise e segmentação avançada
+
+7) Regras e A/B testing (Remote Config / Cloud Functions)
+   - Criar regras no backend e usar Remote Config para variantes A/B
+   - Cloud Functions para envio de campanhas baseadas em triggers (inactivity, streak, milestones)
+
+8) Modelagem de dados e bancos
+   - Guardar tokens FCM por dispositivo & usuário (tokens expirados/rotas de refresh)
+   - Mapear preferências de canais & consentimento
+
+9) Segurança e privacidade
+   - Consentimento granular (marketing/behavioral/essential)
+   - Pseudonimização e anonimização para dados analíticos, logs de notificação
+   - Implementar opt-out completo (deleteToken & remove from DB)
+
+10) Testes e QA (Checklist)
+   - Device tests: Android (Pixel, Samsung, Xiaomi) e iOS (iPhone mais populare)
+   - Cenários: app aberto, background, morto, com/do not track, airplane mode, reboot
+   - Testar: permission denied (fallback), silent push, rich notifications, notification action flow
+   - Stress test: enviar grande volume de notificações e observar throttle e bateria
+
+11) Monitoramento e rollout
+   - Use Crashlytics, Performance Monitoring, dashboards (Mixpanel/BigQuery)
+   - Rollout via remote config e feature flagging; coletar métricas por cohort/variant
+
+12) Documentação & Guideline de UX
+   - Notificações claras, com fallback p/ dispositivos com restrições OEM
+   - Sugestão: max 3 notificações/hora por usuário; não enviar marketing/others sem consentimento
+
+13) Edge cases e mitigação
+   - OEM kills: instruir usuário a desabilitar otimizações para app (documentação & UX)
+   - Doze & App Standby: usar AlarmManager/WorkManager e foreground service para manutenção confiável
+   - Silent pushes rate-limit: poupar recursos e evitar abuso
+
+Estrutura de implementação sugerida (arquivos e pastas):
+- lib/src/utils/services/firebase_service.dart (inicialização e token management)
+- lib/src/utils/services/notification_manager.dart (bridge FCM ↔ Awesome Notifications)
+- lib/src/utils/services/foreground_service.dart (interface Flutter; se plugin nativo, wrapper)
+- lib/src/utils/services/notification_rules.dart (regras locais para scheduling)
+- lib/src/utils/services/notification_analytics.dart (rastreio e logging)
+- lib/src/ui/screens/notifications_settings.dart (consentimento e canais)
+- android/src/main/kotlin/…/ForegroundTimerService.kt (se optar por nativo)
+- android/src/main/kotlin/…/BootReceiver.kt
+- app backend: /functions/notification-scheduler/index.js (Cloud Functions)
+
+Roadmap (prioritário):
+- Sprint 1: Setup Firebase, inicialização básica e token sync; Bridge simples FCM -> Awesome (Teste com data-only e fallback notification)
+- Sprint 2: Foreground Service para timer (ou plugin integrado), BootReceiver, scheduling base com AlarmManager/WorkManager
+- Sprint 3: Analytics, A/B testing (Remote Config), rules engine (Cloud Functions), settings & consent UI
+- Sprint 4: QA, tests em devices reais + otimizações de bateria + docs
+
+Checklist final (Go-Live readiness):
+- Push funcional em background/app kill
+- Notificações persistentes para timers com ações de controle
+- Reagendamento pós reboot
+- Permissões Android 13 (POST_NOTIFICATIONS) e iOS setup pronto
+- Analytics com eventos de notificação e dashboards
+- Consentimento e painel de preferências de notificações
+- Testes multi-device e plan de rollback
+
+Notas finais (ultrathinking):
+- Avaliar trade-off entre usar plugin pronto (flutter_foreground_task) e implementar serviço nativo. Plugins agilizam desenvolvimento, mas serviço nativo é mais confiável e extensível para cenários críticos (timers em tempo real).
+- Para baixa latência e alta confiabilidade (notificações críticas), adaptar arquitetura server-side para enviar "notification" payloads quando detecta app finalizado em background, e usar "data-only" quando deseja controle.
+- Automatizar testes de notificações com scripts e dispositivos em cloud (Firebase Test Lab) para garantir comportamento de produção.
+
+Arquivo gerado: plano_notificacoes_ultrathinking.txt

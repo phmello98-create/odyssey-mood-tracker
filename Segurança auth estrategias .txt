@@ -1,0 +1,1278 @@
+🔒 RELATÓRIO COMPLETO DE SEGURANÇA - ODYSSEY APP
+Data: 14 de Dezembro de 2025  
+App: Odyssey - Mood Tracker & Productivity  
+Versão Analisada: 1.0.0+1  
+Status: 🔴 PRÉ-PRODUÇÃO - NECESSITA CORREÇÕES CRÍTICAS
+---
+📋 SUMÁRIO EXECUTIVO
+O Odyssey é um aplicativo de produtividade e bem-estar que combina múltiplas funcionalidades: rastreamento de humor, gerenciamento de tarefas, hábitos, diário pessoal, biblioteca de livros, time tracker, gamificação e aprendizado de idiomas.
+Filosofia Identificada
+Você desenvolveu o Odyssey com uma filosofia de privacidade local-first:
+- ✅ Todos os dados são armazenados localmente primeiro (Hive)
+- ✅ Sincronização na nuvem é opcional
+- ✅ Modo Guest permite uso sem conta
+- ✅ Backup no Google Drive sob controle do usuário
+- ✅ Sem analytics obrigatório
+- ✅ Você não quer coletar, armazenar ou ver dados dos clientes
+Esta é uma excelente abordagem e está alinhada com as melhores práticas de privacidade! No entanto, existem gaps críticos de implementação que precisam ser corrigidos para garantir que essa filosofia seja tecnicamente aplicada de forma segura.
+---
+🎯 CLASSIFICAÇÃO DE RISCO GERAL
+| Categoria | Status | Prioridade |
+|-----------|--------|------------|
+| Dados Sensíveis de Saúde | 🔴 CRÍTICO | URGENTE |
+| Criptografia Local | 🔴 CRÍTICO | URGENTE |
+| Backup Seguro | 🔴 CRÍTICO | URGENTE |
+| Tokens e Credenciais | 🟡 MÉDIO | ALTA |
+| Firestore Security Rules | 🟢 BOM | REVISAR |
+| API Keys | 🟡 MÉDIO | MÉDIA |
+| Conformidade LGPD/GDPR | 🔴 CRÍTICO | URGENTE |
+| Notificações | 🟡 BAIXO | MÉDIA |
+Veredicto: ⚠️ NÃO RECOMENDADO PARA PRODUÇÃO sem implementar as correções críticas.
+---
+🚨 VULNERABILIDADES CRÍTICAS (URGENTE)
+1. 🔴 DADOS DE SAÚDE MENTAL SEM CRIPTOGRAFIA
+Descrição: Mood records e diário pessoal contêm dados sensíveis de saúde mental armazenados em texto puro no Hive.
+Risco: 
+- ALTÍSSIMO 
+- Violação da LGPD Art. 11 (dados sensíveis)
+- Violação do GDPR Art. 9 (special categories)
+- Exposição em caso de acesso físico ao dispositivo
+- Backup não criptografado expõe dados
+Dados Expostos:
+// Hive boxes SEM encryption:
+- mood_records (tipo 3) - Humor diário, emoções, notas
+- diary_entries (tipo 20) - Diário pessoal completo
+- notes_v2 - Notas privadas
+- tasks - Tarefas (podem conter info confidencial)
+Solução Requerida:
+// 1. Gerar encryption key por dispositivo
+import 'package:hive/hive.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:crypto/crypto.dart';
+import 'dart:convert';
+class SecureHiveManager {
+  static const _storage = FlutterSecureStorage();
+  static const _keyName = 'odyssey_hive_key';
+  
+  static Future<List<int>> getOrCreateEncryptionKey() async {
+    // Tentar recuperar key existente
+    String? keyString = await _storage.read(key: _keyName);
+    
+    if (keyString != null) {
+      return base64Decode(keyString);
+    }
+    
+    // Gerar nova key
+    final key = Hive.generateSecureKey();
+    await _storage.write(
+      key: _keyName, 
+      value: base64Encode(key),
+    );
+    
+    return key;
+  }
+  
+  static Future<HiveAesCipher> getCipher() async {
+    final key = await getOrCreateEncryptionKey();
+    return HiveAesCipher(key);
+  }
+}
+// 2. Aplicar em boxes sensíveis
+Future<void> initializeSecureHive() async {
+  await Hive.initFlutter();
+  
+  final cipher = await SecureHiveManager.getCipher();
+  
+  // Boxes criptografados
+  await Hive.openBox<MoodRecord>(
+    'mood_records',
+    encryptionCipher: cipher,
+  );
+  
+  await Hive.openBox<DiaryEntry>(
+    'diary_entries',
+    encryptionCipher: cipher,
+  );
+  
+  await Hive.openBox(
+    'notes_v2',
+    encryptionCipher: cipher,
+  );
+  
+  // Outros boxes podem continuar sem encryption
+  // (ex: configurações, UI state)
+}
+Arquivos Afetados:
+- lib/src/providers/app_initializer_provider.dart (linha ~50-100)
+- Todos os repositories que usam esses boxes
+Ação Requerida:
+1. ✅ Adicionar flutter_secure_storage: ^9.0.0 ao pubspec.yaml
+2. ✅ Implementar SecureHiveManager conforme código acima
+3. ✅ Modificar inicialização do Hive no AppInitializer
+4. ✅ MIGRAÇÃO DE DADOS: Criar script para migrar dados existentes para boxes criptografados
+5. ✅ Testar em múltiplos dispositivos
+---
+2. 🔴 GOOGLE DRIVE BACKUP SEM CRIPTOGRAFIA
+Descrição: Backups completos do app são salvos no Google Drive em JSON texto puro.
+Arquivo: lib/src/utils/services/backup_service.dart
+Risco:
+- ALTÍSSIMO
+- Todos os dados do app expostos em texto puro
+- Backup inclui tokens e credenciais
+- Google Drive pode ser comprometido
+- Violação de privacidade massiva
+Dados Expostos no Backup:
+{
+  version: 2,
+  timestamp: ...,
+  deviceInfo: {...},
+  checksum: ...,
+  data: {
+    mood_records: [...],  // ← Texto puro!
+    diary_entries: [...], // ← Texto puro!
+    notes_v2: [...],      // ← Texto puro!
+    tasks: [...],
+    habits: [...],
+    books_v3: [...],
+    time_tracking_records: [...],
+    gamification: {...},
+    shared_prefs: {...}   // ← Pode conter tokens!
+  }
+}
+Solução Requerida:
+import 'package:encrypt/encrypt.dart' as encrypt;
+import 'package:crypto/crypto.dart';
+import 'dart:convert';
+class EncryptedBackupService {
+  // Gerar chave de criptografia derivada da senha do usuário
+  static List<int> _deriveKey(String password, List<int> salt) {
+    final iterations = 100000;
+    final keyLength = 32; // 256 bits
+    
+    // PBKDF2
+    var hmac = Hmac(sha256, utf8.encode(password));
+    var key = <int>[];
+    
+    for (var i = 1; key.length < keyLength; i++) {
+      var block = hmac.convert([...salt, ...[(i >> 24) & 0xff, (i >> 16) & 0xff, (i >> 8) & 0xff, i & 0xff]]).bytes;
+      var u = block;
+      
+      for (var j = 1; j < iterations; j++) {
+        u = hmac.convert(u).bytes;
+        for (var k = 0; k < block.length; k++) {
+          block[k] ^= u[k];
+        }
+      }
+      
+      key.addAll(block);
+    }
+    
+    return key.sublist(0, keyLength);
+  }
+  
+  static Future<Map<String, dynamic>> createEncryptedBackup({
+    required String password,
+  }) async {
+    // 1. Criar backup completo (como antes)
+    final backupData = await _createCompleteBackup();
+    final backupJson = jsonEncode(backupData);
+    
+    // 2. Gerar salt aleatório
+    final salt = encrypt.SecureRandom(16).bytes;
+    
+    // 3. Derivar chave da senha
+    final keyBytes = _deriveKey(password, salt);
+    final key = encrypt.Key(Uint8List.fromList(keyBytes));
+    
+    // 4. Gerar IV aleatório
+    final iv = encrypt.IV.fromSecureRandom(16);
+    
+    // 5. Criptografar
+    final encrypter = encrypt.Encrypter(
+      encrypt.AES(key, mode: encrypt.AESMode.cbc)
+    );
+    final encrypted = encrypter.encrypt(backupJson, iv: iv);
+    
+    // 6. Retornar backup criptografado
+    return {
+      'version': '3', // Nova versão com encryption
+      'encrypted': true,
+      'salt': base64Encode(salt),
+      'iv': base64Encode(iv.bytes),
+      'data': encrypted.base64,
+      'checksum': md5.convert(utf8.encode(backupJson)).toString(),
+      'timestamp': DateTime.now().toIso8601String(),
+    };
+  }
+  
+  static Future<Map<String, dynamic>> decryptBackup({
+    required Map<String, dynamic> encryptedBackup,
+    required String password,
+  }) async {
+    // 1. Extrair metadados
+    final salt = base64Decode(encryptedBackup['salt']);
+    final iv = encrypt.IV(Uint8List.fromList(
+      base64Decode(encryptedBackup['iv'])
+    ));
+    final encryptedData = encryptedBackup['data'];
+    
+    // 2. Derivar chave
+    final keyBytes = _deriveKey(password, salt);
+    final key = encrypt.Key(Uint8List.fromList(keyBytes));
+    
+    // 3. Descriptografar
+    final encrypter = encrypt.Encrypter(
+      encrypt.AES(key, mode: encrypt.AESMode.cbc)
+    );
+    
+    try {
+      final decrypted = encrypter.decrypt64(
+        encryptedData,
+        iv: iv,
+      );
+      
+      final backupData = jsonDecode(decrypted);
+      
+      // 4. Validar checksum
+      final computedChecksum = md5.convert(
+        utf8.encode(decrypted)
+      ).toString();
+      
+      if (computedChecksum != encryptedBackup['checksum']) {
+        throw Exception('Backup corrupted: checksum mismatch');
+      }
+      
+      return backupData;
+      
+    } catch (e) {
+      throw Exception('Failed to decrypt: wrong password or corrupted data');
+    }
+  }
+}
+UI para Senha de Backup:
+class BackupPasswordDialog extends StatefulWidget {
+  final bool isCreatingBackup;
+  
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(
+        isCreatingBackup 
+          ? 'Criar Senha de Backup' 
+          : 'Senha do Backup'
+      ),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (isCreatingBackup) ...[
+            Text(
+              'Escolha uma senha forte para proteger seu backup. '
+              'IMPORTANTE: Não será possível recuperar o backup '
+              'se você esquecer esta senha.',
+              style: TextStyle(fontSize: 12),
+            ),
+            SizedBox(height: 16),
+          ],
+          TextField(
+            obscureText: true,
+            decoration: InputDecoration(
+              labelText: 'Senha',
+              suffixIcon: Icon(Icons.lock),
+            ),
+            onChanged: (value) => password = value,
+          ),
+          if (isCreatingBackup) ...[
+            SizedBox(height: 12),
+            TextField(
+              obscureText: true,
+              decoration: InputDecoration(
+                labelText: 'Confirmar Senha',
+              ),
+              onChanged: (value) => confirmPassword = value,
+            ),
+          ],
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text('Cancelar'),
+        ),
+        ElevatedButton(
+          onPressed: () {
+            if (isCreatingBackup && password != confirmPassword) {
+              // Show error
+              return;
+            }
+            Navigator.pop(context, password);
+          },
+          child: Text('Confirmar'),
+        ),
+      ],
+    );
+  }
+}
+Ação Requerida:
+1. ✅ Adicionar encrypt: ^5.0.3 ao pubspec.yaml
+2. ✅ Implementar EncryptedBackupService
+3. ✅ Criar UI para definir senha de backup
+4. ✅ Atualizar BackupService para usar encryption
+5. ✅ Adicionar opção de backup local criptografado (sem Google Drive)
+6. ✅ IMPORTANTE: Informar usuários que backups antigos precisam ser recriados
+---
+3. 🔴 CONFORMIDADE LGPD/GDPR INCOMPLETA
+Descrição: Faltam funcionalidades essenciais para conformidade com leis de proteção de dados.
+Problemas Identificados:
+A) Falta de Consentimento Explícito para Dados Sensíveis
+LGPD Art. 11: Dados de saúde requerem consentimento específico e destacado.
+Solução:
+class HealthDataConsentScreen extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text('Seus Dados de Saúde')),
+      body: Padding(
+        padding: EdgeInsets.all(24),
+        child: Column(
+          children: [
+            Icon(Icons.health_and_safety, size: 64, color: Colors.red),
+            SizedBox(height: 24),
+            Text(
+              'O Odyssey coleta dados sensíveis de saúde mental',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            SizedBox(height: 16),
+            Text(
+              'Ao usar as funcionalidades de registro de humor e diário, '
+              'você estará compartilhando informações sobre seu estado '
+              'emocional e bem-estar mental. Esses dados são considerados '
+              'sensíveis pela LGPD e GDPR.',
+              textAlign: TextAlign.center,
+            ),
+            SizedBox(height: 24),
+            _buildDataUsageCard(
+              icon: Icons.phone_android,
+              title: 'Armazenamento Local',
+              description: 'Seus dados são armazenados criptografados '
+                          'no seu dispositivo.',
+            ),
+            _buildDataUsageCard(
+              icon: Icons.cloud_off,
+              title: 'Sincronização Opcional',
+              description: 'Você escolhe se quer sincronizar na nuvem. '
+                          'Por padrão, tudo fica local.',
+            ),
+            _buildDataUsageCard(
+              icon: Icons.visibility_off,
+              title: 'Privacidade Total',
+              description: 'Não vendemos, não compartilhamos, não '
+                          'acessamos seus dados pessoais.',
+            ),
+            Spacer(),
+            CheckboxListTile(
+              value: consent,
+              onChanged: (value) => setState(() => consent = value!),
+              title: Text(
+                'Eu entendo e consinto explicitamente com a coleta '
+                'e processamento dos meus dados sensíveis de saúde mental.',
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+              ),
+            ),
+            SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: consent ? () => _saveConsent() : null,
+              child: Text('Continuar'),
+              style: ElevatedButton.styleFrom(
+                minimumSize: Size(double.infinity, 50),
+              ),
+            ),
+            TextButton(
+              onPressed: () => _showPrivacyPolicy(),
+              child: Text('Ler Política de Privacidade Completa'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+B) Falta de Exportação de Dados
+LGPD Art. 18: Usuário tem direito a portabilidade dos dados.
+Solução:
+class DataExportService {
+  static Future<File> exportAllUserData() async {
+    final user = await AuthRepository.currentUser;
+    
+    // 1. Coletar TODOS os dados
+    final exportData = {
+      'user_info': {
+        'uid': user.uid,
+        'email': user.email,
+        'displayName': user.displayName,
+        'created_at': user.createdAt?.toIso8601String(),
+      },
+      'mood_records': await _exportMoodRecords(),
+      'diary_entries': await _exportDiary(),
+      'tasks': await _exportTasks(),
+      'habits': await _exportHabits(),
+      'notes': await _exportNotes(),
+      'books': await _exportBooks(),
+      'time_tracking': await _exportTimeTracking(),
+      'gamification': await _exportGamification(),
+      'settings': await _exportSettings(),
+      'export_metadata': {
+        'date': DateTime.now().toIso8601String(),
+        'version': '1.0.0',
+        'format': 'JSON',
+      },
+    };
+    
+    // 2. Converter para JSON formatado
+    final jsonString = JsonEncoder.withIndent('  ').convert(exportData);
+    
+    // 3. Salvar em arquivo
+    final directory = await getApplicationDocumentsDirectory();
+    final file = File('${directory.path}/odyssey_data_export_${DateTime.now().millisecondsSinceEpoch}.json');
+    await file.writeAsString(jsonString);
+    
+    return file;
+  }
+  
+  static Future<void> shareExport(File file) async {
+    await Share.shareXFiles(
+      [XFile(file.path)],
+      subject: 'Meus Dados - Odyssey',
+      text: 'Exportação completa dos meus dados do app Odyssey',
+    );
+  }
+}
+C) Falta de Deleção Completa de Conta
+LGPD Art. 18: Direito ao esquecimento.
+Solução:
+class AccountDeletionService {
+  static Future<void> deleteAccountCompletely({
+    required String userId,
+    required String password, // Confirmar identidade
+  }) async {
+    // 1. Validar senha
+    final isValid = await _validatePassword(password);
+    if (!isValid) {
+      throw Exception('Senha incorreta');
+    }
+    
+    // 2. Deletar do Firestore (se existir)
+    if (!user.isGuest) {
+      await _deleteFirestoreData(userId);
+      await _deleteStorageFiles(userId);
+    }
+    
+    // 3. Deletar backups do Google Drive
+    await _deleteGoogleDriveBackups();
+    
+    // 4. Deletar dados locais
+    await _deleteAllHiveBoxes();
+    await _deleteSharedPreferences();
+    await _deleteSecureStorage();
+    
+    // 5. Deletar conta do Firebase Auth
+    if (!user.isGuest) {
+      await FirebaseAuth.instance.currentUser?.delete();
+    }
+    
+    // 6. Log de auditoria (anônimo)
+    await _logAccountDeletion(userId: 'DELETED', timestamp: DateTime.now());
+    
+    // 7. Limpar cache e temporários
+    await _clearAppCache();
+  }
+  
+  static Future<void> _deleteFirestoreData(String userId) async {
+    final batch = FirebaseFirestore.instance.batch();
+    
+    // Deletar coleções
+    final collections = [
+      'moods', 'tasks', 'habits', 'notes', 'quotes',
+      'books', 'timeTracking', 'diary', 'gamification',
+    ];
+    
+    for (final collection in collections) {
+      final docs = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .collection(collection)
+          .get();
+          
+      for (final doc in docs.docs) {
+        batch.delete(doc.reference);
+      }
+    }
+    
+    // Deletar documento do usuário
+    batch.delete(
+      FirebaseFirestore.instance.collection('users').doc(userId)
+    );
+    
+    await batch.commit();
+  }
+}
+UI para Deleção:
+class DeleteAccountScreen extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Excluir Conta'),
+        backgroundColor: Colors.red,
+      ),
+      body: Padding(
+        padding: EdgeInsets.all(24),
+        child: Column(
+          children: [
+            Icon(Icons.warning, size: 80, color: Colors.red),
+            SizedBox(height: 24),
+            Text(
+              'Atenção: Esta ação é irreversível',
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: Colors.red,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            SizedBox(height: 16),
+            Text(
+              'Ao excluir sua conta, TODOS os seus dados serão '
+              'permanentemente deletados:',
+              textAlign: TextAlign.center,
+            ),
+            SizedBox(height: 24),
+            _buildDeletionItem('Registros de humor'),
+            _buildDeletionItem('Diário pessoal'),
+            _buildDeletionItem('Tarefas e hábitos'),
+            _buildDeletionItem('Notas e anotações'),
+            _buildDeletionItem('Biblioteca de livros'),
+            _buildDeletionItem('Dados de gamificação'),
+            _buildDeletionItem('Backups na nuvem'),
+            _buildDeletionItem('Conta e configurações'),
+            SizedBox(height: 24),
+            Text(
+              'Recomendamos fazer um backup antes de continuar.',
+              style: TextStyle(fontStyle: FontStyle.italic),
+              textAlign: TextAlign.center,
+            ),
+            Spacer(),
+            ElevatedButton.icon(
+              onPressed: () => _showBackupOption(),
+              icon: Icon(Icons.download),
+              label: Text('Fazer Backup Antes'),
+              style: ElevatedButton.styleFrom(
+                minimumSize: Size(double.infinity, 50),
+              ),
+            ),
+            SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: () => _confirmDeletion(),
+              icon: Icon(Icons.delete_forever),
+              label: Text('Excluir Conta Permanentemente'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.red,
+                minimumSize: Size(double.infinity, 50),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+  
+  Future<void> _confirmDeletion() async {
+    // Dialog de confirmação final com senha
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Confirmação Final'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('Digite sua senha para confirmar:'),
+            SizedBox(height: 16),
+            TextField(
+              obscureText: true,
+              decoration: InputDecoration(labelText: 'Senha'),
+              onChanged: (value) => password = value,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text('Confirmar Exclusão', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+    
+    if (confirmed == true) {
+      await AccountDeletionService.deleteAccountCompletely(
+        userId: user.uid,
+        password: password,
+      );
+      // Navegar para tela de boas-vindas
+    }
+  }
+}
+Ação Requerida:
+1. ✅ Implementar tela de consentimento de dados de saúde
+2. ✅ Adicionar exportação de dados no menu de configurações
+3. ✅ Implementar deleção completa de conta
+4. ✅ Criar política de privacidade detalhada
+5. ✅ Adicionar termos de uso
+6. ✅ Log de auditoria (anônimo) para compliance
+---
+🟡 VULNERABILIDADES DE PRIORIDADE ALTA
+4. 🟡 TOKENS E CREDENCIAIS EM SHARED PREFERENCES
+Descrição: Tokens de autenticação podem estar sendo armazenados em SharedPreferences (não seguro).
+Risco: MÉDIO-ALTO
+- SharedPreferences não é criptografado
+- Tokens podem ser extraídos com root/jailbreak
+- Sessões podem ser roubadas
+Solução:
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+class SecureTokenStorage {
+  static const _storage = FlutterSecureStorage(
+    aOptions: AndroidOptions(
+      encryptedSharedPreferences: true,
+    ),
+    iOptions: IOSOptions(
+      accessibility: KeychainAccessibility.first_unlock,
+    ),
+  );
+  
+  // Armazenar tokens
+  static Future<void> saveAuthToken(String token) async {
+    await _storage.write(key: 'auth_token', value: token);
+  }
+  
+  static Future<String?> getAuthToken() async {
+    return await _storage.read(key: 'auth_token');
+  }
+  
+  static Future<void> deleteAuthToken() async {
+    await _storage.delete(key: 'auth_token');
+  }
+  
+  // Google Drive tokens
+  static Future<void> saveGoogleDriveToken(String token) async {
+    await _storage.write(key: 'gdrive_token', value: token);
+  }
+  
+  static Future<String?> getGoogleDriveToken() async {
+    return await _storage.read(key: 'gdrive_token');
+  }
+  
+  // FCM tokens
+  static Future<void> saveFCMToken(String token) async {
+    await _storage.write(key: 'fcm_token', value: token);
+  }
+  
+  // Limpar tudo no logout
+  static Future<void> clearAll() async {
+    await _storage.deleteAll();
+  }
+}
+Arquivos a Modificar:
+- lib/src/features/auth/data/firebase_auth_repository.dart
+- lib/src/utils/services/backup_service.dart
+- lib/src/features/auth/services/firebase_service.dart
+---
+5. 🟡 VALIDAÇÃO DE OWNERSHIP NO FIRESTORE
+Descrição: As Firestore Security Rules estão boas, mas podem ser aprimoradas.
+Arquivo Atual: firestore.rules (linhas 31-39)
+Melhorias Sugeridas:
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ==========================================
+    // HELPER FUNCTIONS
+    // ==========================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    function isValidTimestamp(timestamp) {
+      return timestamp is timestamp && 
+             timestamp <= request.time + duration.value(1, 'd');
+    }
+    
+    function isValidMoodRecord(data) {
+      return data.keys().hasAll(['label', 'score', 'date']) &&
+             data.score is int &&
+             data.score >= 1 &&
+             data.score <= 5 &&
+             isValidTimestamp(data.date);
+    }
+    
+    function isValidTask(data) {
+      return data.keys().hasAll(['title', 'completed']) &&
+             data.title is string &&
+             data.title.size() > 0 &&
+             data.title.size() <= 500;
+    }
+    
+    function hasValidFields(data, requiredFields) {
+      return data.keys().hasAll(requiredFields);
+    }
+    
+    // Limitar tamanho de documentos
+    function isSizeValid(data) {
+      return request.resource.size() < 1048576; // 1 MB max
+    }
+    
+    // Rate limiting básico (protege contra spam)
+    function notTooFrequent() {
+      return !exists(/databases/$(database)/documents/users/$(request.auth.uid)/rate_limit/$(request.time.toMillis() / 1000))
+             || resource.data.count < 100; // 100 requests por segundo
+    }
+    
+    // ==========================================
+    // REGRAS PADRÃO
+    // ==========================================
+    
+    match /{document=**} {
+      allow read, write: if false; // Deny all por padrão
+    }
+    
+    // ==========================================
+    // USERS COLLECTION
+    // ==========================================
+    
+    match /users/{userId} {
+      allow read: if isOwner(userId);
+      
+      allow create: if isOwner(userId) && 
+                       isSizeValid(request.resource.data) &&
+                       hasValidFields(request.resource.data, ['uid', 'createdAt']);
+      
+      allow update: if isOwner(userId) && 
+                       isSizeValid(request.resource.data) &&
+                       // Não permitir mudança de uid
+                       request.resource.data.uid == resource.data.uid;
+      
+      allow delete: if isOwner(userId);
+      
+      // ==========================================
+      // SUBCOLLECTIONS
+      // ==========================================
+      
+      // Moods
+      match /moods/{moodId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && 
+                         isValidMoodRecord(request.resource.data) &&
+                         isSizeValid(request.resource.data);
+        allow update: if isOwner(userId) && 
+                         isValidMoodRecord(request.resource.data);
+        allow delete: if isOwner(userId);
+      }
+      
+      // Tasks
+      match /tasks/{taskId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && 
+                         isValidTask(request.resource.data) &&
+                         isSizeValid(request.resource.data);
+        allow update: if isOwner(userId) && 
+                         isValidTask(request.resource.data);
+        allow delete: if isOwner(userId);
+      }
+      
+      // Habits
+      match /habits/{habitId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && 
+                         isSizeValid(request.resource.data) &&
+                         hasValidFields(request.resource.data, ['name']);
+        allow update: if isOwner(userId);
+        allow delete: if isOwner(userId);
+      }
+      
+      // Notes (dados sensíveis)
+      match /notes/{noteId} {
+        allow read: if isOwner(userId);
+        allow write: if isOwner(userId) && 
+                        isSizeValid(request.resource.data);
+      }
+      
+      // Diary (MUITO sensível)
+      match /diary/{entryId} {
+        allow read: if isOwner(userId);
+        allow write: if isOwner(userId) && 
+                        isSizeValid(request.resource.data);
+      }
+      
+      // Outras subcollections
+      match /{subcollection}/{docId} {
+        allow read: if isOwner(userId);
+        allow write: if isOwner(userId) && 
+                        isSizeValid(request.resource.data);
+      }
+    }
+    
+    // ==========================================
+    // APP CONFIG (READ-ONLY)
+    // ==========================================
+    
+    match /app_config/{document} {
+      allow read: if isAuthenticated();
+      allow write: if false; // Apenas via Admin SDK
+    }
+    
+    // ==========================================
+    // GLOBAL QUOTES (READ-ONLY)
+    // ==========================================
+    
+    match /global_quotes/{quoteId} {
+      allow read: if isAuthenticated();
+      allow write: if false; // Apenas via Admin SDK
+    }
+  }
+}
+Ação Requerida:
+1. ✅ Substituir firestore.rules pelo código acima
+2. ✅ Publicar no Firebase Console
+3. ✅ Testar exaustivamente
+4. ✅ Monitorar rejections no Firebase Console
+---
+6. 🟡 IMPLEMENT FIREBASE APP CHECK
+Descrição: Proteger APIs do Firebase contra abuso e bots.
+Solução:
+# pubspec.yaml
+dependencies:
+  firebase_app_check: ^0.2.1+0
+// lib/main.dart
+import 'package:firebase_app_check/firebase_app_check.dart';
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+  
+  // ✅ ADICIONAR: App Check
+  await FirebaseAppCheck.instance.activate(
+    // Use Play Integrity no Android
+    androidProvider: AndroidProvider.playIntegrity,
+    // Use DeviceCheck no iOS
+    appleProvider: AppleProvider.deviceCheck,
+    // Debug provider para desenvolvimento
+    webProvider: ReCaptchaV3Provider('YOUR_RECAPTCHA_SITE_KEY'),
+  );
+  
+  runApp(ProviderScope(child: MyApp()));
+}
+Firebase Console:
+1. Ativar App Check no console
+2. Configurar Play Integrity (Android)
+3. Configurar DeviceCheck (iOS)
+4. Aplicar enforcement em todas as APIs
+---
+🟢 BOAS PRÁTICAS IDENTIFICADAS
+Você já está fazendo várias coisas certas:
+✅ Arquitetura Local-First
+- Hive como armazenamento primário
+- Sincronização opcional
+- Modo guest disponível
+✅ Firestore Security Rules Básicas
+- Ownership validation presente
+- Deny-by-default approach
+✅ Modelos Imutáveis com Freezed
+- Type safety
+- Facilita debugging
+- Previne mutações acidentais
+✅ Repository Pattern
+- Abstração clara
+- Testável
+- Separação de responsabilidades
+✅ Riverpod State Management
+- Reativo
+- Type-safe
+- Garbage collection automático
+---
+📝 CHECKLIST DE IMPLEMENTAÇÃO
+URGENTE (Fazer ANTES do lançamento)
+- [ ] Criptografar Hive boxes sensíveis
+  - [ ] Implementar SecureHiveManager
+  - [ ] Adicionar flutter_secure_storage
+  - [ ] Migrar dados existentes
+  - [ ] Testar em múltiplos dispositivos
+  
+- [ ] Criptografar backups do Google Drive
+  - [ ] Implementar EncryptedBackupService
+  - [ ] Adicionar encrypt package
+  - [ ] Criar UI para senha de backup
+  - [ ] Avisar usuários sobre backups antigos
+  
+- [ ] Implementar consentimento LGPD/GDPR
+  - [ ] Tela de consentimento de dados de saúde
+  - [ ] Política de privacidade detalhada
+  - [ ] Termos de uso
+  - [ ] Checkbox de aceite explícito
+  
+- [ ] Exportação de dados
+  - [ ] Implementar DataExportService
+  - [ ] Adicionar menu em configurações
+  - [ ] Formato JSON legível
+  - [ ] Compartilhamento via share sheet
+  
+- [ ] Deleção completa de conta
+  - [ ] Implementar AccountDeletionService
+  - [ ] UI de confirmação
+  - [ ] Deletar Firestore
+  - [ ] Deletar Storage
+  - [ ] Deletar Google Drive backups
+  - [ ] Deletar dados locais
+  - [ ] Deletar Firebase Auth
+  
+- [ ] Migrar tokens para Secure Storage
+  - [ ] Implementar SecureTokenStorage
+  - [ ] Migrar auth tokens
+  - [ ] Migrar Google Drive tokens
+  - [ ] Migrar FCM tokens
+ALTA PRIORIDADE
+- [ ] Aprimorar Firestore Security Rules
+  - [ ] Adicionar validações de campos
+  - [ ] Limitar tamanho de documentos
+  - [ ] Implementar rate limiting básico
+  - [ ] Publicar e testar
+  
+- [ ] Implementar Firebase App Check
+  - [ ] Adicionar package
+  - [ ] Configurar Play Integrity
+  - [ ] Configurar DeviceCheck
+  - [ ] Ativar enforcement
+  
+- [ ] Anonimizar Analytics
+  - [ ] Desabilitar coleta de IP
+  - [ ] Remover identifiers pessoais
+  - [ ] Adicionar opt-out
+  
+- [ ] Revisar notificações
+  - [ ] Opção de notificações genéricas
+  - [ ] Não incluir dados sensíveis em payloads
+  - [ ] Respeitar configurações do SO
+MÉDIA PRIORIDADE
+- [ ] Versionamento de dados
+  - [ ] Schema versions no Hive
+  - [ ] Migrations automáticas
+  
+- [ ] Logs de auditoria
+  - [ ] Login/logout
+  - [ ] Mudanças de dados sensíveis
+  - [ ] Anônimos (apenas timestamps e actions)
+  
+- [ ] Sanitização de inputs
+  - [ ] Validar todos os campos de texto
+  - [ ] Limitar tamanhos
+  - [ ] Prevenir XSS (se usar WebView)
+  
+- [ ] Deep links validation
+  - [ ] Validar schemas
+  - [ ] Sanitizar parâmetros
+---
+🎯 RECOMENDAÇÕES ADICIONAIS
+1. Documentação de Privacidade
+Criar documentos obrigatórios:
+Política de Privacidade (PRIVACY_POLICY.md):
+ Política de Privacidade - Odyssey
+Última atualização: [DATA]
+ 1. Introdução
+O Odyssey respeita sua privacidade. Este documento explica como coletamos, 
+usamos e protegemos seus dados pessoais.
+ 2. Dados Coletados
+- **Dados de conta**: Email, nome, foto de perfil (se usar Google Sign-In)
+- **Dados de uso**: Registros de humor, tarefas, hábitos, notas, diário
+- **Dados técnicos**: Tipo de dispositivo, versão do app, idioma
+ 3. Como Usamos Seus Dados
+- **Localmente primeiro**: Todos os dados são armazenados no seu dispositivo
+- **Sincronização opcional**: Você escolhe se quer sincronizar na nuvem
+- **Sem venda**: NUNCA vendemos seus dados
+- **Sem compartilhamento**: Não compartilhamos com terceiros
+- **Sem acesso**: Não acessamos seus dados pessoais
+ 4. Dados Sensíveis de Saúde
+O Odyssey coleta dados relacionados a saúde mental (humor, bem-estar).
+Esses dados são considerados sensíveis pela LGPD e GDPR.
+- **Criptografia**: Dados sensíveis são criptografados no dispositivo
+- **Consentimento**: Você deve consentir explicitamente
+- **Controle total**: Você pode exportar ou deletar a qualquer momento
+ 5. Seus Direitos (LGPD/GDPR)
+Você tem direito a:
+- **Acesso**: Ver todos os seus dados
+- **Exportação**: Baixar uma cópia dos seus dados
+- **Correção**: Corrigir dados incorretos
+- **Exclusão**: Deletar sua conta permanentemente
+- **Portabilidade**: Transferir seus dados
+- **Revogação**: Revogar consentimentos
+ 6. Segurança
+- Criptografia AES-256 para dados sensíveis
+- Armazenamento local seguro (Hive)
+- Backups criptografados
+- Tokens em keychain/keystore
+ 7. Retenção de Dados
+- **Dados locais**: Mantidos até você deletar
+- **Dados na nuvem**: Deletados quando você excluir a conta
+- **Backups**: Sob seu controle no Google Drive
+ 8. Contato
+Para exercer seus direitos ou dúvidas sobre privacidade:
+Email: privacy@odysseyapp.com
+Termos de Uso (TERMS_OF_SERVICE.md):
+ Termos de Uso - Odyssey
+ 1. Aceitação dos Termos
+Ao usar o Odyssey, você concorda com estes termos.
+ 2. Uso do Serviço
+- Você é responsável pelo conteúdo que cria
+- Não use para atividades ilegais
+- Mantenha suas credenciais seguras
+ 3. Dados e Privacidade
+- Leia nossa Política de Privacidade
+- Você mantém ownership dos seus dados
+- Podemos processar dados conforme consentimento
+ 4. Responsabilidades
+- O Odyssey não substitui atendimento médico/psicológico
+- Em caso de crise, procure ajuda profissional
+- Não nos responsabilizamos por perda de dados devido a falha de dispositivo
+ 5. Assinatura PRO
+- Pagamento via Google Play/App Store
+- Cancelamento disponível a qualquer momento
+- Sem reembolsos (conforme políticas das stores)
+ 6. Modificações
+Podemos atualizar estes termos. Notificaremos sobre mudanças significativas.
+ 7. Encerramento
+Você pode deletar sua conta a qualquer momento.
+2. UI de Segurança
+Adicionar seção de Privacidade e Segurança em Configurações:
+class PrivacySecurityScreen extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text('Privacidade e Segurança')),
+      body: ListView(
+        children: [
+          // Informações gerais
+          _buildInfoCard(
+            icon: Icons.security,
+            title: 'Seus Dados Estão Seguros',
+            description: 'Todos os seus dados sensíveis são criptografados '
+                        'e armazenados com segurança no seu dispositivo.',
+          ),
+          
+          Divider(),
+          
+          // Criptografia
+          ListTile(
+            leading: Icon(Icons.lock),
+            title: Text('Criptografia'),
+            subtitle: Text('AES-256 para dados sensíveis'),
+            trailing: Chip(
+              label: Text('ATIVADA'),
+              backgroundColor: Colors.green,
+            ),
+          ),
+          
+          // Dados Sensíveis
+          ListTile(
+            leading: Icon(Icons.health_and_safety),
+            title: Text('Dados de Saúde Mental'),
+            subtitle: Text('Humor, diário e notas pessoais'),
+            onTap: () => _showHealthDataInfo(),
+          ),
+          
+          Divider(),
+          
+          // Sincronização
+          SwitchListTile(
+            secondary: Icon(Icons.cloud_sync),
+            title: Text('Sincronização na Nuvem'),
+            subtitle: Text(
+              syncEnabled 
+                ? 'Seus dados são sincronizados com segurança' 
+                : 'Dados armazenados apenas localmente'
+            ),
+            value: syncEnabled,
+            onChanged: (value) => _toggleSync(value),
+          ),
+          
+          // Backup
+          ListTile(
+            leading: Icon(Icons.backup),
+            title: Text('Backup Criptografado'),
+            subtitle: Text('Google Drive (opcional)'),
+            trailing: Icon(Icons.chevron_right),
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => BackupScreen()),
+            ),
+          ),
+          
+          Divider(),
+          
+          // Exportar dados
+          ListTile(
+            leading: Icon(Icons.download),
+            title: Text('Exportar Meus Dados'),
+            subtitle: Text('Download completo em JSON'),
+            onTap: () => _exportData(),
+          ),
+          
+          // Deletar conta
+          ListTile(
+            leading: Icon(Icons.delete_forever, color: Colors.red),
+            title: Text('Excluir Minha Conta', style: TextStyle(color: Colors.red)),
+            subtitle: Text('Apagar todos os dados permanentemente'),
+            onTap: () => _navigateToDeleteAccount(),
+          ),
+          
+          Divider(),
+          
+          // Documentos legais
+          ListTile(
+            leading: Icon(Icons.article),
+            title: Text('Política de Privacidade'),
+            trailing: Icon(Icons.open_in_new),
+            onTap: () => _openPrivacyPolicy(),
+          ),
+          
+          ListTile(
+            leading: Icon(Icons.gavel),
+            title: Text('Termos de Uso'),
+            trailing: Icon(Icons.open_in_new),
+            onTap: () => _openTermsOfService(),
+          ),
+          
+          SizedBox(height: 24),
+          
+          // Informações de versão
+          Center(
+            child: Column(
+              children: [
+                Text(
+                  'Odyssey v1.0.0',
+                  style: TextStyle(color: Colors.grey),
+                ),
+                SizedBox(height: 8),
+                Text(
+                  'Seus dados estão protegidos com criptografia AES-256',
+                  style: TextStyle(color: Colors.grey, fontSize: 12),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          ),
+          
+          SizedBox(height: 24),
+        ],
+      ),
+    );
+  }
+}
+3. Testing de Segurança
+Criar testes automatizados:
+// test/security_test.dart
+import 'package:flutter_test/flutter_test.dart';
+void main() {
+  group('Security Tests', () {
+    test('Hive encryption key should be generated', () async {
+      final key = await SecureHiveManager.getOrCreateEncryptionKey();
+      expect(key, isNotEmpty);
+      expect(key.length, equals(32)); // 256 bits
+    });
+    
+    test('Backup encryption should work', () async {
+      final password = 'test_password_123';
+      final originalData = {'test': 'data'};
+      
+      final encrypted = await EncryptedBackupService.createEncryptedBackup(
+        data: originalData,
+        password: password,
+      );
+      
+      final decrypted = await EncryptedBackupService.decryptBackup(
+        encryptedBackup: encrypted,
+        password: password,
+      );
+      
+      expect(decrypted, equals(originalData));
+    });
+    
+    test('Wrong password should fail decryption', () async {
+      final password = 'correct_password';
+      final wrongPassword = 'wrong_password';
+      final originalData = {'test': 'data'};
+      
+      final encrypted = await EncryptedBackupService.createEncryptedBackup(
+        data: originalData,
+        password: password,
+      );
+      
+      expect(
+        () => EncryptedBackupService.decryptBackup(
+          encryptedBackup: encrypted,
+          password: wrongPassword,
+        ),
+        throwsException,
+      );
+    });
+    
+    test('Tokens should be stored securely', () async {
+      const testToken = 'test_auth_token_12345';
+      
+      await SecureTokenStorage.saveAuthToken(testToken);
+      final retrieved = await SecureTokenStorage.getAuthToken();
+      
+      expect(retrieved, equals(testToken));
+    });
+  });
+}
+---
+📊 ESTIMATIVA DE ESFORÇO
+| Tarefa | Prioridade | Tempo Estimado | Complexidade |
+|--------|-----------|----------------|--------------|
+| Criptografar Hive | CRÍTICO | 8-12h | Média |
+| Criptografar Backups | CRÍTICO | 6-8h | Média |
+| Consentimento LGPD | CRÍTICO | 4-6h | Baixa |
+| Exportação de Dados | CRÍTICO | 6-8h | Média |
+| Deleção de Conta | CRÍTICO | 8-10h | Alta |
+| Secure Token Storage | ALTA | 4-6h | Baixa |
+| Firestore Rules | ALTA | 3-4h | Baixa |
+| Firebase App Check | ALTA | 2-3h | Baixa |
+| Política de Privacidade | ALTA | 3-4h | Baixa |
+| UI de Segurança | MÉDIA | 4-6h | Baixa |
+| Testes de Segurança | MÉDIA | 6-8h | Média |
+TOTAL ESTIMADO: 54-75 horas (~2 semanas de trabalho focado)
+---
+✅ CONCLUSÃO E PRÓXIMOS PASSOS
+Sua Filosofia Está Correta! ✨
+Você está no caminho certo ao não querer coletar, armazenar ou acessar dados dos clientes. Essa é a melhor abordagem de privacidade possível: zero-knowledge architecture.
+Mas Precisa Ser Implementada Corretamente
+Os principais gaps são:
+1. Falta de criptografia nos dados sensíveis
+2. Backups desprotegidos
+3. Conformidade LGPD/GDPR incompleta
+Priorize Estas 5 Ações
+1. ✅ Implementar criptografia do Hive (CRÍTICO)
+2. ✅ Criptografar backups (CRÍTICO)
+3. ✅ Adicionar consentimento explícito (CRÍTICO)
+4. ✅ Implementar exportação de dados (CRÍTICO)
+5. ✅ Implementar deleção completa (CRÍTICO)
