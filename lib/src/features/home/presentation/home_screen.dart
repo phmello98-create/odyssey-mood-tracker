@@ -4,6 +4,7 @@ import 'dart:io';
 import 'dart:math';
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:odyssey/src/providers/timer_provider.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -148,6 +149,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   // Tabs de Hábitos/Tarefas
   late PageController _habitsTasksPageController;
   int _habitsTasksTabIndex = 0;
+
+  // Show/Hide completed items
+  bool _showCompletedHabits = false;
+  bool _showCompletedTasks = false;
 
   @override
   void initState() {
@@ -398,6 +403,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               ),
 
               // ==========================================
+              // SEÇÃO COMUNIDADE (PLACEHOLDER)
+              // ==========================================
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+                  child: _buildCommunitySection(),
+                ),
+              ),
+
+              // ==========================================
               // NAVEGAÇÃO DE MÊS
               // ==========================================
               SliverToBoxAdapter(
@@ -545,6 +560,116 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           ),
         );
       }).toList(),
+    );
+  }
+
+  Widget _buildCommunitySection() {
+    final colors = Theme.of(context).colorScheme;
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: colors.shadow.withOpacity(0.04),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: colors.primary.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  Icons.people_rounded,
+                  color: colors.primary,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                'Comunidade',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: colors.onSurface,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Center(
+            child: Column(
+              children: [
+                Icon(
+                  Icons.groups_rounded,
+                  size: 48,
+                  color: colors.onSurfaceVariant.withOpacity(0.3),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'Em breve',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: colors.onSurface,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Conecte-se com outros usuários,\ncompartilhe conquistas e inspire-se!',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: colors.onSurfaceVariant,
+                    height: 1.4,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: colors.primary.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.rocket_launch_rounded,
+                        size: 16,
+                        color: colors.primary,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Recursos em desenvolvimento',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                          color: colors.primary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -831,6 +956,93 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   Widget _buildWellnessActivityCard() {
     final colors = Theme.of(context).colorScheme;
 
+    if (!_habitRepoInitialized || !_taskRepoInitialized) {
+      return _buildActivityCardPlaceholder(colors);
+    }
+
+    final habitRepo = ref.watch(habitRepositoryProvider);
+    final taskRepo = ref.watch(taskRepositoryProvider);
+
+    return FutureBuilder(
+      future: Future.wait([
+        habitRepo.getPendingHabitsForDate(DateTime.now()),
+        taskRepo.getPendingTasksForToday(),
+      ]),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return _buildActivityCardPlaceholder(colors);
+        }
+
+        if (!snapshot.hasData || snapshot.hasError) {
+          return _buildActivityCardPlaceholder(colors);
+        }
+
+        final habits = snapshot.data![0] as List<Habit>;
+        final tasks = snapshot.data![1] as List<TaskData>;
+
+        // Lógica de Priorização
+        String title = 'Tempo Livre';
+        String subtitle = 'Que tal uma pausa ou meditação?';
+        IconData icon = Icons.spa_rounded;
+        Color color = colors.primary;
+        int timerMinutes = 15;
+        bool hasActivity = false;
+
+        // 1. Hábito agendado para agora ou próximo
+        if (habits.isNotEmpty) {
+          final scheduledHabits = habits
+              .where((h) => h.scheduledTime != null)
+              .toList();
+          scheduledHabits.sort(
+            (a, b) => a.scheduledTime!.compareTo(b.scheduledTime!),
+          );
+
+          final habit = scheduledHabits.isNotEmpty
+              ? scheduledHabits.first
+              : habits.first;
+
+          hasActivity = true;
+          title = habit.name;
+          subtitle = habit.scheduledTime != null
+              ? 'Agendado para ${habit.scheduledTime}'
+              : 'Hábito pendente para hoje';
+          icon = IconData(habit.iconCode, fontFamily: 'MaterialIcons');
+          color = Color(habit.colorValue);
+          timerMinutes = 20;
+        }
+        // 2. Tarefa de alta prioridade ou qualquer tarefa
+        else if (tasks.isNotEmpty) {
+          final highPriorityTasks = tasks
+              .where((t) => t.priority == 'high')
+              .toList();
+          final task = highPriorityTasks.isNotEmpty
+              ? highPriorityTasks.first
+              : tasks.first;
+
+          hasActivity = true;
+          title = task.title;
+          subtitle = task.priority == 'high'
+              ? 'Prioridade Alta'
+              : 'Tarefa pendente';
+          icon = Icons.check_circle_outline_rounded;
+          color = task.priority == 'high' ? colors.error : colors.tertiary;
+          timerMinutes = 25;
+        }
+
+        return _buildActivityCardContent(
+          colors: colors,
+          title: title,
+          subtitle: subtitle,
+          icon: icon,
+          color: color,
+          hasActivity: hasActivity,
+          timerMinutes: timerMinutes,
+        );
+      },
+    );
+  }
+
+  Widget _buildActivityCardPlaceholder(ColorScheme colors) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -850,12 +1062,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             width: 60,
             height: 60,
             decoration: BoxDecoration(
-              color: colors.primaryContainer,
+              color: colors.primaryContainer.withOpacity(0.5),
               borderRadius: BorderRadius.circular(20),
             ),
             child: Icon(
-              Icons.nightlight_round,
-              color: colors.onPrimaryContainer,
+              Icons.hourglass_empty_rounded,
+              color: colors.onPrimaryContainer.withOpacity(0.5),
               size: 28,
             ),
           ),
@@ -864,8 +1076,73 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                Container(
+                  width: 120,
+                  height: 16,
+                  color: colors.onSurface.withOpacity(0.1),
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  width: 80,
+                  height: 12,
+                  color: colors.onSurfaceVariant.withOpacity(0.1),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: colors.primaryContainer.withOpacity(0.5),
+              shape: BoxShape.circle,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActivityCardContent({
+    required ColorScheme colors,
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required Color color,
+    required bool hasActivity,
+    required int timerMinutes,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: colors.shadow.withOpacity(0.04),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 60,
+            height: 60,
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Icon(icon, color: color, size: 28),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
                 Text(
-                  'Meditação Noturna',
+                  title,
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
@@ -873,45 +1150,29 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   ),
                 ),
                 const SizedBox(height: 4),
-                Row(
-                  children: [
-                    Text(
-                      '20 minutos',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: colors.onSurfaceVariant,
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 6),
-                      child: CircleAvatar(
-                        radius: 2,
-                        backgroundColor: colors.outline,
-                      ),
-                    ),
-                    Text(
-                      '9:00 PM',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: colors.onSurfaceVariant,
-                      ),
-                    ),
-                  ],
+                Text(
+                  subtitle,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: colors.onSurfaceVariant,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 Container(
                   height: 4,
                   width: 100,
                   decoration: BoxDecoration(
-                    color: colors.primary.withOpacity(0.1),
+                    color: color.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(2),
                   ),
                   child: FractionallySizedBox(
                     alignment: Alignment.centerLeft,
-                    widthFactor: 0.0,
+                    widthFactor: hasActivity
+                        ? 0.7
+                        : 0.0, // Mock progress based on activity
                     child: Container(
                       decoration: BoxDecoration(
-                        color: colors.primary,
+                        color: color,
                         borderRadius: BorderRadius.circular(2),
                       ),
                     ),
@@ -920,14 +1181,33 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               ],
             ),
           ),
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: colors.primaryContainer,
-              shape: BoxShape.circle,
+          GestureDetector(
+            onTap: () {
+              HapticFeedback.mediumImpact();
+              ref
+                  .read(timerProvider.notifier)
+                  .updatePomodoroSettings(
+                    focusDuration: Duration(minutes: timerMinutes),
+                    openPomodoroScreen: true,
+                  );
+              ref.read(navigationProvider.notifier).goToTimer();
+            },
+            child: Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.15),
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: color.withOpacity(0.2),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Icon(Icons.play_arrow_rounded, color: color, size: 26),
             ),
-            child: Icon(Icons.play_arrow_rounded, color: colors.primary),
           ),
         ],
       ),
@@ -1385,8 +1665,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           return _buildEmptyTasksState(context);
         }
 
-        // Mostrar pendentes primeiro, depois concluídas
-        final tasksToShow = [...pendingTasks, ...completedTasks.take(3)];
         final completed = completedTasks.length;
         final total = tasks.length;
 
@@ -1467,8 +1745,69 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               ),
             ),
             const SizedBox(height: 14),
-            // Lista de tarefas
-            ...tasksToShow.map((task) => _buildTaskItem(context, task)),
+
+            // Tarefas pendentes
+            ...pendingTasks.map((task) => _buildTaskItem(context, task)),
+
+            // Botão mostrar/ocultar concluídos
+            if (completedTasks.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              GestureDetector(
+                onTap: () {
+                  HapticFeedback.selectionClick();
+                  setState(() => _showCompletedTasks = !_showCompletedTasks);
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 12,
+                    horizontal: 16,
+                  ),
+                  decoration: BoxDecoration(
+                    color: colors.surfaceContainerHighest.withOpacity(0.5),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        _showCompletedTasks
+                            ? Icons.visibility_off_outlined
+                            : Icons.visibility_outlined,
+                        size: 16,
+                        color: colors.onSurfaceVariant,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        _showCompletedTasks
+                            ? 'Ocultar Concluídas (${completedTasks.length})'
+                            : 'Mostrar Concluídas (${completedTasks.length})',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                          color: colors.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+
+            // Tarefas concluídas (com animação)
+            AnimatedSize(
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeInOut,
+              child: _showCompletedTasks
+                  ? Column(
+                      children: [
+                        const SizedBox(height: 8),
+                        ...completedTasks.map(
+                          (task) => _buildTaskItem(context, task),
+                        ),
+                      ],
+                    )
+                  : const SizedBox.shrink(),
+            ),
           ],
         );
       },
@@ -1623,22 +1962,97 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     }
 
     final habitRepo = ref.watch(habitRepositoryProvider);
+    final colors = Theme.of(context).colorScheme;
 
     return ValueListenableBuilder(
       valueListenable: habitRepo.box.listenable(),
       builder: (context, box, _) {
-        final habits = habitRepo.getHabitsForDate(_selectedDate);
+        final allHabits = habitRepo.getHabitsForDate(_selectedDate);
 
-        if (habits.isEmpty) {
+        if (allHabits.isEmpty) {
           return _buildEmptyHabitsState(context);
         }
 
+        // Separar pendentes e concluídos
+        final pendingHabits = allHabits
+            .where((h) => !h.isCompletedOn(_selectedDate))
+            .toList();
+        final completedHabits = allHabits
+            .where((h) => h.isCompletedOn(_selectedDate))
+            .toList();
+
         return Column(
-          children: habits
-              .map(
-                (habit) => _buildExpandableHabitCard(context, habit, habitRepo),
-              )
-              .toList(),
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Hábitos pendentes
+            ...pendingHabits.map(
+              (habit) => _buildExpandableHabitCard(context, habit, habitRepo),
+            ),
+
+            // Botão mostrar/ocultar concluídos
+            if (completedHabits.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              GestureDetector(
+                onTap: () {
+                  HapticFeedback.selectionClick();
+                  setState(() => _showCompletedHabits = !_showCompletedHabits);
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 12,
+                    horizontal: 16,
+                  ),
+                  decoration: BoxDecoration(
+                    color: colors.surfaceContainerHighest.withOpacity(0.5),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        _showCompletedHabits
+                            ? Icons.visibility_off_outlined
+                            : Icons.visibility_outlined,
+                        size: 16,
+                        color: colors.onSurfaceVariant,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        _showCompletedHabits
+                            ? 'Ocultar Concluídos (${completedHabits.length})'
+                            : 'Mostrar Concluídos (${completedHabits.length})',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                          color: colors.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+
+            // Hábitos concluídos (com animação)
+            AnimatedSize(
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeInOut,
+              child: _showCompletedHabits
+                  ? Column(
+                      children: [
+                        const SizedBox(height: 8),
+                        ...completedHabits.map(
+                          (habit) => _buildExpandableHabitCard(
+                            context,
+                            habit,
+                            habitRepo,
+                          ),
+                        ),
+                      ],
+                    )
+                  : const SizedBox.shrink(),
+            ),
+          ],
         );
       },
     );

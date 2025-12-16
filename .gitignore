@@ -142,4 +142,4 @@ app.*.symbols
 .codemachine/memory
 .codemachine/prompts
 .codemachine/agents
-.codemachine/template.json
+.codemachine/template.json.worktrees/

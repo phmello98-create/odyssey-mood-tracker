@@ -110,8 +110,9 @@ class _SuggestionCardState extends ConsumerState<SuggestionCard> with SingleTick
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final cardColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
-    final borderColor = isDark ? const Color(0xFF2A2A2A) : const Color(0xFFE5E7EB);
+    final colors = Theme.of(context).colorScheme;
+    final cardColor = colors.surface;
+    final borderColor = colors.outline.withOpacity(0.1);
 
     return ScaleTransition(
       scale: _scaleAnimation,
@@ -128,7 +129,7 @@ class _SuggestionCardState extends ConsumerState<SuggestionCard> with SingleTick
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
+              color: colors.shadow.withOpacity(0.05),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
@@ -211,7 +212,7 @@ class _SuggestionCardState extends ConsumerState<SuggestionCard> with SingleTick
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
-                        color: isDark ? Colors.white : Colors.black87,
+                        color: colors.onSurface,
                       ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
@@ -238,7 +239,7 @@ class _SuggestionCardState extends ConsumerState<SuggestionCard> with SingleTick
                 widget.suggestion.description,
                 style: TextStyle(
                   fontSize: 14,
-                  color: isDark ? Colors.grey[400] : Colors.grey[700],
+                  color: colors.onSurfaceVariant,
                   height: 1.5,
                 ),
                 maxLines: 3,
@@ -292,9 +293,9 @@ class _SuggestionCardState extends ConsumerState<SuggestionCard> with SingleTick
                   onPressed: widget.isAdded ? null : widget.onAdd,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: widget.isAdded
-                        ? Colors.grey
+                        ? colors.surfaceContainerHighest
                         : Color(widget.suggestion.colorValue),
-                    foregroundColor: Colors.white,
+                    foregroundColor: widget.isAdded ? colors.onSurfaceVariant : colors.onPrimary,
                     elevation: widget.isAdded ? 0 : 2,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
