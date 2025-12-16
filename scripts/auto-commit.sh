@@ -9,21 +9,21 @@ MAGENTA='\033[0;35m'
 NC='\033[0m'
 
 print_status() {
-    echo -e "${GREEN}✓${NC} $1"
+    printf "${GREEN}✓${NC} %s\n" "$1"
 }
 
 print_info() {
-    echo -e "${BLUE}ℹ${NC} $1"
+    printf "${BLUE}ℹ${NC} %s\n" "$1"
 }
 
 print_warning() {
-    echo -e "${YELLOW}⚠${NC} $1"
+    printf "${YELLOW}⚠${NC} %s\n" "$1"
 }
 
 print_title() {
-    echo -e "${MAGENTA}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo -e "${MAGENTA}  $1${NC}"
-    echo -e "${MAGENTA}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    printf "${MAGENTA}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}\n"
+    printf "${MAGENTA}  %s${NC}\n" "$1"
+    printf "${MAGENTA}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}\n"
 }
 
 clear
@@ -94,58 +94,81 @@ if ! git diff-index --quiet HEAD --; then
     echo "  Linhas removidas: ${deleted:-0}"
     echo ""
     
-    print_info "Mensagem sugerida:"
-    echo "  ${MAGENTA}$full_message${NC}"
+    print_info "Mensagens sugeridas:"
     echo ""
+    printf "  ${BLUE}1${NC}) ${MAGENTA}%s${NC}\n" "$full_message"
+    printf "  ${BLUE}2${NC}) 🎨 UI: Melhorias visuais\n"
+    printf "  ${BLUE}3${NC}) ✨ Feat: Nova funcionalidade\n"
+    printf "  ${BLUE}4${NC}) 🐛 Fix: Correção de bug\n"
+    printf "  ${BLUE}5${NC}) ♻️  Refactor: Refatoração de código\n"
+    printf "  ${BLUE}6${NC}) 📝 Docs: Atualização de documentação\n"
+    printf "  ${BLUE}7${NC}) 🔧 Chore: Manutenção geral\n"
+    printf "  ${BLUE}8${NC}) 💾 WIP: Trabalho em progresso\n"
+    printf "  ${BLUE}9${NC}) ✏️  Custom: Escrever mensagem personalizada\n"
+    printf "  ${BLUE}0${NC}) ❌ Pular (não commitar agora)\n"
+    echo ""
+    printf "Escolha (0-9, Enter para opção 1): "
+    read choice
     
-    # Opções
-    echo "Opções:"
-    echo "  ${YELLOW}1)${NC} Usar mensagem sugerida"
-    echo "  ${YELLOW}2)${NC} Escrever mensagem personalizada"  
-    echo "  ${YELLOW}3)${NC} Pular (não commitar agora)"
-    echo ""
-    read -p "Escolha (1/2/3): " choice
+    # Se vazio, usar opção 1
+    choice=${choice:-1}
     
     case $choice in
         1)
-            print_info "Commitando..."
-            git add -A
-            git commit -m "$full_message"
-            if [ $? -eq 0 ]; then
-                print_status "Commit realizado!"
-                echo ""
-                print_info "Hash: $(git rev-parse --short HEAD)"
-            fi
+            commit_msg="$full_message"
             ;;
         2)
-            read -p "Mensagem do commit: " custom_message
-            if [ -n "$custom_message" ]; then
-                print_info "Commitando..."
-                git add -A
-                git commit -m "$custom_message"
-                if [ $? -eq 0 ]; then
-                    print_status "Commit realizado!"
-                    echo ""
-                    print_info "Hash: $(git rev-parse --short HEAD)"
-                fi
-            else
-                print_warning "Mensagem vazia, usando sugerida"
-                git add -A
-                git commit -m "$full_message"
-            fi
+            commit_msg="🎨 UI: Melhorias visuais"
             ;;
         3)
+            printf "Descrição da feature: "
+            read feat_desc
+            commit_msg="✨ Feat: ${feat_desc:-Nova funcionalidade}"
+            ;;
+        4)
+            printf "O que foi corrigido: "
+            read fix_desc
+            commit_msg="🐛 Fix: ${fix_desc:-Correção de bug}"
+            ;;
+        5)
+            printf "O que foi refatorado: "
+            read refactor_desc
+            commit_msg="♻️  Refactor: ${refactor_desc:-Refatoração de código}"
+            ;;
+        6)
+            commit_msg="📝 Docs: Atualização de documentação"
+            ;;
+        7)
+            commit_msg="🔧 Chore: Manutenção geral"
+            ;;
+        8)
+            commit_msg="💾 WIP: Trabalho em progresso"
+            ;;
+        9)
+            printf "Mensagem personalizada: "
+            read custom_msg
+            commit_msg="${custom_msg:-$full_message}"
+            ;;
+        0)
             print_info "Commit cancelado"
+            exit 0
             ;;
         *)
-            print_warning "Opção inválida, usando mensagem sugerida"
-            git add -A
-            git commit -m "$full_message"
-            if [ $? -eq 0 ]; then
-                print_status "Commit realizado!"
-            fi
+            print_warning "Opção inválida, usando sugestão automática"
+            commit_msg="$full_message"
             ;;
     esac
+    
+    # Realizar commit
+    print_info "Commitando..."
+    git add -A
+    git commit -m "$commit_msg"
+    if [ $? -eq 0 ]; then
+        print_status "Commit realizado!"
+        echo ""
+        print_info "Hash: $(git rev-parse --short HEAD)"
+        print_info "Mensagem: $commit_msg"
+    fi
 else
     echo ""
     print_info "Nenhuma mudança para commitar"

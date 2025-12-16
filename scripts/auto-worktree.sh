@@ -9,30 +9,28 @@ BLUE='\033[0;34m'
 MAGENTA='\033[0;35m'
 NC='\033[0m' # No Color
 
-# Função para printar com cor
+# Funções de print com cores (usando printf)
 print_status() {
-    echo -e "${GREEN}✓${NC} $1"
+    printf "${GREEN}✓${NC} %s\n" "$1"
 }
 
 print_error() {
-    echo -e "${RED}✗${NC} $1"
+    printf "${RED}✗${NC} %s\n" "$1"
 }
 
 print_info() {
-    echo -e "${BLUE}ℹ${NC} $1"
+    printf "${BLUE}ℹ${NC} %s\n" "$1"
 }
 
 print_warning() {
-    echo -e "${YELLOW}⚠${NC} $1"
+    printf "${YELLOW}⚠${NC} %s\n" "$1"
 }
 
 print_title() {
-    echo -e "${MAGENTA}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo -e "${MAGENTA}  $1${NC}"
-    echo -e "${MAGENTA}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    printf "${MAGENTA}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}\n"
+    printf "${MAGENTA}  %s${NC}\n" "$1"
+    printf "${MAGENTA}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}\n"
 }
-
-# Banner
 clear
 print_title "🌳 ODYSSEY AUTO WORKTREE"
 echo ""
@@ -58,7 +56,7 @@ cd "$PROJECT_ROOT"
 
 # Verificar branch atual
 CURRENT_BRANCH=$(git branch --show-current)
-print_info "Branch atual: ${YELLOW}$CURRENT_BRANCH${NC}"
+printf "${BLUE}ℹ${NC} Branch atual: ${YELLOW}%s${NC}\n" "$CURRENT_BRANCH"
 
 # Se não está na main, avisar
 if [ "$CURRENT_BRANCH" != "main" ]; then
@@ -91,10 +89,44 @@ if ! git diff-index --quiet HEAD --; then
         1)
             print_info "Salvando mudanças..."
             git add -A
-            read -p "Mensagem do commit: " commit_msg
-            if [ -z "$commit_msg" ]; then
-                commit_msg="WIP: Salvamento automático antes de criar worktree"
-            fi
+            echo ""
+            printf "  ${BLUE}1${NC}) 💾 WIP: Salvamento antes de worktree\n"
+            printf "  ${BLUE}2${NC}) ✨ Feat: Nova funcionalidade\n"
+            printf "  ${BLUE}3${NC}) 🐛 Fix: Correção de bug\n"
+            printf "  ${BLUE}4${NC}) 🔧 Chore: Manutenção geral\n"
+            printf "  ${BLUE}5${NC}) ✏️  Custom: Mensagem personalizada\n"
+            echo ""
+            printf "Escolha (1-5, Enter para opção 1): "
+            read commit_choice
+            commit_choice=${commit_choice:-1}
+            
+            case $commit_choice in
+                1)
+                    commit_msg="💾 WIP: Salvamento automático antes de criar worktree"
+                    ;;
+                2)
+                    printf "Descrição da feature: "
+                    read feat_desc
+                    commit_msg="✨ Feat: ${feat_desc:-Nova funcionalidade}"
+                    ;;
+                3)
+                    printf "O que foi corrigido: "
+                    read fix_desc
+                    commit_msg="🐛 Fix: ${fix_desc:-Correção de bug}"
+                    ;;
+                4)
+                    commit_msg="🔧 Chore: Manutenção geral"
+                    ;;
+                5)
+                    printf "Mensagem personalizada: "
+                    read custom_msg
+                    commit_msg="${custom_msg:-WIP: Salvamento antes de worktree}"
+                    ;;
+                *)
+                    commit_msg="💾 WIP: Salvamento automático antes de criar worktree"
+                    ;;
+            esac
+            
             git commit -m "$commit_msg"
             print_status "Mudanças salvas!"
             ;;
@@ -136,16 +168,55 @@ git pull --rebase 2>/dev/null || print_warning "Não foi possível atualizar (se
 echo ""
 print_title "Nova Branch de Trabalho"
 echo ""
-print_info "Sugestões de nomes:"
-echo "  • ${BLUE}feature-nome${NC} - Para nova funcionalidade"
-echo "  • ${BLUE}fix-problema${NC} - Para corrigir bug"
-echo "  • ${BLUE}experiment-ideia${NC} - Para testar algo"
-echo "  • ${BLUE}work-tarefa${NC} - Trabalho geral"
+print_info "Escolha o tipo de branch:"
+echo ""
+printf "  ${BLUE}1${NC}) feature-    ${YELLOW}(nova funcionalidade)${NC}\n"
+printf "  ${BLUE}2${NC}) fix-        ${YELLOW}(corrigir bug)${NC}\n"
+printf "  ${BLUE}3${NC}) experiment- ${YELLOW}(testar algo)${NC}\n"
+printf "  ${BLUE}4${NC}) refactor-   ${YELLOW}(refatoração)${NC}\n"
+printf "  ${BLUE}5${NC}) work-       ${YELLOW}(trabalho geral)${NC}\n"
+printf "  ${BLUE}6${NC}) custom      ${YELLOW}(nome personalizado)${NC}\n"
 echo ""
 
 DEFAULT_NAME="work-$(date +%Y%m%d-%H%M)"
-read -p "Nome da branch (Enter para '${YELLOW}$DEFAULT_NAME${NC}'): " BRANCH_NAME
-BRANCH_NAME=${BRANCH_NAME:-$DEFAULT_NAME}
+printf "Escolha (1-6, Enter para '${YELLOW}%s${NC}'): " "$DEFAULT_NAME"
+read choice
+
+case $choice in
+    1)
+        printf "Nome da feature: "
+        read feature_name
+        BRANCH_NAME="feature-${feature_name:-nova}"
+        ;;
+    2)
+        printf "O que vai corrigir: "
+        read fix_name
+        BRANCH_NAME="fix-${fix_name:-bug}"
+        ;;
+    3)
+        printf "Nome do experimento: "
+        read exp_name
+        BRANCH_NAME="experiment-${exp_name:-teste}"
+        ;;
+    4)
+        printf "O que vai refatorar: "
+        read refactor_name
+        BRANCH_NAME="refactor-${refactor_name:-code}"
+        ;;
+    5)
+        printf "Descrição do trabalho: "
+        read work_name
+        BRANCH_NAME="work-${work_name:-task}"
+        ;;
+    6)
+        printf "Nome personalizado: "
+        read custom_name
+        BRANCH_NAME="${custom_name:-$DEFAULT_NAME}"
+        ;;
+    *)
+        BRANCH_NAME="$DEFAULT_NAME"
+        ;;
+esac
 
 # Sanitizar nome (remover espaços e caracteres especiais)
 BRANCH_NAME=$(echo "$BRANCH_NAME" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g' | sed 's/--*/-/g')
@@ -173,7 +244,7 @@ if [ -d "$WORKTREE_PATH" ]; then
 fi
 
 echo ""
-print_info "Criando worktree em: ${YELLOW}$WORKTREE_PATH${NC}"
+printf "${BLUE}ℹ${NC} Criando worktree em: ${YELLOW}%s${NC}\n" "$WORKTREE_PATH"
 
 if [ "$CREATE_NEW_BRANCH" = true ]; then
     git worktree add "$WORKTREE_PATH" -b "$BRANCH_NAME"
@@ -185,29 +256,29 @@ if [ $? -eq 0 ]; then
     echo ""
     print_title "✨ Worktree Criado com Sucesso!"
     echo ""
-    print_status "Branch: ${GREEN}$BRANCH_NAME${NC}"
-    print_status "Local: ${GREEN}$WORKTREE_PATH${NC}"
+    printf "${GREEN}✓${NC} Branch: ${GREEN}%s${NC}\n" "$BRANCH_NAME"
+    printf "${GREEN}✓${NC} Local: ${GREEN}%s${NC}\n" "$WORKTREE_PATH"
     echo ""
     
     print_info "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     print_info "Para trabalhar nesta branch:"
     echo ""
-    echo "  ${BLUE}cd $WORKTREE_PATH${NC}"
+    printf "  ${BLUE}cd %s${NC}\n" "$WORKTREE_PATH"
     echo ""
     
     print_info "Para abrir no VS Code:"
     echo ""
-    echo "  ${BLUE}code $WORKTREE_PATH${NC}"
+    printf "  ${BLUE}code %s${NC}\n" "$WORKTREE_PATH"
     echo ""
     
     print_info "Para voltar à main:"
     echo ""
-    echo "  ${BLUE}cd $PROJECT_ROOT${NC}"
+    printf "  ${BLUE}cd %s${NC}\n" "$PROJECT_ROOT"
     echo ""
     
     print_info "Para fazer merge (quando terminar):"
     echo ""
-    echo "  ${BLUE}git wmerge${NC}"
+    printf "  ${BLUE}git wmerge${NC}\n"
     echo ""
     print_info "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     echo ""
@@ -220,7 +291,7 @@ if [ $? -eq 0 ]; then
     fi
     
     echo ""
-    print_info "Para ver todos os worktrees: ${BLUE}git wlist${NC}"
+    printf "${BLUE}ℹ${NC} Para ver todos os worktrees: ${BLUE}git wlist${NC}\n"
     echo ""
 else
     print_error "Erro ao criar worktree!"
