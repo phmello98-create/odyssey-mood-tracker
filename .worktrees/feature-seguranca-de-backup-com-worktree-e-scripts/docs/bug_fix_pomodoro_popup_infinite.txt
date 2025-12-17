@@ -1,0 +1,140 @@
+Resumo do problema
+- O popup "Parabéns! Meta atingida!" aparece repetidamente e o app passa a contar sessões infinitas com notificações "Sessão completa".
+- Causa principal: caminhos duplicados que disparam a conclusão do Pomodoro. Tanto o provider (TimerNotifier) quanto o timer local da UI (_pomodoroTimer) detectam o fim e executam efeitos (incremento de sessões, notificação, diálogo, update de gamificação). Há também agendamentos duplicados de notificações e uma chamada incorreta à API de gamificação.
+
+Arquivos e trechos relevantes (começo aproximado)
+- lib/src/providers/timer_provider.dart:501 — função _onPomodoroComplete() do TimerNotifier. (provider incrementa pomodoroSessions e chama NotificationService.instance.showPomodoroComplete(...)).
+- lib/src/providers/timer_provider.dart:78 — _startPomodoroTicker() (onde o ticker do provider roda).
+- lib/src/providers/timer_provider.dart:30 — definições do estado do timer (TimerState) e persistência (usar como fonte de verdade).
+- lib/src/features/time_tracker/presentation/time_tracker_screen.dart:638 — _showPomodoroComplete() (UI exibe o diálogo, toca som e chama gamificationRepo.completeTask() — incorreto).
+- lib/src/features/time_tracker/presentation/time_tracker_screen.dart:340 e lib/src/features/time_tracker/presentation/time_tracker_screen.dart:588 — locais onde o timer local do UI detecta tempo <= 0 e faz _pomodoroSessions++, grava histórico e chama _showPomodoroComplete().
+- lib/src/utils/services/notification_service.dart:1 — funções: schedulePomodoroTimer, cancelPomodoroTimer, showPomodoroComplete. (Verificar IDs/agendamentos duplicados e cancelamentos).
+- Observação: existem chamadas para agendamento / exibição de notificação tanto na UI quanto no provider.
+
+Diagnóstico rápido (o que observar nos logs)
+- Logs que mostrem a origem dos eventos (provider vs UI vs NotificationService callbacks) com timestamps.
+- Buscar múltiplos chamados em sequência para:
+  - _onPomodoroComplete() (provider)
+  - _pomodoroTimer callbacks no UI (ambos locais onde checam inSeconds <= 0)
+  - NotificationService.instance.showPomodoroComplete(...)
+  - Chamada para gamification (completeTask() vs completePomodoroSession())
+
+Correção proposta — resumo de ações (ordem recomendada)
+
+1) Mitigação rápida (aplicar primeiro — baixa invasão)
+- Proteger o diálogo na UI com uma flag para evitar que ele seja criado múltiplas vezes:
+  - Adicionar `bool _hasShownPomodoroCompletion = false;` no estado da tela (TimeTrackerScreenState).
+  - No início de `_showPomodoroComplete()`:
+    - if (`_hasShownPomodoroCompletion`) return;
+    - `_hasShownPomodoroCompletion = true;`
+  - Resetar `_hasShownPomodoroCompletion = false;` quando iniciar novo pomodoro (`_startPomodoro`) ou ao fechar o diálogo (após `Navigator.pop`).
+- Corrigir chamada de gamificação no UI:
+  - Trocar `gamificationRepo.completeTask()` por `gamificationRepo.completePomodoroSession()` (ou remover se o provider já fizer isso).
+- Garantir cancelamento antes de re-agendar notificações:
+  - Chamar `NotificationService.instance.cancelPomodoroTimer()` antes de `schedulePomodoroTimer()`.
+
+2) Correção ideal (refactor definitivo)
+- Tornar TimerNotifier a única fonte de verdade:
+  - Remover/tirar responsabilidade do `_pomodoroTimer` do UI (ou ao menos pará-lo e não deixar que ele dispare efeitos colaterais).
+  - UI apenas observa `ref.watch(timerProvider)` e reage às mudanças (ex.: quando `pomodoroTimeLeft` muda e `pomodoroSessions` incrementa).
+- Consolidar efeitos colaterais no provider:
+  - Mover registro de sessão no histórico, chamadas de `gamificationRepository.completePomodoroSession()` e chamadas a `NotificationService.instance.showPomodoroComplete(...)` para `_onPomodoroComplete()` do provider.
+- Tornar evento de conclusão idempotente:
+  - No TimerNotifier, adicionar um guard para evitar múltiplas execuções rápidas do handler de conclusão:
+    - Exemplo: armazenar `DateTime? _lastPomodoroCompleteAt;` e na entrada de `_onPomodoroComplete()` ignorar se `DateTime.now().difference(_lastPomodoroCompleteAt) < Duration(seconds:5)`.
+- Garantir cancelamento/limpeza:
+  - Ao resetar/pular/pausar, cancelar timers e agendamentos (`NotificationService.cancel*`) e limpar estados persistidos que possam retrigger.
+- Adicionar debounce/limite em `NotificationService.showPomodoroComplete()` para ignorar chamadas repetidas num curto período.
+
+Sugestões de snippets (exemplo) — aplicar conforme estilo do código
+
+1) Guard na UI (mitigação rápida)
+```dart
+// em TimeTrackerScreenState
+bool _hasShownPomodoroCompletion = false;
+
+void _showPomodoroComplete() {
+  if (_hasShownPomodoroCompletion) return;
+  _hasShownPomodoroCompletion = true;
+
+  // ... exibir diálogo
+
+  // No fechamento do diálogo (Fechar / botão):
+  // Navigator.pop(context);
+  // setState(() { _isPomodoroRunning = false; _pomodoroTimeLeft = _pomodoroDuration; _hasShownPomodoroCompletion = false; });
+}
+```
+
+2) Corrigir chamada de gamification (no final de `_showPomodoroComplete()` substituir)
+```dart
+// substituir
+gamificationRepo.completeTask();
+// por
+gamificationRepo.completePomodoroSession();
+```
+
+3) Idempotência no provider (em `TimerNotifier`)
+```dart
+DateTime? _lastPomodoroCompleteAt;
+
+void _onPomodoroComplete() {
+  final now = DateTime.now();
+  if (_lastPomodoroCompleteAt != null && now.difference(_lastPomodoroCompleteAt!).inSeconds < 5) {
+    debugPrint('[TimerNotifier] Ignoring duplicate pomodoro completion');
+    return;
+  }
+  _lastPomodoroCompleteAt = now;
+
+  // resto do _onPomodoroComplete existente...
+  // também chamar gamificationRepository.completePomodoroSession() aqui
+}
+```
+
+4) Debounce simples em NotificationService
+```dart
+DateTime? _lastPomodoroNotificationAt;
+
+void showPomodoroComplete(String taskName, int minutes) {
+  final now = DateTime.now();
+  if (_lastPomodoroNotificationAt != null && now.difference(_lastPomodoroNotificationAt!).inSeconds < 3) {
+    return;
+  }
+  _lastPomodoroNotificationAt = now;
+  // exibir notificação normalmente
+}
+```
+
+5) Mover gravação do histórico / gamification para provider
+- No `_onPomodoroComplete()` do provider, após incrementar `pomodoroSessions`, chamar:
+  - salvar `TimeTrackingRecord` (histórico) — ou expor um método para o UI chamar somente leitura
+  - `await gamificationRepository.completePomodoroSession();`
+  - então notificar UI via state update
+
+Testes recomendados (automatizados)
+- Unit test para `TimerNotifier._onPomodoroComplete()`:
+  - Asserir que `pomodoroSessions` incrementa apenas 1 vez por conclusão.
+  - Mock `NotificationService` e `GamificationRepository` e verificar chamadas únicas.
+- Widget/integration test:
+  - Simular início de pomodoro curto e esperar fim: verificar que diálogo aparece uma única vez e que as notificações foram enfileiradas apenas uma vez.
+- Teste para `NotificationService.showPomodoroComplete()` debounce: garantir que chamadas repetidas num curto intervalo sejam ignoradas.
+
+Reprodução (passos para QA)
+1. Ajustar temporariamente `pomodoroDuration` para 10s (no local de testes) para reproduzir rapidamente.
+2. Iniciar Pomodoro na UI.
+3. Observar logs / console e comportamento quando o tempo termina:
+   - Esperar: apenas um log de "pomodoro complete" vindo do provider, um único `showPomodoroComplete` e um único diálogo.
+4. Testar ações: Skip, Stop, Pause/Resume:
+   - Verificar que não há múltiplos diálogos e que `pomodoroSessions` não incrementa múltiplas vezes.
+5. Testar em Android (ForegroundService) — observar se PendingIntents estão disparando duplicadamente.
+
+Notas e observações importantes
+- A correção definitiva passa por unificar a lógica no `TimerNotifier` e fazer a UI ser "apenas visual" (ouvir o provider), o que requer alterar/remover `_pomodoroTimer` e as rotinas que atualmente mutam estado e disparam efeitos.
+- A mitigação rápida (flag `_hasShownPomodoroCompletion` + correção de chamada de gamificação) reduz impacto imediato e é segura para aplicar rapidamente.
+- Testar cuidadosamente depois das mudanças, especialmente em Android com ForegroundService nativo.
+
+Opções seguintes que eu posso preparar (diga qual preferir)
+- (A) Um diff/patch sugerido com todas as mudanças (pronto para aplicar).
+- (B) Uma checklist de commits atômicos (ex.: commit 1 = mitigação rápida; commit 2 = mover efeitos para provider; commit 3 = idempotência e testes).
+- (C) Um script de reprodução e comandos exatos de log para enviar aos QA.
+
+Diga qual opção prefere (A, B ou C) e eu gero o conteúdo correspondente.

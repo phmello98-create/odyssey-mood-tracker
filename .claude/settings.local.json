@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(flutter analyze:*)",
+      "Bash(/home/agyspc1/flutter/bin/flutter analyze:*)",
+      "Bash(grep -rn \"Row(\" lib/src/features/home/presentation/widgets/*.dart)",
+      "Bash(flutter pub get:*)",
+      "Bash(tree:*)",
+      "Bash(cat:*)"
+    ]
+  }
+}

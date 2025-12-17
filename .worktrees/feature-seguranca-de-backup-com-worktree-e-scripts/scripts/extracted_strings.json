@@ -1,0 +1,365 @@
+{
+  "portuguese": {
+    "notificacaoDeTesteEnviada": {
+      "text": "Notificação de teste enviada!",
+      "files": [
+        "lib/src/features/settings/presentation/modern_notification_settings_screen.dart"
+      ]
+    },
+    "notificacoes": {
+      "text": "Notificações",
+      "files": [
+        "lib/src/features/settings/presentation/modern_notification_settings_screen.dart"
+      ]
+    },
+    "todos": {
+      "text": "Todos",
+      "files": [
+        "lib/src/features/auth/presentation/screens/sync_settings_screen.dart",
+        "lib/src/features/suggestions/presentation/suggestions_screen.dart"
+      ]
+    },
+    "habitos": {
+      "text": "Hábitos",
+      "files": [
+        "lib/src/features/suggestions/presentation/suggestions_screen.dart"
+      ]
+    },
+    "todas": {
+      "text": "Todas",
+      "files": [
+        "lib/src/features/suggestions/presentation/suggestions_screen.dart"
+      ]
+    },
+    "facil": {
+      "text": "Fácil",
+      "files": [
+        "lib/src/features/suggestions/presentation/suggestions_screen.dart"
+      ]
+    },
+    "medio": {
+      "text": "Médio",
+      "files": [
+        "lib/src/features/suggestions/presentation/suggestions_screen.dart"
+      ]
+    },
+    "dificil": {
+      "text": "Difícil",
+      "files": [
+        "lib/src/features/suggestions/presentation/suggestions_screen.dart"
+      ]
+    },
+    "explorarSugestoes": {
+      "text": "Explorar Sugestões",
+      "files": [
+        "lib/src/features/suggestions/presentation/suggestions_screen.dart"
+      ]
+    },
+    "maisTarde": {
+      "text": "Mais Tarde",
+      "files": [
+        "lib/src/features/suggestions/presentation/widgets/empty_state_popup.dart"
+      ]
+    },
+    "naoHaPalavrasParaRevisarAgora": {
+      "text": "Não há palavras para revisar agora!",
+      "files": [
+        "lib/src/features/language_learning/presentation/vocabulary_screen.dart"
+      ]
+    },
+    "todas_allvocabularylength": {
+      "text": "Todas (${_allVocabulary.length})",
+      "files": [
+        "lib/src/features/language_learning/presentation/vocabulary_screen.dart"
+      ]
+    },
+    "aprendendo": {
+      "text": "Aprendendo",
+      "files": [
+        "lib/src/features/language_learning/presentation/vocabulary_screen.dart"
+      ]
+    },
+    "dominadas": {
+      "text": "Dominadas",
+      "files": [
+        "lib/src/features/language_learning/presentation/vocabulary_screen.dart"
+      ]
+    },
+    "completeEsteDesafioNaTelaCorrespondente": {
+      "text": "Complete este desafio na tela correspondente!",
+      "files": [
+        "lib/src/features/language_learning/presentation/daily_challenge_screen.dart"
+      ]
+    },
+    "idiomaNaoEncontrado": {
+      "text": "Idioma não encontrado",
+      "files": [
+        "lib/src/features/language_learning/presentation/language_detail_screen.dart"
+      ]
+    },
+    "estudar": {
+      "text": "Estudar",
+      "files": [
+        "lib/src/features/language_learning/presentation/language_detail_screen.dart"
+      ]
+    },
+    "edicaoEmBreve": {
+      "text": "Edição em breve!",
+      "files": [
+        "lib/src/features/language_learning/presentation/language_detail_screen.dart"
+      ]
+    },
+    "sessaoDeMinutesMinSalva": {
+      "text": "Sessão de $minutes min salva!",
+      "files": [
+        "lib/src/features/language_learning/presentation/study_timer_screen.dart"
+      ]
+    },
+    "sessaoDe_durationminutesMinRegistrada": {
+      "text": "Sessão de $_durationMinutes min registrada! 🎉",
+      "files": [
+        "lib/src/features/language_learning/presentation/add_session_sheet.dart"
+      ]
+    },
+    "naoRecebeuReenviar": {
+      "text": "Não recebeu? Reenviar",
+      "files": [
+        "lib/src/features/auth/presentation/forgot_password_screen.dart"
+      ]
+    },
+    "emailReenviadoComSucesso": {
+      "text": "Email reenviado com sucesso!",
+      "files": [
+        "lib/src/features/auth/presentation/forgot_password_screen.dart"
+      ]
+    },
+    "verifiqueSeuEmail": {
+      "text": "Verifique seu Email",
+      "files": [
+        "lib/src/features/auth/presentation/signup_screen.dart"
+      ]
+    },
+    "emailReenviado": {
+      "text": "Email reenviado!",
+      "files": [
+        "lib/src/features/auth/presentation/signup_screen.dart"
+      ]
+    },
+    "liEConcordoComOs": {
+      "text": "Li e concordo com os ",
+      "files": [
+        "lib/src/features/auth/presentation/signup_screen.dart"
+      ]
+    },
+    "termosDeUso": {
+      "text": "Termos de Uso",
+      "files": [
+        "lib/src/features/auth/presentation/signup_screen.dart"
+      ]
+    },
+    "politicaDePrivacidade": {
+      "text": "Política de Privacidade",
+      "files": [
+        "lib/src/features/auth/presentation/signup_screen.dart"
+      ]
+    },
+    "jaTemUmaConta": {
+      "text": "Já tem uma conta? ",
+      "files": [
+        "lib/src/features/auth/presentation/signup_screen.dart"
+      ]
+    },
+    "sincronizacao": {
+      "text": "Sincronização",
+      "files": [
+        "lib/src/features/auth/presentation/screens/sync_settings_screen.dart"
+      ]
+    },
+    "limparDadosDaNuvem": {
+      "text": "Limpar Dados da Nuvem?",
+      "files": [
+        "lib/src/features/auth/presentation/screens/sync_settings_screen.dart"
+      ]
+    },
+    "dadosEnviadosComSucesso": {
+      "text": "Dados enviados com sucesso!",
+      "files": [
+        "lib/src/features/auth/presentation/screens/sync_settings_screen.dart"
+      ]
+    },
+    "dadosBaixadosComSucesso": {
+      "text": "Dados baixados com sucesso!",
+      "files": [
+        "lib/src/features/auth/presentation/screens/sync_settings_screen.dart"
+      ]
+    },
+    "dadosDaNuvemRemovidos": {
+      "text": "Dados da nuvem removidos!",
+      "files": [
+        "lib/src/features/auth/presentation/screens/sync_settings_screen.dart"
+      ]
+    },
+    "nuncaSincronizado": {
+      "text": "Nunca sincronizado",
+      "files": [
+        "lib/src/features/auth/presentation/widgets/sync_button.dart"
+      ]
+    }
+  },
+  "english": {
+    "ativar": {
+      "text": "Ativar",
+      "files": [
+        "lib/src/features/settings/presentation/modern_notification_settings_screen.dart"
+      ]
+    },
+    "erroAoAdicionarE": {
+      "text": "Erro ao adicionar: $e",
+      "files": [
+        "lib/src/features/suggestions/presentation/suggestions_screen.dart"
+      ]
+    },
+    "limpar": {
+      "text": "Limpar",
+      "files": [
+        "lib/src/features/auth/presentation/screens/sync_settings_screen.dart",
+        "lib/src/features/suggestions/presentation/suggestions_screen.dart"
+      ]
+    },
+    "tarefas": {
+      "text": "Tarefas",
+      "files": [
+        "lib/src/features/suggestions/presentation/suggestions_screen.dart"
+      ]
+    },
+    "aplicar": {
+      "text": "Aplicar",
+      "files": [
+        "lib/src/features/suggestions/presentation/suggestions_screen.dart"
+      ]
+    },
+    "limparFiltros": {
+      "text": "Limpar filtros",
+      "files": [
+        "lib/src/features/suggestions/presentation/suggestions_screen.dart"
+      ]
+    },
+    "acertei": {
+      "text": "Acertei",
+      "files": [
+        "lib/src/features/language_learning/presentation/vocabulary_screen.dart"
+      ]
+    },
+    "revisar_getfilteredvocabularynullTruelength": {
+      "text": "Revisar (${_getFilteredVocabulary(null, true).length})",
+      "files": [
+        "lib/src/features/language_learning/presentation/vocabulary_screen.dart"
+      ]
+    },
+    "registrar": {
+      "text": "Registrar",
+      "files": [
+        "lib/src/features/language_learning/presentation/immersion_screen.dart",
+        "lib/src/features/language_learning/presentation/language_learning_screen.dart"
+      ]
+    },
+    "selecioneUmIdiomaPrimeiro": {
+      "text": "Selecione um idioma primeiro",
+      "files": [
+        "lib/src/features/language_learning/presentation/immersion_screen.dart"
+      ]
+    },
+    "editar": {
+      "text": "Editar",
+      "files": [
+        "lib/src/features/language_learning/presentation/language_detail_screen.dart"
+      ]
+    },
+    "adicionarIdioma": {
+      "text": "Adicionar Idioma",
+      "files": [
+        "lib/src/features/language_learning/presentation/language_learning_screen.dart"
+      ]
+    },
+    "voltar": {
+      "text": "Voltar",
+      "files": [
+        "lib/src/features/auth/presentation/screens/sync_settings_screen.dart",
+        "lib/src/features/language_learning/presentation/study_timer_screen.dart"
+      ]
+    },
+    "reenviar": {
+      "text": "Reenviar",
+      "files": [
+        "lib/src/features/auth/presentation/signup_screen.dart"
+      ]
+    },
+    "continuar": {
+      "text": "Continuar",
+      "files": [
+        "lib/src/features/auth/presentation/signup_screen.dart"
+      ]
+    },
+    "e": {
+      "text": " e ",
+      "files": [
+        "lib/src/features/auth/presentation/signup_screen.dart"
+      ]
+    },
+    "entrar": {
+      "text": "Entrar",
+      "files": [
+        "lib/src/features/auth/presentation/signup_screen.dart"
+      ]
+    },
+    "nenhum": {
+      "text": "Nenhum",
+      "files": [
+        "lib/src/features/auth/presentation/screens/sync_settings_screen.dart"
+      ]
+    },
+    "cancelar": {
+      "text": "Cancelar",
+      "files": [
+        "lib/src/features/auth/presentation/screens/sync_settings_screen.dart",
+        "lib/src/features/auth/presentation/widgets/migration_progress_widget.dart"
+      ]
+    },
+    "erroAoSincronizarE": {
+      "text": "Erro ao sincronizar: $e",
+      "files": [
+        "lib/src/features/auth/presentation/screens/sync_settings_screen.dart"
+      ]
+    },
+    "erroAoBaixarE": {
+      "text": "Erro ao baixar: $e",
+      "files": [
+        "lib/src/features/auth/presentation/screens/sync_settings_screen.dart"
+      ]
+    },
+    "erroAoLimparE": {
+      "text": "Erro ao limpar: $e",
+      "files": [
+        "lib/src/features/auth/presentation/screens/sync_settings_screen.dart"
+      ]
+    },
+    "tentarNovamente": {
+      "text": "Tentar novamente",
+      "files": [
+        "lib/src/features/auth/presentation/widgets/auth_gate.dart"
+      ]
+    },
+    "sincronizarAgora": {
+      "text": "Sincronizar agora",
+      "files": [
+        "lib/src/features/auth/presentation/widgets/sync_indicator.dart"
+      ]
+    },
+    "note": {
+      "text": "Note: ",
+      "files": [
+        "lib/src/features/mood_records/presentation/mood_log/mood_record_card.dart"
+      ]
+    }
+  }
+}

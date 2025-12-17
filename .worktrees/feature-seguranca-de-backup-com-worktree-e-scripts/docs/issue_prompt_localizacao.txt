@@ -1,0 +1,137 @@
+Implementar Localização (pt_BR + en_US) — escopo e instruções técnicas
+
+Contexto rápido
+- Objetivo: adicionar internacionalização completa para Português (pt_BR) e Inglês (en_US) no app, abrangendo UI, notificações locais e strings nativas (Android/iOS). Seguir a estratégia “local-first”: notificações locais + ForegroundService Android. FCM só como fallback (não parte deste task).
+- Não re-arquitetar: mudanças mínimas e seguras; manter IDs de DB (activities) estáveis — não alterar sem migração.
+
+Requisitos principais (MVP)
+1. Configurar `gen_l10n` / ARB
+   - Adicionar/atualizar `l10n.yaml` com:
+     - `arb-dir: lib/l10n`
+     - `template-arb-file: app_en.arb`
+     - `output-localization-file: app_localizations.dart`
+   - Criar `lib/l10n/app_en.arb` (template) e `lib/l10n/app_pt.arb` com todas as chaves mínimas (app header, botões das telas listadas, notificações, labels do timer).
+   - Rodar `flutter pub get` e `flutter gen-l10n` para gerar `AppLocalizations`.
+
+2. MaterialApp / delegates
+   - Em `lib/main.dart` (ou onde o `MaterialApp` é criado), adicionar:
+     - `localizationsDelegates: AppLocalizations.localizationsDelegates`
+     - `supportedLocales: AppLocalizations.supportedLocales`
+     - (opcional) `localeResolutionCallback` se necessário
+   - Garantir `flutter_localizations` e `intl` nas dependências.
+
+3. `LocaleProvider`
+   - Criar/atualizar `lib/src/providers/locale_provider.dart`:
+     - Estado: `Locale? selectedLocale` e `bool followSystem` (default true).
+     - Persistir `followSystem` e `selectedLocale` em `SharedPreferences`.
+     - API: `setFollowSystem(bool)`, `setLocale(Locale)`, getter `currentLocale` que retorna `PlatformDispatcher.instance.locale` se `followSystem==true`.
+     - Emitir rebuild para a app quando mudar.
+
+4. UI de configurações de idioma
+   - Em `lib/src/features/settings/presentation/settings_screen.dart`:
+     - Adicionar opções: `Seguir idioma do sistema` (toggle) e seleção `Português (pt_BR)` / `English (en_US)`.
+     - Chamar provider para persistir e aplicar mudança imediatamente.
+
+5. Substituir strings hardcoded (prioridade minimal)
+   - Arquivos mínimos a alterar (priorizar):
+     - `lib/src/features/time_tracker/presentation/time_tracker_screen.dart`
+     - `lib/src/features/home/presentation/home_screen.dart`
+     - `lib/src/features/settings/presentation/settings_screen.dart`
+     - `lib/src/features/log/presentation/log_screen.dart`
+     - `lib/src/features/tasks/presentation/tasks_screen.dart`
+     - `lib/src/utils/widgets/*`
+     - `lib/src/utils/services/notification_service.dart` (usar strings localizadas)
+   - Substituir `Text('...')` e strings fixas por `AppLocalizations.of(context)!.<key>`; adicionar novas chaves no ARB quando necessário.
+   - Critério: `flutter gen-l10n` não deve apresentar erros.
+
+6. Atividades (stable IDs)
+   - Em `lib/src/features/time_tracker/presentation/time_tracker_screen.dart`:
+     - Converter lista `_activities` para usar objetos com `id` estável e `nameKey`.
+     - Salvar `id` no DB em vez do texto exibido; ao exibir, traduzir via `AppLocalizations.of(context)!.<nameKey>`.
+     - Garantir compatibilidade com dados existentes (mapear nome antigo para id se necessário).
+
+7. NotificationService (Flutter) — strings localizadas e re-criação de canais
+   - Em `lib/src/utils/services/notification_service.dart`:
+     - Forçar que chamadas ao `NotificationService` passem `title`/`body` já traduzidos (preferencialmente).
+     - Implementar `recreateChannelsAndRescheduleOnLocaleChange(Locale locale)` que:
+       - Recria canais com nomes/descrições no idioma novo.
+       - Reagenda notificações repetitivas com textos localizados.
+     - Permitir chamadas com `title/body` opcionais (fallback se não passar).
+   - Em pontos de uso, garantir envio de strings localizadas (ex.: `AppLocalizations.of(context)!.pomodoroCompleteTitle`).
+
+8. Android nativo — `ForegroundTimerService`
+   - Mover strings hardcoded em `android/app/src/main/kotlin/.../ForegroundTimerService.kt` para `res/values/strings.xml` e `res/values-pt/strings.xml`.
+   - Trocar `buildNotification()` para usar `getString(R.string.xxx, taskName)`.
+   - Ler locale override do app via `SharedPreferences` (chave definida pelo `LocaleProvider`) e, se existir override, aplicar configuração local ao `Context` (`createConfigurationContext`) para que `getString` use o idioma correto.
+   - Expor um method channel handler que permita Flutter enviar `setLocale()` nativo para atualizar a notificação persistente / canais.
+
+9. iOS nativo — Localizable.strings
+   - Substituir strings de notificações nativas por `NSLocalizedString("key", "")`.
+   - Adicionar `Localizable.strings` para `en` e `pt` em `ios/Runner`.
+   - Preferência: sempre que possível, fazer Flutter enviar via MethodChannel o texto traduzido para agendar notificações nativas (mais simples). Se precisar de strings nativas, ler `UserDefaults` com locale override.
+
+10. Rescheduling ao trocar idioma
+    - Fluxo: ao aplicar novo idioma no Flutter:
+      - Chamar `NotificationService.recreateChannelsAndRescheduleOnLocaleChange(locale)` (Flutter).
+      - Enviar via method channel para o nativo atualizar canais e notificação persistente.
+    - Garantir que notificações futuras e canais usem textos no idioma atual.
+
+Testes e QA
+- Comandos para validar:
+  - `flutter pub get`
+  - `flutter gen-l10n`
+  - `flutter analyze`
+  - `flutter test` (executar testes existentes)
+- Testes manuais obrigatórios:
+  - Android (Pixel 13), Samsung, Xiaomi/Huawei:
+    - Trocar idioma do sistema; verificar app segue quando `followSystem==true`.
+    - Usar override no app; verificar persistência após restart.
+    - Iniciar Pomodoro; matar app; verificar notificação persistente traduzida; testar ações (pausar/stop).
+    - Reboot do dispositivo: verificar restauração via `BootReceiver`.
+  - iOS (simulador e device):
+    - Agendar timer; matar app; verificar notificação local no horário certo e texto traduzido.
+    - Testar override do app (se aplicável).
+- Critério de aceitação:
+  - App muda idioma imediatamente ao alterar provider.
+  - Não há strings UI hardcoded visíveis nas telas críticas.
+  - Notificações agendadas exibem texto no idioma atual; ao trocar idioma, canais e notificações relevantes atualizam.
+  - Foreground service Android usa strings traduzidas.
+
+Arquivos a modificar (lista direta)
+- `l10n.yaml`
+- `lib/l10n/app_en.arb`, `lib/l10n/app_pt.arb`
+- `lib/main.dart`
+- `lib/src/providers/locale_provider.dart`
+- `lib/src/features/settings/presentation/settings_screen.dart`
+- `lib/src/features/time_tracker/presentation/time_tracker_screen.dart`
+- `lib/src/features/home/presentation/home_screen.dart`
+- `lib/src/features/log/presentation/log_screen.dart`
+- `lib/src/features/tasks/presentation/tasks_screen.dart`
+- `lib/src/utils/widgets/*` (strings)
+- `lib/src/utils/services/notification_service.dart`
+- `lib/src/utils/services/foreground_service.dart` (bridge adjustments, method channel)
+- `android/app/src/main/kotlin/.../ForegroundTimerService.kt`
+- `android/app/src/main/res/values/strings.xml` and `values-pt/strings.xml`
+- `ios/Runner/Localizable.strings` (en/pt) and optional Swift files if needed
+
+PR checklist (incluir na descrição do PR)
+- Quais arquivos foram alterados.
+- ARB: todas as chaves adicionadas/traduzidas.
+- Comandos rodados: `flutter gen-l10n`, `flutter analyze`, `flutter test`.
+- Evidências de QA: screenshots / passos de teste.
+- Nota: não alterar IDs do banco sem migração.
+
+Restrições e notas
+- Se precisar escolher abordagem simplificada: preferir que Flutter gere e passe strings localizadas para as partes nativas (via MethodChannel) em vez de manter dois locais de tradução.
+- Não alterar DB IDs (activities) sem plano de migração.
+- Priorize telas e notificações críticas (timer, lembretes) no primeiro PR.
+
+Tempo estimado (orientativo)
+- MVP UI + provider + settings + gen-l10n: 1–2 dias
+- Notifications & native strings (Android + iOS): 1–2 dias
+- Rescheduling + QA: 0.5–1 dia
+
+Entrega esperada
+- PR contendo as mudanças acima, ARB files com traduções básicas (pt/en), doc breve `docs/localization.md` com como testar e comandos para gerar as localizações.
+
+Fim.

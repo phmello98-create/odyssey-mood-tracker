@@ -1,0 +1,246 @@
+Analyzing app com opus 4.5 copia atual...                       
+
+   info • Invalid use of a private type in a public API • lib/src/features/activities/model/activity.g.dart:14:3 • library_private_types_in_public_api
+   info • Invalid use of a private type in a public API • lib/src/features/activities/model/activity.g.dart:26:35 • library_private_types_in_public_api
+warning • The declaration '_getMoodColor' isn't referenced • lib/src/features/analytics/presentation/mood_variation_line_chart.dart:215:9 • unused_element
+warning • The declaration '_getGradientColorsWithOpacity' isn't referenced • lib/src/features/analytics/presentation/mood_variation_line_chart.dart:241:15 • unused_element
+   info • The parameter name 'sum' matches a visible type name • lib/src/features/auth/presentation/providers/sync_providers.dart:329:19 • avoid_types_as_parameter_names
+   info • 'activeColor' is deprecated and shouldn't be used. Use activeThumbColor or activeTrackColor instead. This feature was deprecated after v3.31.0-2.0.pre • lib/src/features/auth/presentation/screens/sync_settings_screen.dart:502:9 • deprecated_member_use
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/src/features/auth/presentation/signup_screen.dart:537:38 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/src/features/auth/presentation/signup_screen.dart:538:62 • use_build_context_synchronously
+   info • The imported package 'path' isn't a dependency of the importing package • lib/src/features/auth/services/cloud_storage_service.dart:7:8 • depend_on_referenced_packages
+   info • Invalid use of a private type in a public API • lib/src/features/diary/data/models/diary_entry.g.dart:14:3 • library_private_types_in_public_api
+   info • Invalid use of a private type in a public API • lib/src/features/diary/data/models/diary_entry.g.dart:35:35 • library_private_types_in_public_api
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/src/features/diary/presentation/pages/diary_editor_page.dart:128:25 • use_build_context_synchronously
+   info • 'diaryEntriesProvider' is deprecated and shouldn't be used. Use diaryControllerProvider instead • lib/src/features/diary/presentation/pages/diary_editor_page.dart:604:22 • deprecated_member_use_from_same_package
+   info • 'starredEntriesProvider' is deprecated and shouldn't be used. Use diaryControllerProvider with filter instead • lib/src/features/diary/presentation/pages/diary_editor_page.dart:605:22 • deprecated_member_use_from_same_package
+   info • 'diaryEntriesProvider' is deprecated and shouldn't be used. Use diaryControllerProvider instead • lib/src/features/diary/presentation/pages/diary_editor_page.dart:659:22 • deprecated_member_use_from_same_package
+   info • 'starredEntriesProvider' is deprecated and shouldn't be used. Use diaryControllerProvider with filter instead • lib/src/features/diary/presentation/pages/diary_editor_page.dart:660:22 • deprecated_member_use_from_same_package
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/src/features/diary/presentation/pages/diary_editor_page_v2.dart:175:25 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/src/features/diary/presentation/pages/diary_editor_page_v2.dart:179:27 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/src/features/diary/presentation/pages/diary_editor_page_v2.dart:280:44 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/src/features/diary/presentation/pages/diary_editor_page_v2.dart:724:23 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/src/features/diary/presentation/pages/diary_editor_page_v2.dart:725:30 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/src/features/diary/presentation/pages/diary_home_page.dart:850:40 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/src/features/diary/presentation/pages/diary_home_page.dart:866:40 • use_build_context_synchronously
+   info • 'starredEntriesProvider' is deprecated and shouldn't be used. Use diaryControllerProvider with filter instead • lib/src/features/diary/presentation/pages/diary_page.dart:22:21 • deprecated_member_use_from_same_package
+   info • 'diaryEntriesProvider' is deprecated and shouldn't be used. Use diaryControllerProvider instead • lib/src/features/diary/presentation/pages/diary_page.dart:24:25 • deprecated_member_use_from_same_package
+   info • 'searchEntriesProvider' is deprecated and shouldn't be used. Use diaryControllerProvider.search() instead • lib/src/features/diary/presentation/pages/diary_page.dart:25:25 • deprecated_member_use_from_same_package
+   info • 'diaryEntriesProvider' is deprecated and shouldn't be used. Use diaryControllerProvider instead • lib/src/features/diary/presentation/pages/diary_page.dart:284:20 • deprecated_member_use_from_same_package
+   info • 'starredEntriesProvider' is deprecated and shouldn't be used. Use diaryControllerProvider with filter instead • lib/src/features/diary/presentation/pages/diary_page.dart:285:20 • deprecated_member_use_from_same_package
+   info • 'Share' is deprecated and shouldn't be used. Use SharePlus instead • lib/src/features/diary/services/diary_export_service.dart:188:11 • deprecated_member_use
+   info • 'share' is deprecated and shouldn't be used. Use SharePlus.instance.share() instead • lib/src/features/diary/services/diary_export_service.dart:188:17 • deprecated_member_use
+   info • 'Share' is deprecated and shouldn't be used. Use SharePlus instead • lib/src/features/diary/services/diary_export_service.dart:335:13 • deprecated_member_use
+   info • 'shareXFiles' is deprecated and shouldn't be used. Use SharePlus.instance.share() instead • lib/src/features/diary/services/diary_export_service.dart:335:19 • deprecated_member_use
+   info • 'value' is deprecated and shouldn't be used. Use component accessors like .r or .g, or toARGB32 for an explicit conversion • lib/src/features/gamification/data/data_seeder.dart:46:60 • deprecated_member_use
+   info • 'value' is deprecated and shouldn't be used. Use component accessors like .r or .g, or toARGB32 for an explicit conversion • lib/src/features/gamification/data/data_seeder.dart:47:58 • deprecated_member_use
+   info • 'value' is deprecated and shouldn't be used. Use component accessors like .r or .g, or toARGB32 for an explicit conversion • lib/src/features/gamification/data/data_seeder.dart:48:61 • deprecated_member_use
+   info • 'value' is deprecated and shouldn't be used. Use component accessors like .r or .g, or toARGB32 for an explicit conversion • lib/src/features/gamification/data/data_seeder.dart:49:64 • deprecated_member_use
+   info • 'value' is deprecated and shouldn't be used. Use component accessors like .r or .g, or toARGB32 for an explicit conversion • lib/src/features/gamification/data/data_seeder.dart:50:61 • deprecated_member_use
+warning • The value of the local variable 'activities' isn't used • lib/src/features/gamification/data/data_seeder.dart:53:11 • unused_local_variable
+warning • The declaration '_totalXPForLevel' isn't referenced • lib/src/features/gamification/domain/user_stats.dart:97:7 • unused_element
+warning • The value of the local variable 'currentTitle' isn't used • lib/src/features/gamification/presentation/profile_screen.dart:298:11 • unused_local_variable
+warning • The value of the local variable 'totalXP' isn't used • lib/src/features/gamification/presentation/profile_screen.dart:1000:11 • unused_local_variable
+warning • The declaration '_LevelRingPainter' isn't referenced • lib/src/features/gamification/presentation/profile_screen.dart:1448:7 • unused_element
+warning • The declaration '_addSampleHabits' isn't referenced • lib/src/features/habits/data/habit_repository.dart:28:16 • unused_element
+   info • 'value' is deprecated and shouldn't be used. Use component accessors like .r or .g, or toARGB32 for an explicit conversion • lib/src/features/habits/data/habit_repository.dart:35:45 • deprecated_member_use
+   info • 'value' is deprecated and shouldn't be used. Use component accessors like .r or .g, or toARGB32 for an explicit conversion • lib/src/features/habits/data/habit_repository.dart:52:45 • deprecated_member_use
+   info • 'value' is deprecated and shouldn't be used. Use component accessors like .r or .g, or toARGB32 for an explicit conversion • lib/src/features/habits/data/habit_repository.dart:67:45 • deprecated_member_use
+   info • 'value' is deprecated and shouldn't be used. Use component accessors like .r or .g, or toARGB32 for an explicit conversion • lib/src/features/habits/data/habit_repository.dart:80:45 • deprecated_member_use
+warning • The declaration '_getCompletionCountForDay' isn't referenced • lib/src/features/habits/presentation/habits_calendar_screen.dart:103:7 • unused_element
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/src/features/habits/presentation/habits_calendar_screen.dart:587:42 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/src/features/habits/presentation/habits_calendar_screen.dart:589:59 • use_build_context_synchronously
+warning • The value of the field '_previousInsight' isn't used • lib/src/features/home/presentation/home_screen.dart:142:10 • unused_field
+warning • The declaration '_isToday' isn't referenced • lib/src/features/home/presentation/home_screen.dart:252:8 • unused_element
+warning • The declaration '_getDailyReminders' isn't referenced • lib/src/features/home/presentation/home_screen.dart:1727:38 • unused_element
+warning • The declaration '_buildDraggableWidget' isn't referenced • lib/src/features/home/presentation/home_screen.dart:2048:10 • unused_element
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/src/features/home/presentation/home_screen.dart:2885:56 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/src/features/home/presentation/home_screen.dart:2966:55 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/src/features/home/presentation/home_screen.dart:3012:50 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/src/features/home/presentation/home_screen.dart:3016:50 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/src/features/home/presentation/home_screen.dart:3020:48 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/src/features/home/presentation/home_screen.dart:3066:69 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/src/features/home/presentation/home_screen.dart:3070:69 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/src/features/home/presentation/home_screen.dart:3074:67 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/src/features/home/presentation/home_screen.dart:3192:58 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/src/features/home/presentation/home_screen.dart:3196:58 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/src/features/home/presentation/home_screen.dart:3200:56 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/src/features/home/presentation/home_screen.dart:3216:49 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/src/features/home/presentation/home_screen.dart:3216:78 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/src/features/home/presentation/home_screen.dart:3257:49 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/src/features/home/presentation/home_screen.dart:3257:78 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/src/features/home/presentation/home_screen.dart:3298:47 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/src/features/home/presentation/home_screen.dart:3300:49 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/src/features/home/presentation/home_screen.dart:3422:63 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/src/features/home/presentation/home_screen.dart:3424:65 • use_build_context_synchronously
+warning • The declaration '_formatTaskDate' isn't referenced • lib/src/features/home/presentation/home_screen.dart:3456:10 • unused_element
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/src/features/home/presentation/home_screen.dart:3497:41 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/src/features/home/presentation/home_screen.dart:3514:41 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/src/features/home/presentation/home_screen.dart:3531:41 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/src/features/home/presentation/home_screen.dart:3632:55 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/src/features/home/presentation/home_screen.dart:3634:57 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/src/features/home/presentation/home_screen.dart:3680:49 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/src/features/home/presentation/home_screen.dart:3680:78 • use_build_context_synchronously
+warning • The declaration '_buildStatCard' isn't referenced • lib/src/features/home/presentation/home_screen.dart:4047:10 • unused_element
+   info • Statements in an if should be enclosed in a block • lib/src/features/home/presentation/home_screen.dart:4209:26 • curly_braces_in_flow_control_structures
+   info • Statements in an if should be enclosed in a block • lib/src/features/home/presentation/home_screen.dart:4209:50 • curly_braces_in_flow_control_structures
+   info • Statements in an if should be enclosed in a block • lib/src/features/home/presentation/home_screen.dart:4209:63 • curly_braces_in_flow_control_structures
+warning • The declaration '_buildFAB' isn't referenced • lib/src/features/home/presentation/home_screen.dart:5025:10 • unused_element
+   info • 'value' is deprecated and shouldn't be used. Use component accessors like .r or .g, or toARGB32 for an explicit conversion • lib/src/features/home/presentation/home_screen.dart:5171:63 • deprecated_member_use
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/src/features/home/presentation/home_screen.dart:5178:47 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/src/features/home/presentation/home_screen.dart:5191:47 • use_build_context_synchronously
+  error • The method 'setIndex' isn't defined for the type 'NavigationNotifier' • lib/src/features/home/presentation/home_screen.dart:5215:47 • undefined_method
+   info • 'value' is deprecated and shouldn't be used. Use component accessors like .r or .g, or toARGB32 for an explicit conversion • lib/src/features/home/presentation/home_screen.dart:5559:51 • deprecated_member_use
+   info • Don't use 'BuildContext's across async gaps • lib/src/features/home/presentation/home_screen.dart:5570:37 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps • lib/src/features/home/presentation/home_screen.dart:5571:51 • use_build_context_synchronously
+   info • 'value' is deprecated and shouldn't be used. Use component accessors like .r or .g, or toARGB32 for an explicit conversion • lib/src/features/home/presentation/home_screen.dart:5810:54 • deprecated_member_use
+   info • 'value' is deprecated and shouldn't be used. Use component accessors like .r or .g, or toARGB32 for an explicit conversion • lib/src/features/home/presentation/home_screen.dart:5810:69 • deprecated_member_use
+   info • 'value' is deprecated and shouldn't be used. Use component accessors like .r or .g, or toARGB32 for an explicit conversion • lib/src/features/home/presentation/home_screen.dart:5848:51 • deprecated_member_use
+   info • Don't use 'BuildContext's across async gaps • lib/src/features/home/presentation/home_screen.dart:5854:37 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps • lib/src/features/home/presentation/home_screen.dart:5855:51 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps • lib/src/features/home/presentation/home_screen.dart:5875:37 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps • lib/src/features/home/presentation/home_screen.dart:5876:51 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps • lib/src/features/home/presentation/home_screen.dart:5876:80 • use_build_context_synchronously
+warning • The declaration '_buildTasksWidget' isn't referenced • lib/src/features/home/presentation/home_screen.dart:5898:10 • unused_element
+warning • The value of the local variable 'wasCompleted' isn't used • lib/src/features/home/presentation/home_screen.dart:6144:29 • unused_local_variable
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/src/features/home/presentation/home_screen.dart:6150:61 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/src/features/home/presentation/home_screen.dart:6152:63 • use_build_context_synchronously
+warning • The value of the local variable 'pagesRead' isn't used • lib/src/features/home/presentation/home_screen.dart:6301:13 • unused_local_variable
+warning • The value of the field '_isPressed' isn't used • lib/src/features/home/presentation/home_screen.dart:7245:8 • unused_field
+warning • The value of the field '_checkAnimation' isn't used • lib/src/features/home/presentation/home_screen.dart:7584:26 • unused_field
+warning • The value of the field '_isPressed' isn't used • lib/src/features/home/presentation/home_screen.dart:7586:8 • unused_field
+warning • The declaration '_skepticInsights' isn't referenced • lib/src/features/home/presentation/home_screen_backup.dart:22:20 • unused_element
+warning • The declaration '_showQuickQuoteDialog' isn't referenced • lib/src/features/home/presentation/home_screen_backup.dart:1089:8 • unused_element
+warning • The value of the field '_fabScaleAnimation' isn't used • lib/src/features/home/presentation/odyssey_home.dart:39:26 • unused_field
+warning • The declaration '_showMoreMenu' isn't referenced • lib/src/features/home/presentation/odyssey_home.dart:379:8 • unused_element
+   info • 'WillPopScope' is deprecated and shouldn't be used. Use PopScope instead. The Android predictive back feature will not work with WillPopScope. This feature was deprecated after v3.12.0-1.0.pre • lib/src/features/home/presentation/odyssey_home.dart:551:12 • deprecated_member_use
+   info • Statements in an if should be enclosed in a block • lib/src/features/home/presentation/widgets/activity_grid_widget.dart:180:34 • curly_braces_in_flow_control_structures
+   info • Statements in an if should be enclosed in a block • lib/src/features/home/presentation/widgets/activity_grid_widget.dart:181:32 • curly_braces_in_flow_control_structures
+   info • Statements in an if should be enclosed in a block • lib/src/features/home/presentation/widgets/activity_grid_widget.dart:182:16 • curly_braces_in_flow_control_structures
+warning • The value of the local variable 'totalThisWeek' isn't used • lib/src/features/home/presentation/widgets/daily_goals_widget.dart:38:11 • unused_local_variable
+warning • The declaration '_DailyQuoteWidget' isn't referenced • lib/src/features/home/presentation/widgets/home_widget_renderer.dart:47:7 • unused_element
+warning • The declaration '_WeeklyChartWidget' isn't referenced • lib/src/features/home/presentation/widgets/home_widget_renderer.dart:102:7 • unused_element
+warning • The declaration '_HabitsWidget' isn't referenced • lib/src/features/home/presentation/widgets/home_widget_renderer.dart:184:7 • unused_element
+   info • 'activeColor' is deprecated and shouldn't be used. Use activeThumbColor or activeTrackColor instead. This feature was deprecated after v3.31.0-2.0.pre • lib/src/features/home/presentation/widgets_config_screen.dart:243:13 • deprecated_member_use
+   info • Statements in an if should be enclosed in a block • lib/src/features/language_learning/domain/vocabulary_item.dart:128:38 • curly_braces_in_flow_control_structures
+   info • Statements in an if should be enclosed in a block • lib/src/features/language_learning/domain/vocabulary_item.dart:129:36 • curly_braces_in_flow_control_structures
+   info • Statements in an if should be enclosed in a block • lib/src/features/language_learning/domain/vocabulary_item.dart:130:36 • curly_braces_in_flow_control_structures
+   info • Statements in an if should be enclosed in a block • lib/src/features/language_learning/domain/vocabulary_item.dart:131:36 • curly_braces_in_flow_control_structures
+   info • Statements in an if should be enclosed in a block • lib/src/features/language_learning/domain/vocabulary_item.dart:132:12 • curly_braces_in_flow_control_structures
+   info • 'value' is deprecated and shouldn't be used. Use component accessors like .r or .g, or toARGB32 for an explicit conversion • lib/src/features/language_learning/presentation/add_language_sheet.dart:343:29 • deprecated_member_use
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/src/features/language_learning/presentation/immersion_screen.dart:950:41 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/src/features/language_learning/presentation/immersion_screen.dart:952:48 • use_build_context_synchronously
+   info • 'activeColor' is deprecated and shouldn't be used. Use activeThumbColor or activeTrackColor instead. This feature was deprecated after v3.31.0-2.0.pre • lib/src/features/language_learning/presentation/immersion_screen.dart:1149:25 • deprecated_member_use
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/src/features/language_learning/presentation/immersion_screen.dart:1197:41 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/src/features/language_learning/presentation/language_detail_screen.dart:715:48 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/src/features/language_learning/presentation/language_detail_screen.dart:795:31 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/src/features/language_learning/presentation/language_detail_screen.dart:796:31 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/src/features/language_learning/presentation/vocabulary_screen.dart:606:58 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/src/features/language_learning/presentation/vocabulary_screen.dart:765:52 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/src/features/language_learning/presentation/vocabulary_screen.dart:782:52 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps • lib/src/features/library/presentation/add_book_screen.dart:1280:35 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps • lib/src/features/library/presentation/add_book_screen.dart:1283:35 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps • lib/src/features/library/presentation/add_book_screen.dart:1286:19 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps • lib/src/features/library/presentation/book_detail_screen.dart:100:33 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps • lib/src/features/library/presentation/book_detail_screen.dart:635:25 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps • lib/src/features/library/presentation/book_detail_screen.dart:790:43 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps • lib/src/features/library/presentation/book_detail_screen.dart:872:35 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps • lib/src/features/library/presentation/book_detail_screen.dart:876:25 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps • lib/src/features/library/presentation/book_detail_screen.dart:882:25 • use_build_context_synchronously
+warning • The declaration '_formatDate' isn't referenced • lib/src/features/library/presentation/book_detail_screen.dart:936:10 • unused_element
+   info • Don't use 'BuildContext's across async gaps • lib/src/features/library/presentation/library_screen.dart:930:35 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps • lib/src/features/library/presentation/library_screen.dart:934:25 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps • lib/src/features/library/presentation/library_screen.dart:940:25 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps • lib/src/features/library/presentation/library_screen.dart:972:43 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps • lib/src/features/library/presentation/library_screen.dart:2092:37 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps • lib/src/features/library/presentation/library_screen.dart:2093:51 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps • lib/src/features/library/presentation/library_screen.dart:2155:31 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps • lib/src/features/library/presentation/library_screen.dart:2167:31 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps • lib/src/features/library/presentation/library_screen.dart:2183:31 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps • lib/src/features/library/presentation/library_screen.dart:2184:45 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps • lib/src/features/library/presentation/library_screen.dart:2196:31 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps • lib/src/features/library/presentation/library_screen.dart:2206:45 • use_build_context_synchronously
+warning • The declaration '_buildQuickSearchChip' isn't referenced • lib/src/features/library/presentation/library_screen.dart:2506:10 • unused_element
+   info • Don't use 'BuildContext's across async gaps • lib/src/features/library/presentation/library_screen.dart:2916:39 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps • lib/src/features/library/presentation/library_screen.dart:2917:39 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps • lib/src/features/library/presentation/library_screen.dart:2918:53 • use_build_context_synchronously
+   info • Invalid use of a private type in a public API • lib/src/features/mood_records/domain/mood_log/mood_record.g.dart:14:3 • library_private_types_in_public_api
+   info • Invalid use of a private type in a public API • lib/src/features/mood_records/domain/mood_log/mood_record.g.dart:31:35 • library_private_types_in_public_api
+   info • Don't use 'BuildContext's across async gaps • lib/src/features/mood_records/presentation/add_mood_record/add_mood_record_form.dart:76:13 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps • lib/src/features/mood_records/presentation/add_mood_record/add_mood_record_form.dart:152:40 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps • lib/src/features/mood_records/presentation/add_mood_record/add_mood_record_form.dart:153:33 • use_build_context_synchronously
+   info • 'value' is deprecated and shouldn't be used. Use component accessors like .r or .g, or toARGB32 for an explicit conversion • lib/src/features/mood_records/presentation/add_mood_record/add_mood_record_form_controller.dart:24:28 • deprecated_member_use
+   info • 'value' is deprecated and shouldn't be used. Use component accessors like .r or .g, or toARGB32 for an explicit conversion • lib/src/features/mood_records/presentation/add_mood_record/add_mood_record_form_controller.dart:85:34 • deprecated_member_use
+warning • The value of the local variable 'l10n' isn't used • lib/src/features/mood_records/presentation/mood_log/mood_log_screen.dart:44:11 • unused_local_variable
+   info • 'color' is deprecated and shouldn't be used. Use colorFilter instead • lib/src/features/mood_records/presentation/mood_log/mood_record_card.dart:117:11 • deprecated_member_use
+   info • 'onLoadError' is deprecated and shouldn't be used. Use onReceivedError instead • lib/src/features/news/presentation/news_screen_webview_helpers.dart:70:9 • deprecated_member_use
+   info • 'onLoadHttpError' is deprecated and shouldn't be used. Use onReceivedHttpError instead • lib/src/features/news/presentation/news_screen_webview_helpers.dart:77:9 • deprecated_member_use
+   info • Statements in an if should be enclosed in a block • lib/src/features/notes/presentation/notes_screen.dart:642:32 • curly_braces_in_flow_control_structures
+   info • Statements in an if should be enclosed in a block • lib/src/features/notes/presentation/notes_screen.dart:643:31 • curly_braces_in_flow_control_structures
+   info • Statements in an if should be enclosed in a block • lib/src/features/notes/presentation/notes_screen.dart:644:10 • curly_braces_in_flow_control_structures
+   info • Don't use 'BuildContext's across async gaps • lib/src/features/settings/presentation/backup_screen.dart:575:11 • use_build_context_synchronously
+   info • 'Share' is deprecated and shouldn't be used. Use SharePlus instead • lib/src/features/settings/presentation/backup_screen.dart:619:15 • deprecated_member_use
+   info • 'shareXFiles' is deprecated and shouldn't be used. Use SharePlus.instance.share() instead • lib/src/features/settings/presentation/backup_screen.dart:619:21 • deprecated_member_use
+warning • The value of the local variable 'scheduler' isn't used • lib/src/features/settings/presentation/modern_notification_settings_screen.dart:36:11 • unused_local_variable
+   info • 'groupValue' is deprecated and shouldn't be used. Use a RadioGroup ancestor to manage group value instead. This feature was deprecated after v3.32.0-0.0.pre • lib/src/features/settings/presentation/modern_notification_settings_screen.dart:125:21 • deprecated_member_use
+   info • 'onChanged' is deprecated and shouldn't be used. Use RadioGroup to handle value change instead. This feature was deprecated after v3.32.0-0.0.pre • lib/src/features/settings/presentation/modern_notification_settings_screen.dart:126:21 • deprecated_member_use
+   info • Don't use 'BuildContext's across async gaps • lib/src/features/settings/presentation/modern_notification_settings_screen.dart:132:37 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps • lib/src/features/settings/presentation/modern_notification_settings_screen.dart:142:35 • use_build_context_synchronously
+   info • Invalid use of a private type in a public API • lib/src/features/suggestions/domain/suggestion.g.dart:14:3 • library_private_types_in_public_api
+   info • Invalid use of a private type in a public API • lib/src/features/suggestions/domain/suggestion.g.dart:37:35 • library_private_types_in_public_api
+warning • The declaration '_getCategoryIcon' isn't referenced • lib/src/features/suggestions/presentation/widgets/suggestion_card.dart:71:12 • unused_element
+warning • The value of the field '_timer' isn't used • lib/src/features/time_tracker/presentation/time_tracker_screen.dart:46:10 • unused_field
+warning • The value of the field '_appleAnimation' isn't used • lib/src/features/time_tracker/presentation/time_tracker_screen.dart:75:26 • unused_field
+warning • The declaration '_getCategoryName' isn't referenced • lib/src/features/time_tracker/presentation/time_tracker_screen.dart:92:10 • unused_element
+   info • Don't use 'BuildContext's across async gaps • lib/src/features/time_tracker/presentation/time_tracker_screen.dart:180:133 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps • lib/src/features/time_tracker/presentation/time_tracker_screen.dart:181:124 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps • lib/src/features/time_tracker/presentation/time_tracker_screen.dart:183:117 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps • lib/src/features/time_tracker/presentation/time_tracker_screen.dart:184:125 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps • lib/src/features/time_tracker/presentation/time_tracker_screen.dart:185:126 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps • lib/src/features/time_tracker/presentation/time_tracker_screen.dart:186:125 • use_build_context_synchronously
+   info • 'value' is deprecated and shouldn't be used. Use component accessors like .r or .g, or toARGB32 for an explicit conversion • lib/src/features/time_tracker/presentation/time_tracker_screen.dart:203:48 • deprecated_member_use
+   info • 'value' is deprecated and shouldn't be used. Use component accessors like .r or .g, or toARGB32 for an explicit conversion • lib/src/features/time_tracker/presentation/time_tracker_screen.dart:267:25 • deprecated_member_use
+   info • 'value' is deprecated and shouldn't be used. Use component accessors like .r or .g, or toARGB32 for an explicit conversion • lib/src/features/time_tracker/presentation/time_tracker_screen.dart:312:27 • deprecated_member_use
+warning • The declaration '_resumePomodoro' isn't referenced • lib/src/features/time_tracker/presentation/time_tracker_screen.dart:483:8 • unused_element
+   info • 'value' is deprecated and shouldn't be used. Use component accessors like .r or .g, or toARGB32 for an explicit conversion • lib/src/features/time_tracker/presentation/time_tracker_screen.dart:564:25 • deprecated_member_use
+warning • The value of the local variable 'breakDuration' isn't used • lib/src/features/time_tracker/presentation/time_tracker_screen.dart:658:11 • unused_local_variable
+warning • The declaration '_buildPomodoroTaskSelectorLight' isn't referenced • lib/src/features/time_tracker/presentation/time_tracker_screen.dart:1473:10 • unused_element
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/src/features/time_tracker/presentation/time_tracker_screen.dart:1896:37 • use_build_context_synchronously
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/src/features/time_tracker/presentation/time_tracker_screen.dart:1898:51 • use_build_context_synchronously
+warning • The declaration '_buildPomodoroStatsAnimated' isn't referenced • lib/src/features/time_tracker/presentation/time_tracker_screen.dart:1926:10 • unused_element
+warning • The declaration '_buildTaskScreen' isn't referenced • lib/src/features/time_tracker/presentation/time_tracker_screen.dart:2124:10 • unused_element
+warning • The declaration '_buildCurrentTimerCard' isn't referenced • lib/src/features/time_tracker/presentation/time_tracker_screen.dart:2697:10 • unused_element
+warning • The declaration '_buildCollapsedTimerCard' isn't referenced • lib/src/features/time_tracker/presentation/time_tracker_screen.dart:2893:10 • unused_element
+warning • The declaration '_buildTodayTasksList' isn't referenced • lib/src/features/time_tracker/presentation/time_tracker_screen.dart:3000:10 • unused_element
+warning • The declaration '_showProjectsDialog' isn't referenced • lib/src/features/time_tracker/presentation/time_tracker_screen.dart:3648:8 • unused_element
+   info • Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check • lib/src/features/time_tracker/presentation/time_tracker_screen.dart:4798:33 • use_build_context_synchronously
+warning • The value of the local variable 'color' isn't used • lib/src/features/time_tracker/presentation/time_tracker_screen.dart:4919:11 • unused_local_variable
+warning • The declaration '_buildPomodoroScreen' isn't referenced • lib/src/features/time_tracker/presentation/time_tracker_screen.dart:5047:10 • unused_element
+warning • The value of the local variable 'selectedProject' isn't used • lib/src/features/time_tracker/presentation/time_tracker_screen.dart:5488:13 • unused_local_variable
+warning • The declaration '_buildPomodoroSessionIndicator' isn't referenced • lib/src/features/time_tracker/presentation/time_tracker_screen.dart:5754:10 • unused_element
+warning • The declaration '_buildPomodoroTimerCircle' isn't referenced • lib/src/features/time_tracker/presentation/time_tracker_screen.dart:5794:10 • unused_element
+warning • The declaration '_buildPomodoroControls' isn't referenced • lib/src/features/time_tracker/presentation/time_tracker_screen.dart:5912:10 • unused_element
+warning • The value of the field 'tomatoDarkRed' isn't used • lib/src/features/time_tracker/widgets/tomato_timer_widget.dart:51:22 • unused_field
+warning • The value of the field 'tomatoLightRed' isn't used • lib/src/features/time_tracker/widgets/tomato_timer_widget.dart:52:22 • unused_field
+warning • The value of the field 'leafGreen' isn't used • lib/src/features/time_tracker/widgets/tomato_timer_widget.dart:53:22 • unused_field
+warning • The value of the field 'leafDarkGreen' isn't used • lib/src/features/time_tracker/widgets/tomato_timer_widget.dart:54:22 • unused_field
+   info • 'groupValue' is deprecated and shouldn't be used. Use a RadioGroup ancestor to manage group value instead. This feature was deprecated after v3.32.0-0.0.pre • lib/src/shared/widgets/sound_widgets.dart:375:7 • deprecated_member_use
+   info • 'onChanged' is deprecated and shouldn't be used. Use RadioGroup to handle value change instead. This feature was deprecated after v3.32.0-0.0.pre • lib/src/shared/widgets/sound_widgets.dart:376:7 • deprecated_member_use
+   info • 'groupValue' is deprecated and shouldn't be used. Use a RadioGroup ancestor to manage group value instead. This feature was deprecated after v3.32.0-0.0.pre • lib/src/shared/widgets/sound_widgets.dart:409:7 • deprecated_member_use
+   info • 'onChanged' is deprecated and shouldn't be used. Use RadioGroup to handle value change instead. This feature was deprecated after v3.32.0-0.0.pre • lib/src/shared/widgets/sound_widgets.dart:410:7 • deprecated_member_use
+warning • The value of the field '_isPressed' isn't used • lib/src/utils/animations/optimized_animations.dart:555:8 • unused_field
+warning • The value of the field '_isPressed' isn't used • lib/src/utils/navigation/navigation_widgets.dart:378:8 • unused_field
+warning • The value of the field '_kLastScreenKey' isn't used • lib/src/utils/services/app_lifecycle_service.dart:13:23 • unused_field
+   info • Unnecessary use of getter and setter to wrap a field • lib/src/utils/services/sound_service.dart:54:14 • unnecessary_getters_setters
+   info • 'listenMode' is deprecated and shouldn't be used. Use SpeechListenOptions.listenMode instead • lib/src/utils/services/speech_service.dart:79:7 • deprecated_member_use
+   info • 'cancelOnError' is deprecated and shouldn't be used. Use SpeechListenOptions.cancelOnError instead • lib/src/utils/services/speech_service.dart:80:7 • deprecated_member_use
+   info • 'partialResults' is deprecated and shouldn't be used. Use SpeechListenOptions.partialResults instead • lib/src/utils/services/speech_service.dart:81:7 • deprecated_member_use
+warning • The value of the local variable 'staggerDelay' isn't used • lib/src/utils/widgets/animated_stats.dart:505:17 • unused_local_variable
+   info • Invalid use of a private type in a public API • lib/src/utils/widgets/horizontal_calendar_timeline.dart:32:3 • library_private_types_in_public_api
+   info • Don't invoke 'print' in production code • scripts/auto_translate.dart:5:3 • avoid_print
+   info • Don't invoke 'print' in production code • scripts/auto_translate.dart:532:3 • avoid_print
+   info • Don't invoke 'print' in production code • scripts/auto_translate.dart:533:3 • avoid_print
+   info • 'value' is deprecated and shouldn't be used. Use component accessors like .r or .g, or toARGB32 for an explicit conversion • test/src/features/time_tracker/edit_time_dialog_test.dart:20:33 • deprecated_member_use
+   info • 'value' is deprecated and shouldn't be used. Use component accessors like .r or .g, or toARGB32 for an explicit conversion • test/src/features/time_tracker/edit_time_dialog_test.dart:238:33 • deprecated_member_use
+   info • 'value' is deprecated and shouldn't be used. Use component accessors like .r or .g, or toARGB32 for an explicit conversion • test/src/features/time_tracker/edit_time_dialog_test.dart:282:34 • deprecated_member_use
+

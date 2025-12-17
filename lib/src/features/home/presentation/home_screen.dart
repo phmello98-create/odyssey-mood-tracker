@@ -47,6 +47,9 @@ import 'package:odyssey/src/features/home/presentation/widgets/quick_mood_widget
 import 'package:odyssey/src/features/onboarding/services/showcase_service.dart'
     as showcase;
 import 'package:odyssey/src/utils/settings_provider.dart';
+import 'package:odyssey/src/features/home/presentation/widgets/home_suggestions_widget.dart';
+import 'package:odyssey/src/features/home/presentation/widgets/global_search_bar.dart';
+import 'package:odyssey/src/features/home/presentation/widgets/notification_center.dart';
 
 // Frases motivacionais/céticas e de grandes pensadores
 const List<String> _dailyInsights = [
@@ -297,7 +300,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     final monthFormat = DateFormat('MMMM yyyy', 'pt_BR');
 
     return Scaffold(
-      backgroundColor: WellnessColors.background, // Set background
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
         child: FadeTransition(
           opacity: _fadeAnimation,
@@ -338,12 +341,32 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               ),
 
               // ==========================================
+              // BARRA DE BUSCA GLOBAL
+              // ==========================================
+              const SliverToBoxAdapter(
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(20, 16, 20, 0),
+                  child: GlobalSearchBar(),
+                ),
+              ),
+
+              // ==========================================
               // ACTIVITY CARD (Meditation/Yoga)
               // ==========================================
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
                   child: _buildWellnessActivityCard(),
+                ),
+              ),
+
+              // ==========================================
+              // SUGESTÕES INTELIGENTES
+              // ==========================================
+              const SliverToBoxAdapter(
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(20, 20, 20, 0),
+                  child: HomeSuggestionsWidget(),
                 ),
               ),
 

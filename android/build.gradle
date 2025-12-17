@@ -13,6 +13,11 @@ allprojects {
         google()
         mavenCentral()
     }
+    
+    // Suppress Java 8 obsolete options warnings for all projects
+    tasks.withType(JavaCompile).configureEach {
+        options.compilerArgs << '-Xlint:-options'
+    }
 }
 
 rootProject.buildDir = '../build'
@@ -26,3 +31,4 @@ subprojects {
 tasks.register("clean", Delete) {
     delete rootProject.buildDir
 }
+

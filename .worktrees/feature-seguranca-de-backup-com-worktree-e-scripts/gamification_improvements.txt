@@ -1,0 +1,123 @@
+# Plano de Aprimoramento do Sistema de Gamificação - Odyssey
+
+Este documento detalha uma série de melhorias para o sistema de gamificação do aplicativo Odyssey, com o objetivo de torná-lo mais integrado, engajador e recompensador para o usuário.
+
+## Análise do Sistema Atual
+
+O sistema de gamificação atual é composto por duas partes principais:
+1.  **Estatísticas Gerais (`UserStats`):** Um sistema funcional que rastreia XP total, nível, streaks e badges. Ele é bem integrado com as ações do usuário (registrar humor, completar tarefas, etc.).
+2.  **Habilidades de Desenvolvimento (`UserSkills`):** Um sistema de "RPG" inspirado na hierarquia de Maslow, que divide o desenvolvimento pessoal em 5 dimensões (Físico, Organização, Social, Mental, Crescimento), cada uma com suas próprias habilidades (ex: Sono, Foco, Empatia).
+
+**Principal Lacuna:** O sistema de Habilidades (`UserSkills`) está definido, mas **não está conectado** às ações do usuário. Atualmente, não há uma forma de ganhar XP para habilidades específicas, tornando a aba "Desenvolvimento" na tela de perfil estática e sem progresso.
+
+---
+
+## Parte 1: Integração Profunda do Sistema de Skills (RPG) - Prioridade Alta
+
+O objetivo é fazer com que cada ação do usuário contribua não apenas para o XP geral, mas também para o desenvolvimento de habilidades específicas.
+
+### 1.1. Mapear Ações para Habilidades
+
+É preciso criar uma lógica que associe cada ação que gera XP a uma ou mais habilidades.
+
+**Sugestões de Mapeamento:**
+- **Registrar Humor:**
+    - `+5 XP` para a skill **"Inteligência Emocional"** (Categoria: Mental).
+    - `+3 XP` para a skill **"Presença"** (Categoria: Crescimento).
+- **Completar uma Tarefa:**
+    - `+10 XP` para a skill **"Disciplina"** (Categoria: Mental).
+    - `+5 XP` para a skill **"Planejamento"** (Categoria: Organização).
+- **Completar uma Sessão Pomodoro:**
+    - `+15 XP` para a skill **"Foco"** (Categoria: Organização).
+- **Registrar um Hábito Saudável (ex: beber água, se exercitar):**
+    - `+8 XP` para a skill correspondente (ex: **"Hidratação"**, **"Exercício"**) na categoria **Físico**.
+- **Adicionar uma anotação (Note):**
+    - `+5 XP` para a skill **"Aprendizado"** ou **"Criatividade"** (Categoria: Crescimento).
+- **Ler um Livro (Library):**
+    - `+20 XP` (ao finalizar) para a skill **"Aprendizado"** (Categoria: Crescimento).
+
+### 1.2. Modificar o `GamificationRepository`
+
+O repositório precisa de novos métodos para gerenciar o XP das skills.
+
+- **`lib/src/features/gamification/data/gamification_repository.dart`**:
+    1.  **Adicionar um método `addXpToSkill(String skillId, int xp)`:**
+        - Este método irá carregar o estado atual das skills do usuário (provavelmente de um novo mapa no Hive), adicionar o XP à skill correta e verificar se a skill subiu de nível.
+    2.  **Modificar os métodos existentes (`recordMood`, `completeTask`, etc.):**
+        - Além de adicionar XP geral, esses métodos devem chamar `addXpToSkill` com base no mapeamento definido no item 1.1.
+
+### 1.3. Persistir o Progresso das Skills
+
+O estado das skills (nível e XP atual) precisa ser salvo no Hive.
+
+- **`lib/src/features/gamification/domain/user_skills.dart`**:
+    - A classe `Skill` já tem um método `toMap()`. Podemos usar isso para salvar um `Map<String, Map>` no Hive, onde a chave é o `skillId`.
+    - Exemplo no Hive: `box.put('user_skills_progress', {'sleep': {'level': 2, 'xp': 50}, 'focus': {'level': 3, 'xp': 10}})`
+
+---
+
+## Parte 2: Engajamento, Recompensas e Socialização - Prioridade Média
+
+Tornar o sistema mais dinâmico e recompensador.
+
+### 2.1. Sistema de Missões e Desafios
+
+Substituir as "Missões Diárias" estáticas por um sistema dinâmico.
+
+- **Missões Diárias:** Geradas aleatoriamente a cada dia.
+    - Exemplos: "Complete 2 sessões Pomodoro", "Registre seu humor pela manhã", "Escreva uma nota com mais de 50 palavras".
+- **Desafios Semanais:** Metas maiores para a semana.
+    - Exemplos: "Complete 10 tarefas esta semana", "Mantenha um streak de 7 dias", "Acumule 2 horas de foco".
+- **Jornadas (Long-term Quests):** Uma série de missões que contam uma história de desenvolvimento.
+    - Exemplo: "Jornada do Foco" - uma sequência de 10 missões relacionadas à produtividade que desbloqueia um badge especial no final.
+
+### 2.2. Recompensas Cosméticas
+
+Recompensar o progresso com itens que personalizam a experiência no app.
+
+- **Desbloquear Temas:** Níveis altos ou a conclusão de jornadas podem desbloquear paletas de cores exclusivas.
+- **Sons de Interface:** Desbloquear novos sons para ações (cliques, conclusão de tarefas).
+- **Ícones de Perfil:** Badges ou níveis podem liberar avatares ou molduras especiais para o perfil.
+
+### 2.3. Elementos Sociais (Opcional, Fase Futura)
+
+- **Leaderboards (Placares):** Rankings semanais de amigos ou globais baseados no XP ganho.
+- **Perfil Compartilhável:** Uma opção para gerar uma imagem do perfil de gamificação do usuário para compartilhar externamente.
+- **Desafios em Grupo:** Desafios onde um grupo de amigos trabalha junto para atingir um objetivo (ex: "Registrar 100 horas de foco em conjunto esta semana").
+
+---
+
+## Parte 3: Melhorar o Feedback e a Experiência do Usuário (UX) - Prioridade Média
+
+O usuário precisa *sentir* o progresso.
+
+### 3.1. Feedback Imediato de XP
+
+- Ao completar uma ação (ex: marcar uma tarefa como feita), mostrar uma pequena animação de "+15 XP" perto do elemento.
+- Se uma skill subir de nível, mostrar um alerta mais proeminente: "+10 XP em Disciplina! Skill Up!".
+
+### 3.2. Animação de "Level Up"
+
+- Quando o usuário sobe de nível geral, exibir uma tela ou um overlay de tela cheia parabenizando-o, com confetes e um som especial. Mostrar o que foi desbloqueado (se houver).
+
+### 3.3. Gamificar o Onboarding
+
+- Integrar o sistema de gamificação ao tutorial inicial.
+- **Primeira Ação:** O primeiro registro de humor durante o onboarding já concede o badge "Primeiro Passo" e os primeiros 10 XP, mostrando a animação de ganho de XP.
+- **Conclusão do Tutorial:** Conceder um "Kit de Iniciante" (ex: +100 XP e um badge especial de "Explorador") ao final do onboarding.
+
+### 3.4. Melhorar a Tela de Perfil
+
+- **Aba "Desenvolvimento":** Em vez de apenas listar as skills, mostrar o progresso de forma mais visual, talvez com barras de XP para cada skill.
+- **Histórico de Atividades:** Adicionar um log de atividades recentes que concederam XP (ex: "Você ganhou +15 XP por completar a tarefa 'Revisar relatório'").
+
+---
+
+## Próximos Passos Sugeridos
+
+1.  **Implementar a Parte 1:** Focar em conectar o sistema de skills, pois é a base para muitas outras melhorias.
+    - Modificar `GamificationRepository` para adicionar XP às skills.
+    - Atualizar os métodos de registro de atividades para chamar a nova lógica.
+    - Garantir que o progresso das skills seja salvo e carregado corretamente.
+2.  **Melhorar o Feedback Visual (Parte 3.1 e 3.2):** Implementar as animações de ganho de XP e "Level Up". Isso trará um ganho imediato na percepção de valor do sistema.
+3.  **Implementar Missões Dinâmicas (Parte 2.1):** Desenvolver a lógica para gerar missões diárias e semanais.

@@ -1,0 +1,36 @@
+╔═══════════════════════════════════════════════════════════════╗
+║              🚀 GUIA RÁPIDO - SISTEMA COMPLETO               ║
+╚═══════════════════════════════════════════════════════════════╝
+
+INSTALAÇÃO ÚNICA (FAZ UMA VEZ SÓ)
+
+cd ~/Documentos/odyssey-mood-tracker
+sudo apt-get install inotify-tools -y
+
+git config --global alias.work '!bash ~/Documentos/odyssey-mood-tracker/scripts/auto-worktree.sh'
+git config --global alias.save '!bash ~/Documentos/odyssey-mood-tracker/scripts/auto-commit.sh'
+git config --global alias.wlist 'worktree list'
+git config --global alias.wclean '!bash ~/Documentos/odyssey-mood-tracker/scripts/clean-worktree.sh'
+git config --global alias.wmerge '!bash ~/Documentos/odyssey-mood-tracker/scripts/merge-worktree.sh'
+
+mkdir -p .worktrees
+echo ".worktrees/" >> .gitignore
+
+PRONTO! ✅
+
+USO DIÁRIO - FLUXO COMPLETO
+
+MANHÃ:
+1. cd ~/Documentos/odyssey-mood-tracker
+2. git work
+3. cd .worktrees/work-*
+4. nohup bash ~/Documentos/odyssey-mood-tracker/scripts/auto-save-watch.sh &
+5. code .
+6. TRABALHAR! (sistema salva tudo automaticamente)
+
+TARDE:
+7. git save (commit final, opcional)
+8. cd ~/Documentos/odyssey-mood-tracker
+9. git wmerge (se deu certo) OU git wclean (se deu errado)
+
+═══════════════════════════════════════════════════════════════

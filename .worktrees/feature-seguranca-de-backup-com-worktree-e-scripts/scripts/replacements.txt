@@ -1,0 +1,1028 @@
+# Tentar Novamente
+# Key: tentarNovamente
+# Locations: 1
+#   lib/src/features/splash/presentation/splash_screen.dart:411
+OLD: Text('Tentar Novamente')
+NEW: Text(AppLocalizations.of(context)!.tentarNovamente)
+
+# Edit
+# Key: edit1
+# Locations: 1
+#   lib/src/features/mood_records/presentation/mood_log/mood_record_card_options.dart:44
+OLD: Text('Edit')
+NEW: Text(AppLocalizations.of(context)!.edit1)
+
+# Add Photo
+# Key: addPhoto
+# Locations: 1
+#   lib/src/features/mood_records/presentation/mood_log/mood_record_card_options.dart:52
+OLD: Text('Add Photo')
+NEW: Text(AppLocalizations.of(context)!.addPhoto)
+
+# Nova Categoria
+# Key: novaCategoria
+# Locations: 1
+#   lib/src/features/time_tracker/presentation/time_tracker_screen.dart:3939
+OLD: Text('Nova Categoria')
+NEW: Text(AppLocalizations.of(context)!.novaCategoria)
+
+# Criar
+# Key: criar
+# Locations: 2
+#   lib/src/features/time_tracker/presentation/time_tracker_screen.dart:3970
+#   lib/src/features/time_tracker/presentation/time_tracker_screen.dart:4306
+OLD: Text('Criar')
+NEW: Text(AppLocalizations.of(context)!.criar)
+
+# Editar Categoria
+# Key: editarCategoria
+# Locations: 1
+#   lib/src/features/time_tracker/presentation/time_tracker_screen.dart:3985
+OLD: Text('Editar Categoria')
+NEW: Text(AppLocalizations.of(context)!.editarCategoria)
+
+# Apagar
+# Key: apagar
+# Locations: 3
+#   lib/src/features/time_tracker/presentation/time_tracker_screen.dart:4010
+#   lib/src/features/time_tracker/presentation/time_tracker_screen.dart:4062
+#   lib/src/features/time_tracker/presentation/time_tracker_screen.dart:4242
+OLD: Text('Apagar')
+NEW: Text(AppLocalizations.of(context)!.apagar)
+
+# Apagar Categoria?
+# Key: apagarCategoria
+# Locations: 1
+#   lib/src/features/time_tracker/presentation/time_tracker_screen.dart:4044
+OLD: Text('Apagar Categoria?')
+NEW: Text(AppLocalizations.of(context)!.apagarCategoria)
+
+# Deseja apagar a categoria 
+# Key: desejaApagarACategoria
+# Locations: 1
+#   lib/src/features/time_tracker/presentation/time_tracker_screen.dart:4045
+OLD: Text('Deseja apagar a categoria ')
+NEW: Text(AppLocalizations.of(context)!.desejaApagarACategoria)
+
+# Filtrar por este projeto
+# Key: filtrarPorEsteProjeto
+# Locations: 1
+#   lib/src/features/time_tracker/presentation/time_tracker_screen.dart:4121
+OLD: Text('Filtrar por este projeto')
+NEW: Text(AppLocalizations.of(context)!.filtrarPorEsteProjeto)
+
+# Renomear projeto
+# Key: renomearProjeto
+# Locations: 1
+#   lib/src/features/time_tracker/presentation/time_tracker_screen.dart:4132
+OLD: Text('Renomear projeto')
+NEW: Text(AppLocalizations.of(context)!.renomearProjeto)
+
+# Excluir projeto
+# Key: excluirProjeto
+# Locations: 1
+#   lib/src/features/time_tracker/presentation/time_tracker_screen.dart:4141
+OLD: Text('Excluir projeto')
+NEW: Text(AppLocalizations.of(context)!.excluirProjeto)
+
+# Editar Projeto
+# Key: editarProjeto
+# Locations: 1
+#   lib/src/features/time_tracker/presentation/time_tracker_screen.dart:4164
+OLD: Text('Editar Projeto')
+NEW: Text(AppLocalizations.of(context)!.editarProjeto)
+
+# Apagar Projeto?
+# Key: apagarProjeto
+# Locations: 1
+#   lib/src/features/time_tracker/presentation/time_tracker_screen.dart:4223
+OLD: Text('Apagar Projeto?')
+NEW: Text(AppLocalizations.of(context)!.apagarProjeto)
+
+# Novo Projeto
+# Key: novoProjeto
+# Locations: 1
+#   lib/src/features/time_tracker/presentation/time_tracker_screen.dart:4275
+OLD: Text('Novo Projeto')
+NEW: Text(AppLocalizations.of(context)!.novoProjeto)
+
+# Iniciar Timer
+# Key: iniciarTimer
+# Locations: 1
+#   lib/src/features/time_tracker/presentation/time_tracker_screen.dart:4514
+OLD: Text('Iniciar Timer')
+NEW: Text(AppLocalizations.of(context)!.iniciarTimer)
+
+# Editar registro
+# Key: editarRegistro
+# Locations: 1
+#   lib/src/features/time_tracker/presentation/time_tracker_screen.dart:4789
+OLD: Text('Editar registro')
+NEW: Text(AppLocalizations.of(context)!.editarRegistro)
+
+# Sair do Pomodoro?
+# Key: sairDoPomodoro
+# Locations: 1
+#   lib/src/features/time_tracker/presentation/time_tracker_screen.dart:6657
+OLD: Text('Sair do Pomodoro?')
+NEW: Text(AppLocalizations.of(context)!.sairDoPomodoro)
+
+# O timer será pausado, mas seu progresso será mantido.
+# Key: oTimerSeráPausadoMasSeuProgressoSeráMant
+# Locations: 1
+#   lib/src/features/time_tracker/presentation/time_tracker_screen.dart:6660
+OLD: Text('O timer será pausado, mas seu progresso será mantido.')
+NEW: Text(AppLocalizations.of(context)!.oTimerSeráPausadoMasSeuProgressoSeráMant)
+
+# Sair
+# Key: signOut
+# Locations: 2
+#   lib/src/features/time_tracker/presentation/time_tracker_screen.dart:6675
+#   lib/src/features/settings/presentation/backup_screen.dart:481
+OLD: Text('Sair')
+NEW: Text(AppLocalizations.of(context)!.signOut)
+
+# Minimizar
+# Key: minimizar
+# Locations: 1
+#   lib/src/features/time_tracker/presentation/time_tracker_screen.dart:6878
+OLD: Text('Minimizar')
+NEW: Text(AppLocalizations.of(context)!.minimizar)
+
+# Encerrar
+# Key: encerrar
+# Locations: 1
+#   lib/src/features/time_tracker/presentation/time_tracker_screen.dart:6897
+OLD: Text('Encerrar')
+NEW: Text(AppLocalizations.of(context)!.encerrar)
+
+# 0h
+# Key: 0h
+# Locations: 1
+#   lib/src/features/time_tracker/presentation/time_tracker_screen.dart:7594
+OLD: Text('0h')
+NEW: Text(AppLocalizations.of(context)!.0h)
+
+# Timer Demo
+# Key: timerDemo
+# Locations: 1
+#   lib/src/features/time_tracker/presentation/timer_demo_screen.dart:98
+OLD: Text('Timer Demo')
+NEW: Text(AppLocalizations.of(context)!.timerDemo)
+
+# Ordenar por
+# Key: ordenarPor
+# Locations: 1
+#   lib/src/features/notes/presentation/notes_screen.dart:302
+OLD: Text('Ordenar por')
+NEW: Text(AppLocalizations.of(context)!.ordenarPor)
+
+# Frase do Dia
+# Key: fraseDoDia
+# Locations: 1
+#   lib/src/features/notes/presentation/notes_screen.dart:497
+OLD: Text('Frase do Dia')
+NEW: Text(AppLocalizations.of(context)!.fraseDoDia)
+
+# Excluir nota?
+# Key: deleteNote
+# Locations: 2
+#   lib/src/features/notes/presentation/notes_screen.dart:604
+#   lib/src/features/notes/presentation/note_editor_screen.dart:151
+OLD: Text('Excluir nota?')
+NEW: Text(AppLocalizations.of(context)!.deleteNote)
+
+# Excluir frase?
+# Key: excluirFrase
+# Locations: 1
+#   lib/src/features/notes/presentation/notes_screen.dart:612
+OLD: Text('Excluir frase?')
+NEW: Text(AppLocalizations.of(context)!.excluirFrase)
+
+# Busca em desenvolvimento
+# Key: buscaEmDesenvolvimento
+# Locations: 1
+#   lib/src/features/notes/presentation/notes_screen.dart:617
+OLD: Text('Busca em desenvolvimento')
+NEW: Text(AppLocalizations.of(context)!.buscaEmDesenvolvimento)
+
+# Esta ação não pode ser desfeita.
+# Key: deleteNoteMessage
+# Locations: 1
+#   lib/src/features/notes/presentation/note_editor_screen.dart:152
+OLD: Text('Esta ação não pode ser desfeita.')
+NEW: Text(AppLocalizations.of(context)!.deleteNoteMessage)
+
+# Alterações não salvas
+# Key: unsavedChanges
+# Locations: 1
+#   lib/src/features/notes/presentation/note_editor_screen.dart:608
+OLD: Text('Alterações não salvas')
+NEW: Text(AppLocalizations.of(context)!.unsavedChanges)
+
+# Você tem alterações não salvas. Deseja salvá-las?
+# Key: unsavedChangesMessage
+# Locations: 1
+#   lib/src/features/notes/presentation/note_editor_screen.dart:609
+OLD: Text('Você tem alterações não salvas. Deseja salvá-las?')
+NEW: Text(AppLocalizations.of(context)!.unsavedChangesMessage)
+
+# Login com Facebook em breve! Use Google ou entre como visitante.
+# Key: loginComFacebookEmBreveUseGoogleOuEntreC
+# Locations: 1
+#   lib/src/features/auth/presentation/login_screen.dart:227
+OLD: Text('Login com Facebook em breve! Use Google ou entre como visitante.')
+NEW: Text(AppLocalizations.of(context)!.loginComFacebookEmBreveUseGoogleOuEntreC)
+
+# Ver Detalhes
+# Key: verDetalhes
+# Locations: 1
+#   lib/src/features/library/presentation/library_screen.dart:642
+OLD: Text('Ver Detalhes')
+NEW: Text(AppLocalizations.of(context)!.verDetalhes)
+
+# Atualizar Progresso
+# Key: atualizarProgresso
+# Locations: 2
+#   lib/src/features/library/presentation/library_screen.dart:659
+#   lib/src/features/library/presentation/book_detail_screen.dart:400
+OLD: Text('Atualizar Progresso')
+NEW: Text(AppLocalizations.of(context)!.atualizarProgresso)
+
+# Excluir Livro?
+# Key: excluirLivro
+# Locations: 2
+#   lib/src/features/library/presentation/library_screen.dart:803
+#   lib/src/features/library/presentation/book_detail_screen.dart:777
+OLD: Text('Excluir Livro?')
+NEW: Text(AppLocalizations.of(context)!.excluirLivro)
+
+# Deseja excluir 
+# Key: desejaExcluir
+# Locations: 2
+#   lib/src/features/library/presentation/library_screen.dart:804
+#   lib/src/features/library/presentation/book_detail_screen.dart:778
+OLD: Text('Deseja excluir ')
+NEW: Text(AppLocalizations.of(context)!.desejaExcluir)
+
+# Adicionar Artigo
+# Key: adicionarArtigo
+# Locations: 1
+#   lib/src/features/library/presentation/library_screen.dart:1281
+OLD: Text('Adicionar Artigo')
+NEW: Text(AppLocalizations.of(context)!.adicionarArtigo)
+
+# Salvar Artigo
+# Key: salvarArtigo
+# Locations: 1
+#   lib/src/features/library/presentation/library_screen.dart:1639
+OLD: Text('Salvar Artigo')
+NEW: Text(AppLocalizations.of(context)!.salvarArtigo)
+
+# Para Ler
+# Key: toRead
+# Locations: 1
+#   lib/src/features/library/presentation/library_screen.dart:1687
+OLD: Text('Para Ler')
+NEW: Text(AppLocalizations.of(context)!.toRead)
+
+# Salvar na Biblioteca
+# Key: salvarNaBiblioteca
+# Locations: 1
+#   lib/src/features/library/presentation/library_screen.dart:2403
+OLD: Text('Salvar na Biblioteca')
+NEW: Text(AppLocalizations.of(context)!.salvarNaBiblioteca)
+
+# Estatísticas de Leitura
+# Key: estatísticasDeLeitura
+# Locations: 1
+#   lib/src/features/library/presentation/statistics_screen.dart:29
+OLD: Text('Estatísticas de Leitura')
+NEW: Text(AppLocalizations.of(context)!.estatísticasDeLeitura)
+
+# Adicionar aos Favoritos
+# Key: addToFavorites
+# Locations: 1
+#   lib/src/features/library/presentation/add_book_screen.dart:579
+OLD: Text('Adicionar aos Favoritos')
+NEW: Text(AppLocalizations.of(context)!.addToFavorites)
+
+# Marcar este livro como favorito
+# Key: markAsFavorite
+# Locations: 1
+#   lib/src/features/library/presentation/add_book_screen.dart:580
+OLD: Text('Marcar este livro como favorito')
+NEW: Text(AppLocalizations.of(context)!.markAsFavorite)
+
+# Gênero Personalizado
+# Key: gêneroPersonalizado
+# Locations: 1
+#   lib/src/features/library/presentation/add_book_screen.dart:1036
+OLD: Text('Gênero Personalizado')
+NEW: Text(AppLocalizations.of(context)!.gêneroPersonalizado)
+
+# Livro não encontrado
+# Key: livroNãoEncontrado
+# Locations: 1
+#   lib/src/features/library/presentation/book_detail_screen.dart:131
+OLD: Text('Livro não encontrado')
+NEW: Text(AppLocalizations.of(context)!.livroNãoEncontrado)
+
+# Compartilhar
+# Key: compartilhar
+# Locations: 1
+#   lib/src/features/library/presentation/book_detail_screen.dart:160
+OLD: Text('Compartilhar')
+NEW: Text(AppLocalizations.of(context)!.compartilhar)
+
+# Editar
+# Key: edit
+# Locations: 1
+#   lib/src/features/tasks/presentation/tasks_screen.dart:1377
+OLD: Text('Editar')
+NEW: Text(AppLocalizations.of(context)!.edit)
+
+# Excluir
+# Key: delete
+# Locations: 1
+#   lib/src/features/tasks/presentation/tasks_screen.dart:1385
+OLD: Text('Excluir')
+NEW: Text(AppLocalizations.of(context)!.delete)
+
+# Limpar filtros
+# Key: limparFiltros
+# Locations: 1
+#   lib/src/features/news/presentation/news_screen.dart:1102
+OLD: Text('Limpar filtros')
+NEW: Text(AppLocalizations.of(context)!.limparFiltros)
+
+# Widgets da Home
+# Key: widgetsDaHome
+# Locations: 1
+#   lib/src/features/home/presentation/widgets_config_screen.dart:52
+OLD: Text('Widgets da Home')
+NEW: Text(AppLocalizations.of(context)!.widgetsDaHome)
+
+# Widgets restaurados para o padrão
+# Key: widgetsRestauradosParaOPadrão
+# Locations: 1
+#   lib/src/features/home/presentation/widgets_config_screen.dart:59
+OLD: Text('Widgets restaurados para o padrão')
+NEW: Text(AppLocalizations.of(context)!.widgetsRestauradosParaOPadrão)
+
+# Detalhes
+# Key: detalhes
+# Locations: 1
+#   lib/src/features/home/presentation/home_screen.dart:2215
+OLD: Text('Detalhes')
+NEW: Text(AppLocalizations.of(context)!.detalhes)
+
+# Excluir hábito?
+# Key: excluirHábito
+# Locations: 1
+#   lib/src/features/home/presentation/home_screen.dart:2231
+OLD: Text('Excluir hábito?')
+NEW: Text(AppLocalizations.of(context)!.excluirHábito)
+
+# Tem certeza que deseja excluir 
+# Key: temCertezaQueDesejaExcluir
+# Locations: 2
+#   lib/src/features/home/presentation/home_screen.dart:2232
+#   lib/src/features/home/presentation/home_screen.dart:2579
+OLD: Text('Tem certeza que deseja excluir ')
+NEW: Text(AppLocalizations.of(context)!.temCertezaQueDesejaExcluir)
+
+# Ver detalhes
+# Key: verDetalhes1
+# Locations: 1
+#   lib/src/features/home/presentation/home_screen.dart:2561
+OLD: Text('Ver detalhes')
+NEW: Text(AppLocalizations.of(context)!.verDetalhes1)
+
+# Excluir tarefa?
+# Key: excluirTarefa
+# Locations: 1
+#   lib/src/features/home/presentation/home_screen.dart:2578
+OLD: Text('Excluir tarefa?')
+NEW: Text(AppLocalizations.of(context)!.excluirTarefa)
+
+# Nome
+# Key: nome
+# Locations: 2
+#   lib/src/features/home/presentation/home_screen.dart:4184
+#   lib/src/features/home/presentation/home_screen.dart:4539
+OLD: Text('Nome')
+NEW: Text(AppLocalizations.of(context)!.nome)
+
+# Horário (opcional)
+# Key: horárioOpcional
+# Locations: 2
+#   lib/src/features/home/presentation/home_screen.dart:4204
+#   lib/src/features/home/presentation/home_screen.dart:4556
+OLD: Text('Horário (opcional)')
+NEW: Text(AppLocalizations.of(context)!.horárioOpcional)
+
+# Repetir em
+# Key: repetirEm
+# Locations: 1
+#   lib/src/features/home/presentation/home_screen.dart:4258
+OLD: Text('Repetir em')
+NEW: Text(AppLocalizations.of(context)!.repetirEm)
+
+# Ícone
+# Key: ícone
+# Locations: 2
+#   lib/src/features/home/presentation/home_screen.dart:4326
+#   lib/src/features/home/presentation/home_screen.dart:4610
+OLD: Text('Ícone')
+NEW: Text(AppLocalizations.of(context)!.ícone)
+
+# Cor
+# Key: cor
+# Locations: 2
+#   lib/src/features/home/presentation/home_screen.dart:4351
+#   lib/src/features/home/presentation/home_screen.dart:4635
+OLD: Text('Cor')
+NEW: Text(AppLocalizations.of(context)!.cor)
+
+# Abrir
+# Key: abrir
+# Locations: 1
+#   lib/src/features/home/presentation/home_screen_backup.dart:671
+OLD: Text('Abrir')
+NEW: Text(AppLocalizations.of(context)!.abrir)
+
+# Frase salva com sucesso!
+# Key: fraseSalvaComSucesso
+# Locations: 1
+#   lib/src/features/home/presentation/home_screen_backup.dart:1167
+OLD: Text('Frase salva com sucesso!')
+NEW: Text(AppLocalizations.of(context)!.fraseSalvaComSucesso)
+
+# Salvar Frase
+# Key: salvarFrase
+# Locations: 1
+#   lib/src/features/home/presentation/home_screen_backup.dart:1183
+OLD: Text('Salvar Frase')
+NEW: Text(AppLocalizations.of(context)!.salvarFrase)
+
+# Nota salva com sucesso!
+# Key: notaSalvaComSucesso
+# Locations: 1
+#   lib/src/features/home/presentation/home_screen_backup.dart:1434
+OLD: Text('Nota salva com sucesso!')
+NEW: Text(AppLocalizations.of(context)!.notaSalvaComSucesso)
+
+# Salvar Nota
+# Key: salvarNota
+# Locations: 1
+#   lib/src/features/home/presentation/home_screen_backup.dart:1449
+OLD: Text('Salvar Nota')
+NEW: Text(AppLocalizations.of(context)!.salvarNota)
+
+# Tarefa adicionada com sucesso!
+# Key: tarefaAdicionadaComSucesso
+# Locations: 1
+#   lib/src/features/home/presentation/home_screen_backup.dart:1519
+OLD: Text('Tarefa adicionada com sucesso!')
+NEW: Text(AppLocalizations.of(context)!.tarefaAdicionadaComSucesso)
+
+# Adicionar Tarefa
+# Key: adicionarTarefa
+# Locations: 1
+#   lib/src/features/home/presentation/home_screen_backup.dart:1534
+OLD: Text('Adicionar Tarefa')
+NEW: Text(AppLocalizations.of(context)!.adicionarTarefa)
+
+# dias
+# Key: days
+# Locations: 2
+#   lib/src/features/home/presentation/widgets/streak_widget.dart:96
+#   lib/src/features/gamification/presentation/profile_screen.dart:587
+OLD: Text('dias')
+NEW: Text(AppLocalizations.of(context)!.days)
+
+# Pomodoro
+# Key: pomodoro
+# Locations: 1
+#   lib/src/features/home/presentation/widgets/quick_pomodoro_widget.dart:39
+OLD: Text('Pomodoro')
+NEW: Text(AppLocalizations.of(context)!.pomodoro)
+
+# min
+# Key: min
+# Locations: 1
+#   lib/src/features/home/presentation/widgets/quick_pomodoro_widget.dart:89
+OLD: Text('min')
+NEW: Text(AppLocalizations.of(context)!.min)
+
+# Citação do Dia
+# Key: citaçãoDoDia
+# Locations: 1
+#   lib/src/features/home/presentation/widgets/home_widget_renderer.dart:86
+OLD: Text('Citação do Dia')
+NEW: Text(AppLocalizations.of(context)!.citaçãoDoDia)
+
+# Atividade Semanal
+# Key: atividadeSemanal
+# Locations: 2
+#   lib/src/features/home/presentation/widgets/home_widget_renderer.dart:128
+#   lib/src/features/gamification/presentation/profile_screen.dart:639
+OLD: Text('Atividade Semanal')
+NEW: Text(AppLocalizations.of(context)!.atividadeSemanal)
+
+# Hábitos do Dia
+# Key: hábitosDoDia
+# Locations: 1
+#   lib/src/features/home/presentation/widgets/home_widget_renderer.dart:208
+OLD: Text('Hábitos do Dia')
+NEW: Text(AppLocalizations.of(context)!.hábitosDoDia)
+
+# Veja seus hábitos no calendário
+# Key: vejaSeusHábitosNoCalendário
+# Locations: 1
+#   lib/src/features/home/presentation/widgets/home_widget_renderer.dart:222
+OLD: Text('Veja seus hábitos no calendário')
+NEW: Text(AppLocalizations.of(context)!.vejaSeusHábitosNoCalendário)
+
+# Lendo Agora
+# Key: lendoAgora
+# Locations: 1
+#   lib/src/features/home/presentation/widgets/current_reading_widget.dart:87
+OLD: Text('Lendo Agora')
+NEW: Text(AppLocalizations.of(context)!.lendoAgora)
+
+# Leitura Atual
+# Key: leituraAtual
+# Locations: 1
+#   lib/src/features/home/presentation/widgets/current_reading_widget.dart:177
+OLD: Text('Leitura Atual')
+NEW: Text(AppLocalizations.of(context)!.leituraAtual)
+
+# Nenhum livro em leitura
+# Key: nenhumLivroEmLeitura
+# Locations: 1
+#   lib/src/features/home/presentation/widgets/current_reading_widget.dart:191
+OLD: Text('Nenhum livro em leitura')
+NEW: Text(AppLocalizations.of(context)!.nenhumLivroEmLeitura)
+
+# ✅ Nota salva!
+# Key: notaSalva
+# Locations: 1
+#   lib/src/features/home/presentation/widgets/quick_notes_widget.dart:64
+OLD: Text('✅ Nota salva!')
+NEW: Text(AppLocalizations.of(context)!.notaSalva)
+
+# Notas Rápidas
+# Key: notasRápidas
+# Locations: 1
+#   lib/src/features/home/presentation/widgets/quick_notes_widget.dart:94
+OLD: Text('Notas Rápidas')
+NEW: Text(AppLocalizations.of(context)!.notasRápidas)
+
+# Ver todas
+# Key: verTodas
+# Locations: 2
+#   lib/src/features/home/presentation/widgets/quick_notes_widget.dart:98
+#   lib/src/features/home/presentation/widgets/today_tasks_widget.dart:59
+OLD: Text('Ver todas')
+NEW: Text(AppLocalizations.of(context)!.verTodas)
+
+# Nenhuma nota ainda
+# Key: nenhumaNotaAinda
+# Locations: 1
+#   lib/src/features/home/presentation/widgets/quick_notes_widget.dart:155
+OLD: Text('Nenhuma nota ainda')
+NEW: Text(AppLocalizations.of(context)!.nenhumaNotaAinda)
+
+# Tarefas do Dia
+# Key: tarefasDoDia
+# Locations: 1
+#   lib/src/features/home/presentation/widgets/today_tasks_widget.dart:55
+OLD: Text('Tarefas do Dia')
+NEW: Text(AppLocalizations.of(context)!.tarefasDoDia)
+
+# Nenhuma tarefa para hoje!
+# Key: nenhumaTarefaParaHoje
+# Locations: 1
+#   lib/src/features/home/presentation/widgets/today_tasks_widget.dart:85
+OLD: Text('Nenhuma tarefa para hoje!')
+NEW: Text(AppLocalizations.of(context)!.nenhumaTarefaParaHoje)
+
+# Missões Diárias
+# Key: missõesDiárias
+# Locations: 2
+#   lib/src/features/home/presentation/widgets/daily_goals_widget.dart:75
+#   lib/src/features/gamification/presentation/profile_screen.dart:740
+OLD: Text('Missões Diárias')
+NEW: Text(AppLocalizations.of(context)!.missõesDiárias)
+
+# PRO ATIVO
+# Key: proAtivo
+# Locations: 1
+#   lib/src/features/subscription/presentation/pro_screen.dart:61
+OLD: Text('PRO ATIVO')
+NEW: Text(AppLocalizations.of(context)!.proAtivo)
+
+# POPULAR
+# Key: popular
+# Locations: 1
+#   lib/src/features/subscription/presentation/pro_screen.dart:278
+OLD: Text('POPULAR')
+NEW: Text(AppLocalizations.of(context)!.popular)
+
+# Compra PRO Vitalício
+# Key: compraProVitalício
+# Locations: 1
+#   lib/src/features/subscription/presentation/pro_screen.dart:327
+OLD: Text('Compra PRO Vitalício')
+NEW: Text(AppLocalizations.of(context)!.compraProVitalício)
+
+# Esta funcionalidade será integrada com a loja de apps. Por enquanto, você pode ativar o modo de teste.
+# Key: estaFuncionalidadeSeráIntegradaComALojaD
+# Locations: 2
+#   lib/src/features/subscription/presentation/pro_screen.dart:328
+#   lib/src/features/subscription/presentation/pro_screen.dart:354
+OLD: Text('Esta funcionalidade será integrada com a loja de apps. Por enquanto, você pode ativar o modo de teste.')
+NEW: Text(AppLocalizations.of(context)!.estaFuncionalidadeSeráIntegradaComALojaD)
+
+# Cancelar
+# Key: cancel
+# Locations: 6
+#   lib/src/features/subscription/presentation/pro_screen.dart:332
+#   lib/src/features/subscription/presentation/pro_screen.dart:358
+#   lib/src/features/settings/presentation/settings_screen.dart:941
+#   lib/src/features/settings/presentation/backup_screen.dart:477
+#   lib/src/features/settings/presentation/backup_screen.dart:527
+#   lib/src/features/settings/presentation/backup_screen.dart:584
+OLD: Text('Cancelar')
+NEW: Text(AppLocalizations.of(context)!.cancel)
+
+# 🎉 PRO Vitalício ativado! (modo teste)
+# Key: proVitalícioAtivadoModoTeste
+# Locations: 1
+#   lib/src/features/subscription/presentation/pro_screen.dart:339
+OLD: Text('🎉 PRO Vitalício ativado! (modo teste)')
+NEW: Text(AppLocalizations.of(context)!.proVitalícioAtivadoModoTeste)
+
+# Ativar Teste
+# Key: ativarTeste
+# Locations: 2
+#   lib/src/features/subscription/presentation/pro_screen.dart:342
+#   lib/src/features/subscription/presentation/pro_screen.dart:368
+OLD: Text('Ativar Teste')
+NEW: Text(AppLocalizations.of(context)!.ativarTeste)
+
+# Assinatura PRO Mensal
+# Key: assinaturaProMensal
+# Locations: 1
+#   lib/src/features/subscription/presentation/pro_screen.dart:353
+OLD: Text('Assinatura PRO Mensal')
+NEW: Text(AppLocalizations.of(context)!.assinaturaProMensal)
+
+# 🎉 PRO Mensal ativado! (modo teste - 30 dias)
+# Key: proMensalAtivadoModoTeste30Dias
+# Locations: 1
+#   lib/src/features/subscription/presentation/pro_screen.dart:365
+OLD: Text('🎉 PRO Mensal ativado! (modo teste - 30 dias)')
+NEW: Text(AppLocalizations.of(context)!.proMensalAtivadoModoTeste30Dias)
+
+# Chave PIX
+# Key: chavePix
+# Locations: 1
+#   lib/src/features/subscription/presentation/donation_screen.dart:366
+OLD: Text('Chave PIX')
+NEW: Text(AppLocalizations.of(context)!.chavePix)
+
+# Copie a chave abaixo para fazer a transferência
+# Key: copieAChaveAbaixoParaFazerATransferência
+# Locations: 1
+#   lib/src/features/subscription/presentation/donation_screen.dart:368
+OLD: Text('Copie a chave abaixo para fazer a transferência')
+NEW: Text(AppLocalizations.of(context)!.copieAChaveAbaixoParaFazerATransferência)
+
+# ✅ Chave PIX copiada!
+# Key: chavePixCopiada
+# Locations: 1
+#   lib/src/features/subscription/presentation/donation_screen.dart:386
+OLD: Text('✅ Chave PIX copiada!')
+NEW: Text(AppLocalizations.of(context)!.chavePixCopiada)
+
+# Fechar
+# Key: close
+# Locations: 1
+#   lib/src/features/subscription/presentation/donation_screen.dart:405
+OLD: Text('Fechar')
+NEW: Text(AppLocalizations.of(context)!.close)
+
+# — Inspirado em Maslow
+# Key: inspiradoEmMaslow
+# Locations: 1
+#   lib/src/features/gamification/presentation/profile_screen.dart:835
+OLD: Text('— Inspirado em Maslow')
+NEW: Text(AppLocalizations.of(context)!.inspiradoEmMaslow)
+
+# Áreas de Desenvolvimento
+# Key: áreasDeDesenvolvimento
+# Locations: 1
+#   lib/src/features/gamification/presentation/profile_screen.dart:868
+OLD: Text('Áreas de Desenvolvimento')
+NEW: Text(AppLocalizations.of(context)!.áreasDeDesenvolvimento)
+
+# Hierarquia de Maslow
+# Key: hierarquiaDeMaslow
+# Locations: 1
+#   lib/src/features/gamification/presentation/profile_screen.dart:1047
+OLD: Text('Hierarquia de Maslow')
+NEW: Text(AppLocalizations.of(context)!.hierarquiaDeMaslow)
+
+# Habilidades
+# Key: habilidades
+# Locations: 1
+#   lib/src/features/gamification/presentation/profile_screen.dart:1213
+OLD: Text('Habilidades')
+NEW: Text(AppLocalizations.of(context)!.habilidades)
+
+# conquistas desbloqueadas
+# Key: conquistasDesbloqueadas
+# Locations: 1
+#   lib/src/features/gamification/presentation/profile_screen.dart:1332
+OLD: Text('conquistas desbloqueadas')
+NEW: Text(AppLocalizations.of(context)!.conquistasDesbloqueadas)
+
+# Editar perfil
+# Key: editarPerfil
+# Locations: 1
+#   lib/src/features/settings/presentation/settings_screen.dart:363
+OLD: Text('Editar perfil')
+NEW: Text(AppLocalizations.of(context)!.editarPerfil)
+
+# Escolher Tema
+# Key: escolherTema
+# Locations: 1
+#   lib/src/features/settings/presentation/settings_screen.dart:486
+OLD: Text('Escolher Tema')
+NEW: Text(AppLocalizations.of(context)!.escolherTema)
+
+# Personalize a aparência do app
+# Key: personalizeAAparênciaDoApp
+# Locations: 1
+#   lib/src/features/settings/presentation/settings_screen.dart:488
+OLD: Text('Personalize a aparência do app')
+NEW: Text(AppLocalizations.of(context)!.personalizeAAparênciaDoApp)
+
+# Editar Perfil
+# Key: editarPerfil1
+# Locations: 1
+#   lib/src/features/settings/presentation/settings_screen.dart:742
+OLD: Text('Editar Perfil')
+NEW: Text(AppLocalizations.of(context)!.editarPerfil1)
+
+# Salvar
+# Key: save
+# Locations: 3
+#   lib/src/features/settings/presentation/settings_screen.dart:779
+#   lib/src/utils/mixins/sfx_mixin.dart:126
+#   lib/src/utils/widgets/sound_buttons.dart:12
+OLD: Text('Salvar')
+NEW: Text(AppLocalizations.of(context)!.save)
+
+# Galeria
+# Key: galeria
+# Locations: 1
+#   lib/src/features/settings/presentation/settings_screen.dart:802
+OLD: Text('Galeria')
+NEW: Text(AppLocalizations.of(context)!.galeria)
+
+# Câmera
+# Key: câmera
+# Locations: 1
+#   lib/src/features/settings/presentation/settings_screen.dart:803
+OLD: Text('Câmera')
+NEW: Text(AppLocalizations.of(context)!.câmera)
+
+# Remover
+# Key: remove
+# Locations: 1
+#   lib/src/features/settings/presentation/settings_screen.dart:804
+OLD: Text('Remover')
+NEW: Text(AppLocalizations.of(context)!.remove)
+
+# Horários
+# Key: horários
+# Locations: 1
+#   lib/src/features/settings/presentation/settings_screen.dart:899
+OLD: Text('Horários')
+NEW: Text(AppLocalizations.of(context)!.horários)
+
+# Limpar dados?
+# Key: limparDados
+# Locations: 1
+#   lib/src/features/settings/presentation/settings_screen.dart:938
+OLD: Text('Limpar dados?')
+NEW: Text(AppLocalizations.of(context)!.limparDados)
+
+# Esta ação irá apagar todos os seus registros permanentemente.
+# Key: estaAçãoIráApagarTodosOsSeusRegistrosPer
+# Locations: 1
+#   lib/src/features/settings/presentation/settings_screen.dart:939
+OLD: Text('Esta ação irá apagar todos os seus registros permanentemente.')
+NEW: Text(AppLocalizations.of(context)!.estaAçãoIráApagarTodosOsSeusRegistrosPer)
+
+# Dados limpos com sucesso
+# Key: dadosLimposComSucesso
+# Locations: 1
+#   lib/src/features/settings/presentation/settings_screen.dart:942
+OLD: Text('Dados limpos com sucesso')
+NEW: Text(AppLocalizations.of(context)!.dadosLimposComSucesso)
+
+# Limpar
+# Key: limpar
+# Locations: 1
+#   lib/src/features/settings/presentation/settings_screen.dart:942
+OLD: Text('Limpar')
+NEW: Text(AppLocalizations.of(context)!.limpar)
+
+# Seu companheiro de produtividade e bem-estar pessoal.
+# Key: seuCompanheiroDeProdutividadeEBemestarPe
+# Locations: 1
+#   lib/src/features/settings/presentation/settings_screen.dart:956
+OLD: Text('Seu companheiro de produtividade e bem-estar pessoal.')
+NEW: Text(AppLocalizations.of(context)!.seuCompanheiroDeProdutividadeEBemestarPe)
+
+# FCM Token Debug
+# Key: fcmTokenDebug
+# Locations: 1
+#   lib/src/features/settings/presentation/fcm_token_debug_screen.dart:18
+OLD: Text('FCM Token Debug')
+NEW: Text(AppLocalizations.of(context)!.fcmTokenDebug)
+
+# ✅ Token copiado para área de transferência!
+# Key: tokenCopiadoParaÁreaDeTransferência
+# Locations: 1
+#   lib/src/features/settings/presentation/fcm_token_debug_screen.dart:163
+OLD: Text('✅ Token copiado para área de transferência!')
+NEW: Text(AppLocalizations.of(context)!.tokenCopiadoParaÁreaDeTransferência)
+
+# Copiar Token
+# Key: copiarToken
+# Locations: 2
+#   lib/src/features/settings/presentation/fcm_token_debug_screen.dart:171
+#   lib/src/utils/widgets/fcm_token_debug_widget.dart:124
+OLD: Text('Copiar Token')
+NEW: Text(AppLocalizations.of(context)!.copiarToken)
+
+# Notificação enviada!
+# Key: notificaçãoEnviada
+# Locations: 1
+#   lib/src/features/settings/presentation/notification_settings_screen.dart:289
+OLD: Text('Notificação enviada!')
+NEW: Text(AppLocalizations.of(context)!.notificaçãoEnviada)
+
+# Configurar
+# Key: configurar
+# Locations: 1
+#   lib/src/features/settings/presentation/notification_settings_screen.dart:635
+OLD: Text('Configurar')
+NEW: Text(AppLocalizations.of(context)!.configurar)
+
+# Desconectar
+# Key: desconectar
+# Locations: 1
+#   lib/src/features/settings/presentation/backup_screen.dart:472
+OLD: Text('Desconectar')
+NEW: Text(AppLocalizations.of(context)!.desconectar)
+
+# Deseja sair da conta Google?
+# Key: desejaSairDaContaGoogle
+# Locations: 1
+#   lib/src/features/settings/presentation/backup_screen.dart:473
+OLD: Text('Deseja sair da conta Google?')
+NEW: Text(AppLocalizations.of(context)!.desejaSairDaContaGoogle)
+
+# Restaurar Backup
+# Key: restoreBackup
+# Locations: 1
+#   lib/src/features/settings/presentation/backup_screen.dart:520
+OLD: Text('Restaurar Backup')
+NEW: Text(AppLocalizations.of(context)!.restoreBackup)
+
+# Restaurar
+# Key: restaurar
+# Locations: 1
+#   lib/src/features/settings/presentation/backup_screen.dart:531
+OLD: Text('Restaurar')
+NEW: Text(AppLocalizations.of(context)!.restaurar)
+
+# Importar Backup
+# Key: importarBackup
+# Locations: 1
+#   lib/src/features/settings/presentation/backup_screen.dart:577
+OLD: Text('Importar Backup')
+NEW: Text(AppLocalizations.of(context)!.importarBackup)
+
+# Importar
+# Key: importar
+# Locations: 1
+#   lib/src/features/settings/presentation/backup_screen.dart:588
+OLD: Text('Importar')
+NEW: Text(AppLocalizations.of(context)!.importar)
+
+# Abrir Configurações
+# Key: abrirConfigurações
+# Locations: 1
+#   lib/src/features/settings/presentation/widgets/battery_optimization_dialog.dart:154
+OLD: Text('Abrir Configurações')
+NEW: Text(AppLocalizations.of(context)!.abrirConfigurações)
+
+# Sem dados suficientes...
+# Key: semDadosSuficientes
+# Locations: 1
+#   lib/src/features/analytics/presentation/mood_variation_line_chart.dart:126
+OLD: Text('Sem dados suficientes...')
+NEW: Text(AppLocalizations.of(context)!.semDadosSuficientes)
+
+# Precisa de pelo menos 2 registros...
+# Key: precisaDePeloMenos2Registros
+# Locations: 1
+#   lib/src/features/analytics/presentation/mood_variation_line_chart.dart:137
+OLD: Text('Precisa de pelo menos 2 registros...')
+NEW: Text(AppLocalizations.of(context)!.precisaDePeloMenos2Registros)
+
+# Not enough data...
+# Key: notEnoughData
+# Locations: 1
+#   lib/src/features/analytics/presentation/mood_count_bar_chart.dart:78
+OLD: Text('Not enough data...')
+NEW: Text(AppLocalizations.of(context)!.notEnoughData)
+
+# Week
+# Key: week
+# Locations: 1
+#   lib/src/features/analytics/presentation/chart_frame_card.dart:58
+OLD: Text('Week')
+NEW: Text(AppLocalizations.of(context)!.week)
+
+# Month
+# Key: month
+# Locations: 1
+#   lib/src/features/analytics/presentation/chart_frame_card.dart:62
+OLD: Text('Month')
+NEW: Text(AppLocalizations.of(context)!.month)
+
+# Year
+# Key: year
+# Locations: 1
+#   lib/src/features/analytics/presentation/chart_frame_card.dart:66
+OLD: Text('Year')
+NEW: Text(AppLocalizations.of(context)!.year)
+
+# All
+# Key: all1
+# Locations: 1
+#   lib/src/features/analytics/presentation/chart_frame_card.dart:70
+OLD: Text('All')
+NEW: Text(AppLocalizations.of(context)!.all1)
+
+# Botão
+# Key: botão
+# Locations: 1
+#   lib/src/utils/mixins/sfx_mixin.dart:18
+OLD: Text('Botão')
+NEW: Text(AppLocalizations.of(context)!.botão)
+
+# Confirmar
+# Key: confirm
+# Locations: 1
+#   lib/src/utils/helpers/sound_dialogs.dart:11
+OLD: Text('Confirmar')
+NEW: Text(AppLocalizations.of(context)!.confirm)
+
+# Deseja continuar?
+# Key: desejaContinuar
+# Locations: 1
+#   lib/src/utils/helpers/sound_dialogs.dart:12
+OLD: Text('Deseja continuar?')
+NEW: Text(AppLocalizations.of(context)!.desejaContinuar)
+
+# Não
+# Key: no
+# Locations: 1
+#   lib/src/utils/helpers/sound_dialogs.dart:14
+OLD: Text('Não')
+NEW: Text(AppLocalizations.of(context)!.no)
+
+# Sim
+# Key: yes
+# Locations: 1
+#   lib/src/utils/helpers/sound_dialogs.dart:15
+OLD: Text('Sim')
+NEW: Text(AppLocalizations.of(context)!.yes)
+
+# Token copiado para área de transferência!
+# Key: tokenCopiadoParaÁreaDeTransferência1
+# Locations: 1
+#   lib/src/utils/widgets/fcm_token_debug_widget.dart:118
+OLD: Text('Token copiado para área de transferência!')
+NEW: Text(AppLocalizations.of(context)!.tokenCopiadoParaÁreaDeTransferência1)
+

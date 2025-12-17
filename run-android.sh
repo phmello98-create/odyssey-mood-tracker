@@ -5,7 +5,11 @@
 
 cd "$(dirname "$0")"
 
-FLUTTER_BIN="/home/agyspc1/flutter/bin/flutter"
+# Exportar variáveis do Android SDK
+export ANDROID_HOME="$HOME/Android/Sdk"
+export PATH="$PATH:$ANDROID_HOME/platform-tools:$ANDROID_HOME/tools:$ANDROID_HOME/tools/bin"
+
+FLUTTER_BIN="/usr/bin/flutter"
 
 echo "🤖 Odyssey - Executar no Android"
 echo "================================"
@@ -17,8 +21,8 @@ DEVICES=$($FLUTTER_BIN devices 2>&1)
 
 # Tentar localizar o ADB
 ADB_BIN=""
-if [ -f "/home/agyspc1/Android/Sdk/platform-tools/adb" ]; then
-    ADB_BIN="/home/agyspc1/Android/Sdk/platform-tools/adb"
+if [ -f "$ANDROID_HOME/platform-tools/adb" ]; then
+    ADB_BIN="$ANDROID_HOME/platform-tools/adb"
 elif command -v adb &> /dev/null; then
     ADB_BIN=$(command -v adb)
 fi
