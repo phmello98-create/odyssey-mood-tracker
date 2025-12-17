@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:odyssey/src/providers/timer_provider.dart';
 import 'package:flutter/services.dart';
@@ -15,9 +14,14 @@ import 'package:odyssey/src/constants/app_theme.dart';
 import 'package:odyssey/src/utils/widgets/odyssey_card.dart';
 import 'package:odyssey/src/utils/navigation_provider.dart';
 import 'package:odyssey/src/features/mood_records/presentation/add_mood_record/add_mood_record_form.dart';
+import 'package:odyssey/src/features/mood_records/data/mood_log/mood_record_repository.dart';
+import 'package:odyssey/src/features/mood_records/domain/mood_log/mood_record.dart';
 import 'package:odyssey/src/features/habits/data/habit_repository.dart';
 import 'package:odyssey/src/features/habits/domain/habit.dart';
 import 'package:odyssey/src/features/gamification/data/gamification_repository.dart';
+import 'package:odyssey/src/features/notes/data/notes_repository.dart';
+import 'package:odyssey/src/features/time_tracker/data/time_tracking_repository.dart';
+import 'package:odyssey/src/features/time_tracker/domain/time_tracking_record.dart';
 
 import 'package:odyssey/src/utils/widgets/feedback_widgets.dart';
 import 'package:odyssey/src/utils/services/sound_service.dart';
@@ -32,7 +36,6 @@ import 'package:odyssey/src/features/habits/presentation/habits_calendar_screen.
 import 'package:odyssey/src/features/news/presentation/news_screen.dart';
 import 'package:odyssey/src/utils/smart_classifier.dart';
 import 'package:odyssey/src/utils/widgets/smart_quick_add.dart';
-import 'package:odyssey/src/utils/widgets/animated_stats.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:odyssey/src/features/news/data/news_image_fetcher.dart';
 import 'package:odyssey/src/features/home/data/home_widgets_provider.dart';
@@ -47,9 +50,14 @@ import 'package:odyssey/src/features/home/presentation/widgets/quick_mood_widget
 import 'package:odyssey/src/features/onboarding/services/showcase_service.dart'
     as showcase;
 import 'package:odyssey/src/utils/settings_provider.dart';
-import 'package:odyssey/src/features/home/presentation/widgets/home_suggestions_widget.dart';
+import 'package:odyssey/src/features/home/presentation/widgets/home_suggestions_widget.dart'
+    hide AnimatedBuilder;
 import 'package:odyssey/src/features/home/presentation/widgets/global_search_bar.dart';
-import 'package:odyssey/src/features/home/presentation/widgets/notification_center.dart';
+import 'package:odyssey/src/features/community/presentation/screens/community_screen.dart';
+import 'package:odyssey/src/features/community/presentation/screens/create_post_screen.dart';
+import 'package:odyssey/src/features/community/presentation/providers/community_providers.dart';
+import 'package:odyssey/src/features/community/domain/post.dart';
+import 'package:odyssey/src/features/community/presentation/widgets/user_avatar.dart';
 
 // Frases motivacionais/céticas e de grandes pensadores
 const List<String> _dailyInsights = [
@@ -150,17 +158,24 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   Timer? _insightTimer;
 
   // Tabs de Hábitos/Tarefas
-  late PageController _habitsTasksPageController;
   int _habitsTasksTabIndex = 0;
+
+  // Calendário expandido (semana/mês)
+  bool _isCalendarExpanded = false;
+
+  // Chart selection (0: Habits, 1: Focus, 2: Mood)
+  int _selectedChartIndex = 0;
 
   // Show/Hide completed items
   bool _showCompletedHabits = false;
   bool _showCompletedTasks = false;
 
+  // Quick task creation controller
+  final TextEditingController _quickTaskController = TextEditingController();
+
   @override
   void initState() {
     super.initState();
-    _habitsTasksPageController = PageController();
     _initShowcase();
     _animationController = AnimationController(
       duration: const Duration(milliseconds: 600),
@@ -233,8 +248,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     _animationController.dispose();
     _progressController.dispose();
     _insightController.dispose();
-    _habitsTasksPageController.dispose();
     _insightTimer?.cancel();
+    _quickTaskController.dispose();
     super.dispose();
   }
 
@@ -490,7 +505,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               // ==========================================
               SliverToBoxAdapter(
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
                   child: _buildQuickStats(context),
                 ),
               ),
@@ -589,111 +604,336 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   Widget _buildCommunitySection() {
     final colors = Theme.of(context).colorScheme;
 
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: colors.surface,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: colors.shadow.withOpacity(0.04),
-            blurRadius: 16,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: colors.primary.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(
-                  Icons.people_rounded,
-                  color: colors.primary,
-                  size: 20,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Text(
-                'Comunidade',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: colors.onSurface,
-                ),
+    return Consumer(
+      builder: (context, ref, child) {
+        final feedAsync = ref.watch(feedProvider);
+
+        return Container(
+          decoration: BoxDecoration(
+            color: colors.surface,
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [
+              BoxShadow(
+                color: colors.shadow.withOpacity(0.04),
+                blurRadius: 16,
+                offset: const Offset(0, 4),
               ),
             ],
           ),
-          const SizedBox(height: 16),
-          Center(
-            child: Column(
-              children: [
-                Icon(
-                  Icons.groups_rounded,
-                  size: 48,
-                  color: colors.onSurfaceVariant.withOpacity(0.3),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  'Em breve',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: colors.onSurface,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Conecte-se com outros usuários,\ncompartilhe conquistas e inspire-se!',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: colors.onSurfaceVariant,
-                    height: 1.4,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 8,
-                  ),
-                  decoration: BoxDecoration(
-                    color: colors.primary.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.rocket_launch_rounded,
-                        size: 16,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header
+              Padding(
+                padding: const EdgeInsets.all(20),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: colors.primary.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(
+                        Icons.people_rounded,
+                        color: colors.primary,
+                        size: 20,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      'Comunidade',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: colors.onSurface,
+                      ),
+                    ),
+                    const Spacer(),
+                    TextButton.icon(
+                      onPressed: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const CommunityScreen(),
+                          ),
+                        );
+                      },
+                      icon: Icon(
+                        Icons.arrow_forward_rounded,
+                        size: 18,
                         color: colors.primary,
                       ),
-                      const SizedBox(width: 6),
-                      Text(
-                        'Recursos em desenvolvimento',
+                      label: Text(
+                        'Ver tudo',
                         style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w500,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
                           color: colors.primary,
                         ),
                       ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Content
+              feedAsync.when(
+                data: (posts) {
+                  if (posts.isEmpty) {
+                    return _buildEmptyCommunityState(colors);
+                  }
+
+                  // Mostrar últimos 3 posts
+                  final recentPosts = posts.take(3).toList();
+                  return Column(
+                    children: [
+                      ...recentPosts.map(
+                        (post) => _buildCommunityPostPreview(post, colors),
+                      ),
+                      const SizedBox(height: 12),
+                      // Botão para criar post
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                        child: SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton.icon(
+                            onPressed: () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => const CreatePostScreen(),
+                                ),
+                              );
+                            },
+                            icon: Icon(
+                              Icons.add_rounded,
+                              size: 18,
+                              color: colors.primary,
+                            ),
+                            label: Text(
+                              'Compartilhar algo',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: colors.primary,
+                              ),
+                            ),
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              side: BorderSide(
+                                color: colors.primary.withOpacity(0.3),
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
                     ],
+                  );
+                },
+                loading: () => Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Center(
+                    child: CircularProgressIndicator(
+                      color: colors.primary,
+                      strokeWidth: 2,
+                    ),
                   ),
                 ),
-              ],
+                error: (_, __) => _buildEmptyCommunityState(colors),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildEmptyCommunityState(ColorScheme colors) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+      child: Column(
+        children: [
+          Icon(
+            Icons.groups_rounded,
+            size: 48,
+            color: colors.onSurfaceVariant.withOpacity(0.3),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Seja o primeiro!',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: colors.onSurface,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Compartilhe suas conquistas e inspire\noutros usuários na comunidade',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 12,
+              color: colors.onSurfaceVariant,
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const CreatePostScreen()),
+                );
+              },
+              icon: const Icon(Icons.add_rounded, size: 18),
+              label: const Text(
+                'Criar Primeiro Post',
+                style: TextStyle(fontWeight: FontWeight.w600),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: colors.primary,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
             ),
           ),
         ],
       ),
     );
+  }
+
+  Widget _buildCommunityPostPreview(Post post, ColorScheme colors) {
+    return InkWell(
+      onTap: () {
+        Navigator.of(
+          context,
+        ).push(MaterialPageRoute(builder: (_) => const CommunityScreen()));
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        decoration: BoxDecoration(
+          border: Border(
+            bottom: BorderSide(
+              color: colors.outlineVariant.withOpacity(0.2),
+              width: 1,
+            ),
+          ),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Avatar
+            UserAvatar(
+              photoUrl: post.userPhotoUrl,
+              level: post.userLevel,
+              size: 36,
+            ),
+            const SizedBox(width: 12),
+            // Content
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text(
+                        post.userName,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: colors.onSurface,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        '• ${_formatTimeAgo(post.createdAt)}',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: colors.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    post.content,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 13,
+                      height: 1.4,
+                      color: colors.onSurface.withOpacity(0.8),
+                    ),
+                  ),
+                  if (post.totalReactions > 0 || post.commentCount > 0)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 6),
+                      child: Row(
+                        children: [
+                          if (post.totalReactions > 0) ...[
+                            Icon(
+                              Icons.favorite_rounded,
+                              size: 14,
+                              color: Colors.red.withOpacity(0.7),
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              '${post.totalReactions}',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: colors.onSurfaceVariant,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                          ],
+                          if (post.commentCount > 0) ...[
+                            Icon(
+                              Icons.chat_bubble_outline_rounded,
+                              size: 14,
+                              color: colors.onSurfaceVariant.withOpacity(0.7),
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              '${post.commentCount}',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: colors.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _formatTimeAgo(DateTime dateTime) {
+    final now = DateTime.now();
+    final difference = now.difference(dateTime);
+
+    if (difference.inDays > 7) {
+      return DateFormat('dd MMM', 'pt_BR').format(dateTime);
+    } else if (difference.inDays > 0) {
+      return '${difference.inDays}d';
+    } else if (difference.inHours > 0) {
+      return '${difference.inHours}h';
+    } else if (difference.inMinutes > 0) {
+      return '${difference.inMinutes}m';
+    } else {
+      return 'agora';
+    }
   }
 
   Widget _buildWidgetByType(HomeWidgetType type) {
@@ -977,263 +1217,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   // MOOD SECTION COMPACTO
   // ==========================================
   Widget _buildWellnessActivityCard() {
-    final colors = Theme.of(context).colorScheme;
-
-    if (!_habitRepoInitialized || !_taskRepoInitialized) {
-      return _buildActivityCardPlaceholder(colors);
-    }
-
-    final habitRepo = ref.watch(habitRepositoryProvider);
-    final taskRepo = ref.watch(taskRepositoryProvider);
-
-    return FutureBuilder(
-      future: Future.wait([
-        habitRepo.getPendingHabitsForDate(DateTime.now()),
-        taskRepo.getPendingTasksForToday(),
-      ]),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return _buildActivityCardPlaceholder(colors);
-        }
-
-        if (!snapshot.hasData || snapshot.hasError) {
-          return _buildActivityCardPlaceholder(colors);
-        }
-
-        final habits = snapshot.data![0] as List<Habit>;
-        final tasks = snapshot.data![1] as List<TaskData>;
-
-        // Lógica de Priorização
-        String title = 'Tempo Livre';
-        String subtitle = 'Que tal uma pausa ou meditação?';
-        IconData icon = Icons.spa_rounded;
-        Color color = colors.primary;
-        int timerMinutes = 15;
-        bool hasActivity = false;
-
-        // 1. Hábito agendado para agora ou próximo
-        if (habits.isNotEmpty) {
-          final scheduledHabits = habits
-              .where((h) => h.scheduledTime != null)
-              .toList();
-          scheduledHabits.sort(
-            (a, b) => a.scheduledTime!.compareTo(b.scheduledTime!),
-          );
-
-          final habit = scheduledHabits.isNotEmpty
-              ? scheduledHabits.first
-              : habits.first;
-
-          hasActivity = true;
-          title = habit.name;
-          subtitle = habit.scheduledTime != null
-              ? 'Agendado para ${habit.scheduledTime}'
-              : 'Hábito pendente para hoje';
-          icon = IconData(habit.iconCode, fontFamily: 'MaterialIcons');
-          color = Color(habit.colorValue);
-          timerMinutes = 20;
-        }
-        // 2. Tarefa de alta prioridade ou qualquer tarefa
-        else if (tasks.isNotEmpty) {
-          final highPriorityTasks = tasks
-              .where((t) => t.priority == 'high')
-              .toList();
-          final task = highPriorityTasks.isNotEmpty
-              ? highPriorityTasks.first
-              : tasks.first;
-
-          hasActivity = true;
-          title = task.title;
-          subtitle = task.priority == 'high'
-              ? 'Prioridade Alta'
-              : 'Tarefa pendente';
-          icon = Icons.check_circle_outline_rounded;
-          color = task.priority == 'high' ? colors.error : colors.tertiary;
-          timerMinutes = 25;
-        }
-
-        return _buildActivityCardContent(
-          colors: colors,
-          title: title,
-          subtitle: subtitle,
-          icon: icon,
-          color: color,
-          hasActivity: hasActivity,
-          timerMinutes: timerMinutes,
-        );
-      },
-    );
-  }
-
-  Widget _buildActivityCardPlaceholder(ColorScheme colors) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: colors.surface,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: colors.shadow.withOpacity(0.04),
-            blurRadius: 16,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 60,
-            height: 60,
-            decoration: BoxDecoration(
-              color: colors.primaryContainer.withOpacity(0.5),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Icon(
-              Icons.hourglass_empty_rounded,
-              color: colors.onPrimaryContainer.withOpacity(0.5),
-              size: 28,
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  width: 120,
-                  height: 16,
-                  color: colors.onSurface.withOpacity(0.1),
-                ),
-                const SizedBox(height: 8),
-                Container(
-                  width: 80,
-                  height: 12,
-                  color: colors.onSurfaceVariant.withOpacity(0.1),
-                ),
-              ],
-            ),
-          ),
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: colors.primaryContainer.withOpacity(0.5),
-              shape: BoxShape.circle,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildActivityCardContent({
-    required ColorScheme colors,
-    required String title,
-    required String subtitle,
-    required IconData icon,
-    required Color color,
-    required bool hasActivity,
-    required int timerMinutes,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: colors.surface,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: colors.shadow.withOpacity(0.04),
-            blurRadius: 16,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 60,
-            height: 60,
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.15),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Icon(icon, color: color, size: 28),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: colors.onSurface,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  subtitle,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: colors.onSurfaceVariant,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Container(
-                  height: 4,
-                  width: 100,
-                  decoration: BoxDecoration(
-                    color: color.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                  child: FractionallySizedBox(
-                    alignment: Alignment.centerLeft,
-                    widthFactor: hasActivity
-                        ? 0.7
-                        : 0.0, // Mock progress based on activity
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: color,
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          GestureDetector(
-            onTap: () {
-              HapticFeedback.mediumImpact();
-              ref
-                  .read(timerProvider.notifier)
-                  .updatePomodoroSettings(
-                    focusDuration: Duration(minutes: timerMinutes),
-                    openPomodoroScreen: true,
-                  );
-              ref.read(navigationProvider.notifier).goToTimer();
-            },
-            child: Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.15),
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: color.withOpacity(0.2),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Icon(Icons.play_arrow_rounded, color: color, size: 26),
-            ),
-          ),
-        ],
-      ),
+    return _DayOverviewCard(
+      habitRepoInitialized: _habitRepoInitialized,
+      taskRepoInitialized: _taskRepoInitialized,
     );
   }
 
@@ -1420,76 +1406,103 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   // CALENDÁRIO SEMANAL (estilo HabitMate)
   // ==========================================
   Widget _buildWeekCalendar(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
     final now = DateTime.now();
-    // Pegar semana do mês selecionado que contém o dia selecionado
     final startOfWeek = _selectedDate.subtract(
       Duration(days: _selectedDate.weekday - 1),
     );
-    final dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    final dayNames = ['S', 'T', 'Q', 'Q', 'S', 'S', 'D'];
 
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-      children: List.generate(7, (index) {
-        final date = startOfWeek.add(Duration(days: index));
-        final isSelected = _isSameDay(date, _selectedDate);
-        final isToday = _isSameDay(date, now);
+      children: [
+        // Dias da semana
+        Expanded(
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: List.generate(7, (index) {
+              final date = startOfWeek.add(Duration(days: index));
+              final isSelected = _isSameDay(date, _selectedDate);
+              final isToday = _isSameDay(date, now);
 
-        return Expanded(
-          child: GestureDetector(
-            onTap: () {
-              HapticFeedback.selectionClick();
-              setState(() => _selectedDate = date);
-            },
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  dayNames[index],
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: isSelected || isToday
-                        ? FontWeight.w600
-                        : FontWeight.w400,
-                    color: isSelected
-                        ? Theme.of(context).colorScheme.primary
-                        : Theme.of(
-                            context,
-                          ).colorScheme.onSurfaceVariant.withOpacity(0.6),
-                  ),
-                ),
-                const SizedBox(height: 6),
-                AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  width: 38,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: isSelected
-                        ? Theme.of(context).colorScheme.primary
-                        : (isToday
-                              ? Theme.of(
-                                  context,
-                                ).colorScheme.surfaceContainerHighest
-                              : Colors.transparent),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Center(
-                    child: Text(
-                      '${date.day}',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: isSelected
-                            ? Theme.of(context).colorScheme.onPrimary
-                            : Theme.of(context).colorScheme.onSurface,
+              return Expanded(
+                child: GestureDetector(
+                  onTap: () {
+                    HapticFeedback.selectionClick();
+                    setState(() => _selectedDate = date);
+                  },
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        dayNames[index],
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                          color: isSelected
+                              ? colors.primary
+                              : colors.onSurfaceVariant.withOpacity(0.6),
+                        ),
                       ),
-                    ),
+                      const SizedBox(height: 4),
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 150),
+                        width: 32,
+                        height: 32,
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? colors.primary
+                              : (isToday
+                                    ? colors.primaryContainer
+                                    : Colors.transparent),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Center(
+                          child: Text(
+                            '${date.day}',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: isSelected
+                                  ? colors.onPrimary
+                                  : colors.onSurface,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              ],
+              );
+            }),
+          ),
+        ),
+        const SizedBox(width: 8),
+        // Botão expandir/mês (compacto)
+        GestureDetector(
+          onTap: () {
+            HapticFeedback.lightImpact();
+            setState(() => _isCalendarExpanded = !_isCalendarExpanded);
+          },
+          child: Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: _isCalendarExpanded
+                  ? colors.primary
+                  : colors.onSurface.withOpacity(0.05),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(
+              _isCalendarExpanded
+                  ? Icons.keyboard_arrow_up_rounded
+                  : Icons.calendar_month_rounded,
+              size: 20,
+              color: _isCalendarExpanded
+                  ? colors.onPrimary
+                  : colors.onSurfaceVariant,
             ),
           ),
-        );
-      }),
+        ),
+      ],
     );
   }
 
@@ -1497,45 +1510,254 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   // SEÇÃO COMBINADA HÁBITOS/TAREFAS COM TABS
   // ==========================================
   Widget _buildHabitsTasksSection(BuildContext context) {
-    return Column(
+    final colors = Theme.of(context).colorScheme;
+
+    return Stack(
+      clipBehavior: Clip.none,
       children: [
-        // Tab selector animado
-        _buildHabitsTasksTabBar(context),
-        const SizedBox(height: 16),
-        // Calendário semanal (compartilhado)
-        _buildWeekCalendar(context),
-        const SizedBox(height: 16),
-        // PageView com swipe entre hábitos e tarefas
-        SizedBox(
-          height: _calculatePageViewHeight(),
-          child: PageView(
-            controller: _habitsTasksPageController,
-            onPageChanged: (index) {
-              HapticFeedback.selectionClick();
-              setState(() => _habitsTasksTabIndex = index);
-            },
-            children: [
-              // Página 0: Hábitos
-              SingleChildScrollView(
-                physics: const NeverScrollableScrollPhysics(),
-                child: _buildHabitsList(context),
-              ),
-              // Página 1: Tarefas
-              SingleChildScrollView(
-                physics: const NeverScrollableScrollPhysics(),
-                child: _buildTasksListInline(context),
-              ),
-            ],
-          ),
+        // Conteúdo principal (sempre visível)
+        Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Tab selector animado
+            _buildHabitsTasksTabBar(context),
+            const SizedBox(height: 12),
+            // Calendário semanal (compartilhado)
+            _buildWeekCalendar(context),
+            const SizedBox(height: 12),
+            // Conteúdo dinâmico (Hábitos ou Tarefas)
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 300),
+              child: _habitsTasksTabIndex == 0
+                  ? _buildHabitsList(context)
+                  : _buildTasksListInline(context),
+            ),
+          ],
         ),
+
+        // Calendário expandido (overlay)
+        if (_isCalendarExpanded)
+          Positioned(
+            top: 100, // Logo abaixo do tab bar + week calendar
+            left: 0,
+            right: 0,
+            child: GestureDetector(
+              onTap: () {}, // Impede taps passarem para o fundo
+              child: Container(
+                margin: const EdgeInsets.symmetric(horizontal: 4),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: colors.surface,
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: colors.shadow.withOpacity(0.15),
+                      blurRadius: 20,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Mini calendário do mês
+                    _buildMonthCalendarGrid(context),
+                    const SizedBox(height: 12),
+                    // Botão fechar
+                    GestureDetector(
+                      onTap: () {
+                        HapticFeedback.lightImpact();
+                        setState(() => _isCalendarExpanded = false);
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: colors.primary.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.check_rounded,
+                              size: 16,
+                              color: colors.primary,
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              'Pronto',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: colors.primary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
       ],
     );
   }
 
+  // Calendário do mês em grid
+  Widget _buildMonthCalendarGrid(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final now = DateTime.now();
+    final firstDayOfMonth = DateTime(
+      _selectedDate.year,
+      _selectedDate.month,
+      1,
+    );
+    final lastDayOfMonth = DateTime(
+      _selectedDate.year,
+      _selectedDate.month + 1,
+      0,
+    );
+    final startPadding = firstDayOfMonth.weekday - 1; // Segunda = 0
+
+    final days = <Widget>[];
+    final dayNames = ['S', 'T', 'Q', 'Q', 'S', 'S', 'D'];
+
+    // Header com nome do mês
+    days.add(
+      Padding(
+        padding: const EdgeInsets.only(bottom: 12),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            GestureDetector(
+              onTap: () {
+                HapticFeedback.lightImpact();
+                setState(() {
+                  _selectedDate = DateTime(
+                    _selectedDate.year,
+                    _selectedDate.month - 1,
+                    1,
+                  );
+                });
+              },
+              child: Icon(Icons.chevron_left_rounded, color: colors.primary),
+            ),
+            Text(
+              DateFormat('MMMM yyyy', 'pt_BR').format(_selectedDate),
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.bold,
+                color: colors.onSurface,
+              ),
+            ),
+            GestureDetector(
+              onTap: () {
+                HapticFeedback.lightImpact();
+                setState(() {
+                  _selectedDate = DateTime(
+                    _selectedDate.year,
+                    _selectedDate.month + 1,
+                    1,
+                  );
+                });
+              },
+              child: Icon(Icons.chevron_right_rounded, color: colors.primary),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    // Dias da semana header
+    days.add(
+      Row(
+        children: dayNames
+            .map(
+              (name) => Expanded(
+                child: Center(
+                  child: Text(
+                    name,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: colors.onSurfaceVariant.withOpacity(0.6),
+                    ),
+                  ),
+                ),
+              ),
+            )
+            .toList(),
+      ),
+    );
+    days.add(const SizedBox(height: 8));
+
+    // Dias do mês
+    final totalDays = lastDayOfMonth.day + startPadding;
+    final weeks = (totalDays / 7).ceil();
+
+    for (int week = 0; week < weeks; week++) {
+      final weekDays = <Widget>[];
+      for (int day = 0; day < 7; day++) {
+        final dayIndex = week * 7 + day - startPadding + 1;
+        if (dayIndex < 1 || dayIndex > lastDayOfMonth.day) {
+          weekDays.add(const Expanded(child: SizedBox()));
+        } else {
+          final date = DateTime(
+            _selectedDate.year,
+            _selectedDate.month,
+            dayIndex,
+          );
+          final isSelected = _isSameDay(date, _selectedDate);
+          final isToday = _isSameDay(date, now);
+
+          weekDays.add(
+            Expanded(
+              child: GestureDetector(
+                onTap: () {
+                  HapticFeedback.selectionClick();
+                  setState(() => _selectedDate = date);
+                },
+                child: Container(
+                  height: 36,
+                  margin: const EdgeInsets.all(2),
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? colors.primary
+                        : (isToday ? colors.primaryContainer : null),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Center(
+                    child: Text(
+                      '$dayIndex',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: isSelected || isToday
+                            ? FontWeight.w600
+                            : FontWeight.normal,
+                        color: isSelected ? colors.onPrimary : colors.onSurface,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          );
+        }
+      }
+      days.add(Row(children: weekDays));
+    }
+
+    return Column(mainAxisSize: MainAxisSize.min, children: days);
+  }
+
   double _calculatePageViewHeight() {
-    // Altura dinâmica baseada no conteúdo esperado
-    // Mínimo 200, máximo 500 para não ficar muito grande
-    return 350; // Valor base, pode ser ajustado
+    // Altura mais compacta para melhor uso do espaço
+    return 280;
   }
 
   Widget _buildHabitsTasksTabBar(BuildContext context) {
@@ -1554,11 +1776,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             child: GestureDetector(
               onTap: () {
                 HapticFeedback.selectionClick();
-                _habitsTasksPageController.animateToPage(
-                  0,
-                  duration: const Duration(milliseconds: 300),
-                  curve: Curves.easeInOut,
-                );
+                setState(() => _habitsTasksTabIndex = 0);
               },
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
@@ -1609,11 +1827,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             child: GestureDetector(
               onTap: () {
                 HapticFeedback.selectionClick();
-                _habitsTasksPageController.animateToPage(
-                  1,
-                  duration: const Duration(milliseconds: 300),
-                  curve: Curves.easeInOut,
-                );
+                setState(() => _habitsTasksTabIndex = 1);
               },
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
@@ -1694,6 +1908,51 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Quick add task field
+            Container(
+              decoration: BoxDecoration(
+                color: colors.surfaceContainerHighest.withOpacity(0.5),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: colors.outline.withOpacity(0.1)),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _quickTaskController,
+                      onSubmitted: (_) => _createQuickTask(taskRepo),
+                      decoration: InputDecoration(
+                        hintText: 'Nova tarefa...',
+                        hintStyle: TextStyle(
+                          fontSize: 14,
+                          color: colors.onSurfaceVariant.withOpacity(0.6),
+                        ),
+                        border: InputBorder.none,
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 12,
+                        ),
+                      ),
+                      style: TextStyle(fontSize: 14, color: colors.onSurface),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: IconButton(
+                      onPressed: () => _createQuickTask(taskRepo),
+                      icon: Icon(
+                        Icons.add_circle,
+                        color: colors.primary,
+                        size: 28,
+                      ),
+                      tooltip: 'Adicionar tarefa',
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+
             // Header com progresso
             Row(
               children: [
@@ -1839,53 +2098,90 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   Widget _buildEmptyTasksState(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
+    final taskRepo = ref.watch(taskRepositoryProvider);
 
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: colors.surfaceContainerHighest.withOpacity(0.3),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: colors.outline.withOpacity(0.1)),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            Icons.task_alt_rounded,
-            size: 48,
-            color: UltravioletColors.accentGreen.withOpacity(0.6),
+    return Column(
+      children: [
+        // Quick add task field (even when empty)
+        Container(
+          decoration: BoxDecoration(
+            color: colors.surfaceContainerHighest.withOpacity(0.5),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: colors.outline.withOpacity(0.1)),
           ),
-          const SizedBox(height: 12),
-          Text(
-            _isSameDay(_selectedDate, DateTime.now())
-                ? 'Nenhuma tarefa para hoje!'
-                : 'Nenhuma tarefa para este dia',
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-              color: colors.onSurfaceVariant,
-            ),
-          ),
-          const SizedBox(height: 8),
-          GestureDetector(
-            onTap: () {
-              HapticFeedback.lightImpact();
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const TasksScreen()),
-              );
-            },
-            child: Text(
-              'Adicionar tarefa',
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: colors.primary,
+          child: Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _quickTaskController,
+                  onSubmitted: (_) => _createQuickTask(taskRepo),
+                  decoration: InputDecoration(
+                    hintText: 'Digite uma nova tarefa...',
+                    hintStyle: TextStyle(
+                      fontSize: 14,
+                      color: colors.onSurfaceVariant.withOpacity(0.6),
+                    ),
+                    border: InputBorder.none,
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 12,
+                    ),
+                  ),
+                  style: TextStyle(fontSize: 14, color: colors.onSurface),
+                ),
               ),
-            ),
+              Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: IconButton(
+                  onPressed: () => _createQuickTask(taskRepo),
+                  icon: Icon(Icons.add_circle, color: colors.primary, size: 28),
+                  tooltip: 'Adicionar tarefa',
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
+        ),
+        const SizedBox(height: 16),
+
+        // Empty state messaging
+        Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: colors.surfaceContainerHighest.withOpacity(0.3),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: colors.outline.withOpacity(0.1)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.task_alt_rounded,
+                size: 48,
+                color: UltravioletColors.accentGreen.withOpacity(0.6),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                _isSameDay(_selectedDate, DateTime.now())
+                    ? 'Nenhuma tarefa para hoje!'
+                    : 'Nenhuma tarefa para este dia',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: colors.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Digite acima para criar',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: colors.onSurfaceVariant.withOpacity(0.7),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
@@ -2169,10 +2465,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                         width: 48,
                         height: 48,
                         decoration: BoxDecoration(
-                          color: isCompleted ? color : color.withOpacity(0.15),
+                          color: isCompleted ? color : color.withOpacity(0.25),
                           shape: BoxShape.circle,
                           border: Border.all(
-                            color: isCompleted ? color : color.withOpacity(0.3),
+                            color: isCompleted ? color : color.withOpacity(0.5),
                             width: 2,
                           ),
                           boxShadow: [
@@ -2315,7 +2611,134 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             ),
           ),
 
-          // Conteúdo expandido
+          // Botões de ação (sempre visíveis)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+            child: Row(
+              children: [
+                // Edit
+                TextButton.icon(
+                  onPressed: () => _showEditHabitFormDialog(context, habit),
+                  icon: Icon(
+                    Icons.edit_outlined,
+                    size: 16,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                  label: Text(
+                    'Editar',
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.primary,
+                      fontWeight: FontWeight.w500,
+                      fontSize: 13,
+                    ),
+                  ),
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                  ),
+                ),
+                const Spacer(),
+                // Concluir/Desfazer
+                isCompleted
+                    ? OutlinedButton.icon(
+                        onPressed: () async {
+                          HapticFeedback.mediumImpact();
+                          await repo.toggleHabitCompletion(
+                            habit.id,
+                            _selectedDate,
+                          );
+
+                          if (mounted) {
+                            FeedbackService.showHabitUncompleted(
+                              context,
+                              habit.name,
+                            );
+                          }
+                        },
+                        icon: Icon(Icons.undo, size: 16, color: color),
+                        label: Text(
+                          'Desfazer',
+                          style: TextStyle(
+                            color: color,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13,
+                          ),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          side: BorderSide(color: color, width: 1.5),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 8,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                        ),
+                      )
+                    : ElevatedButton.icon(
+                        onPressed: () async {
+                          HapticFeedback.mediumImpact();
+                          await repo.toggleHabitCompletion(
+                            habit.id,
+                            _selectedDate,
+                          );
+
+                          if (mounted) {
+                            final currentStreak =
+                                habit.calculateCurrentStreak() + 1;
+                            try {
+                              final gamificationRepo = ref.read(
+                                gamificationRepositoryProvider,
+                              );
+                              await gamificationRepo.completeTask();
+                              FeedbackService.showHabitCompleted(
+                                context,
+                                habit.name,
+                                streak: currentStreak,
+                                xp: 15,
+                              );
+                            } catch (e) {
+                              FeedbackService.showHabitCompleted(
+                                context,
+                                habit.name,
+                                streak: currentStreak,
+                              );
+                            }
+                          }
+                        },
+                        icon: const Icon(
+                          Icons.check,
+                          size: 16,
+                          color: Colors.white,
+                        ),
+                        label: const Text(
+                          'Concluir',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13,
+                          ),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: color,
+                          elevation: 2,
+                          shadowColor: color.withOpacity(0.4),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 8,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                        ),
+                      ),
+              ],
+            ),
+          ),
+
+          // Conteúdo expandido (apenas calendário)
           AnimatedCrossFade(
             firstChild: const SizedBox.shrink(),
             secondChild: Column(
@@ -2326,96 +2749,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 ),
                 Padding(
                   padding: const EdgeInsets.all(16),
-                  child: Column(
-                    children: [
-                      // Calendário mensal do hábito
-                      _buildHabitMonthCalendar(habit),
-                      const SizedBox(height: 16),
-                      // Botões de ação
-                      Row(
-                        children: [
-                          // Edit
-                          TextButton.icon(
-                            onPressed: () =>
-                                _showEditHabitFormDialog(context, habit),
-                            icon: const Icon(
-                              Icons.edit_outlined,
-                              size: 18,
-                              color: UltravioletColors.primary,
-                            ),
-                            label: const Text(
-                              'Editar',
-                              style: TextStyle(
-                                color: UltravioletColors.primary,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                          const Spacer(),
-                          // Concluir/Desfazer
-                          ElevatedButton.icon(
-                            onPressed: () async {
-                              HapticFeedback.mediumImpact();
-                              await repo.toggleHabitCompletion(
-                                habit.id,
-                                _selectedDate,
-                              );
-
-                              if (!isCompleted && mounted) {
-                                final currentStreak =
-                                    habit.calculateCurrentStreak() + 1;
-                                try {
-                                  final gamificationRepo = ref.read(
-                                    gamificationRepositoryProvider,
-                                  );
-                                  await gamificationRepo.completeTask();
-                                  if (mounted) {
-                                    FeedbackService.showHabitCompleted(
-                                      context,
-                                      habit.name,
-                                      streak: currentStreak,
-                                      xp: 15,
-                                    );
-                                  }
-                                } catch (e) {
-                                  if (mounted) {
-                                    FeedbackService.showHabitCompleted(
-                                      context,
-                                      habit.name,
-                                      streak: currentStreak,
-                                    );
-                                  }
-                                }
-                              } else if (mounted) {
-                                FeedbackService.showHabitUncompleted(
-                                  context,
-                                  habit.name,
-                                );
-                              }
-                            },
-                            icon: Icon(
-                              isCompleted ? Icons.undo : Icons.check,
-                              size: 18,
-                            ),
-                            label: Text(isCompleted ? 'Desfazer' : 'Concluir'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: isCompleted
-                                  ? UltravioletColors.surfaceVariant
-                                  : color,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 20,
-                                vertical: 10,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
+                  child: _buildHabitMonthCalendar(habit),
                 ),
               ],
             ),
@@ -2498,9 +2832,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                       child: Center(
                         child: Text(
                           d,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 10,
-                            color: Colors.white54,
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurfaceVariant,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
@@ -2542,14 +2878,33 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     bool isHighlighted,
     Color color,
   ) {
+    // Determine text color based on state for visibility in any theme
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    Color textColor;
+    if (isCompleted) {
+      // If completed, background is soft color tint, so text should be darker color
+      textColor = color;
+    } else if (isHighlighted) {
+      // Highlighted usually means filled with color
+      textColor = Colors.white;
+    } else if (isCurrentMonth) {
+      // Normal day number
+      textColor = colorScheme.onSurface;
+    } else {
+      // Other month day number
+      textColor = colorScheme.onSurface.withOpacity(0.3);
+    }
+
     return Container(
       decoration: BoxDecoration(
         color: isCompleted
-            ? UltravioletColors.surfaceVariant
+            ? color.withOpacity(0.15) // Soft tint for completed
             : (isHighlighted ? color : Colors.transparent),
         borderRadius: BorderRadius.circular(6),
-        border: isCompleted && isCurrentMonth
-            ? Border.all(color: color.withOpacity(0.5), width: 1.5)
+        border: isCompleted
+            ? Border.all(color: color, width: 1.5) // Border for completed
             : null,
       ),
       child: Center(
@@ -2560,13 +2915,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             fontWeight: isCompleted || isHighlighted
                 ? FontWeight.w600
                 : FontWeight.w400,
-            color: isCurrentMonth
-                ? (isCompleted
-                      ? color
-                      : (isHighlighted
-                            ? Colors.white
-                            : Colors.white.withOpacity(0.8)))
-                : Colors.white24,
+            color: textColor,
           ),
         ),
       ),
@@ -2628,6 +2977,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     if (!_habitRepoInitialized) return const SizedBox.shrink();
 
     final habitRepo = ref.watch(habitRepositoryProvider);
+    final colors = Theme.of(context).colorScheme;
 
     return ValueListenableBuilder(
       valueListenable: habitRepo.box.listenable(),
@@ -2653,153 +3003,144 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               weekRates.values.reduce((a, b) => a + b) / weekRates.length;
         }
 
-        return Row(
-          children: [
-            Expanded(
-              child: _buildAnimatedStatCard(
-                icon: Icons.local_fire_department_rounded,
-                iconColor: const Color(0xFFFF6B6B),
-                value: bestStreak.toDouble(),
-                label: 'Melhor Streak',
-                delay: const Duration(milliseconds: 0),
+        return Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: colors.surface,
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [
+              BoxShadow(
+                color: colors.shadow.withOpacity(0.06),
+                blurRadius: 20,
+                offset: const Offset(0, 6),
               ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: _buildAnimatedStatCard(
-                icon: Icons.check_circle_rounded,
-                iconColor: const Color(0xFF07E092),
-                value: completedToday.toDouble(),
-                suffix: '/${todayHabits.length}',
-                label: 'Hoje',
-                delay: const Duration(milliseconds: 100),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: colors.primary.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(
+                      Icons.insights_rounded,
+                      color: colors.primary,
+                      size: 18,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Text(
+                    'Resumo',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                      color: colors.onSurface,
+                    ),
+                  ),
+                ],
               ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: _buildAnimatedStatCard(
-                icon: Icons.trending_up_rounded,
-                iconColor: UltravioletColors.primary,
-                value: (weekRate * 100),
-                suffix: '%',
-                label: 'Semana',
-                delay: const Duration(milliseconds: 200),
+              const SizedBox(height: 14),
+
+              // Stats pills row
+              Row(
+                children: [
+                  // Streak pill
+                  Expanded(
+                    child: _buildStatPill(
+                      icon: Icons.local_fire_department_rounded,
+                      value: '$bestStreak',
+                      suffix: 'd',
+                      label: 'Streak',
+                      color: const Color(0xFFFF6B6B),
+                      colors: colors,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  // Hoje pill
+                  Expanded(
+                    child: _buildStatPill(
+                      icon: Icons.check_circle_rounded,
+                      value: '$completedToday',
+                      suffix: '/${todayHabits.length}',
+                      label: 'Hoje',
+                      color: WellnessColors.success,
+                      colors: colors,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  // Semana pill
+                  Expanded(
+                    child: _buildStatPill(
+                      icon: Icons.trending_up_rounded,
+                      value: '${(weekRate * 100).round()}',
+                      suffix: '%',
+                      label: 'Semana',
+                      color: UltravioletColors.primary,
+                      colors: colors,
+                    ),
+                  ),
+                ],
               ),
-            ),
-          ],
+            ],
+          ),
         );
       },
     );
   }
 
-  Widget _buildAnimatedStatCard({
+  Widget _buildStatPill({
     required IconData icon,
-    required Color iconColor,
-    required double value,
+    required String value,
     String? suffix,
     required String label,
-    Duration delay = Duration.zero,
-  }) {
-    return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0.0, end: 1.0),
-      duration: const Duration(milliseconds: 600),
-      curve: Curves.elasticOut,
-      builder: (context, animValue, child) {
-        return Transform.scale(
-          scale: 0.8 + (0.2 * animValue),
-          child: Opacity(opacity: animValue.clamp(0.0, 1.0), child: child),
-        );
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [iconColor.withOpacity(0.15), iconColor.withOpacity(0.05)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: iconColor.withOpacity(0.2)),
-        ),
-        child: Column(
-          children: [
-            TweenAnimationBuilder<double>(
-              tween: Tween(begin: 0.0, end: 1.0),
-              duration: const Duration(milliseconds: 800),
-              curve: Curves.elasticOut,
-              builder: (context, val, _) {
-                return Transform.scale(
-                  scale: val,
-                  child: Icon(icon, color: iconColor, size: 24),
-                );
-              },
-            ),
-            const SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                AnimatedStatNumber(
-                  value: value,
-                  suffix: suffix,
-                  duration: const Duration(milliseconds: 1200),
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w700,
-                    color: Theme.of(context).colorScheme.onSurface,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 2),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 11,
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildStatCard({
-    required IconData icon,
-    required Color iconColor,
-    required String value,
-    required String label,
-    required List<Color> gradient,
+    required Color color,
+    required ColorScheme colors,
   }) {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: gradient,
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: iconColor.withOpacity(0.2)),
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(14),
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: iconColor, size: 24),
-          const SizedBox(height: 8),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w700,
-              color: Theme.of(context).colorScheme.onSurface,
-            ),
+          Row(
+            children: [
+              Icon(icon, size: 14, color: color),
+              const Spacer(),
+              Text(
+                value,
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: colors.onSurface,
+                ),
+              ),
+              if (suffix != null)
+                Text(
+                  suffix,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                    color: colors.onSurfaceVariant,
+                  ),
+                ),
+            ],
           ),
-          const SizedBox(height: 2),
+          const SizedBox(height: 4),
           Text(
             label,
             style: TextStyle(
-              fontSize: 11,
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              color: color,
             ),
           ),
         ],
@@ -2810,9 +3151,127 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   // ==========================================
   // GRÁFICO SEMANAL (Bar Chart)
   // ==========================================
+  // GRÁFICO SEMANAL (Bar Chart)
+  // ==========================================
   Widget _buildWeeklyChart(BuildContext context) {
     if (!_habitRepoInitialized) return const SizedBox.shrink();
 
+    final colors = Theme.of(context).colorScheme;
+
+    return OdysseyCard(
+      padding: const EdgeInsets.all(20),
+      margin: EdgeInsets.zero,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header e Seletor
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Flexible(
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      _selectedChartIndex == 0
+                          ? Icons.bar_chart_rounded
+                          : (_selectedChartIndex == 1
+                                ? Icons.timer_rounded
+                                : Icons.mood_rounded),
+                      color: colors.primary,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: Text(
+                        _selectedChartIndex == 0
+                            ? 'Hábitos'
+                            : (_selectedChartIndex == 1 ? 'Foco' : 'Humor'),
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: colors.onSurface,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // Segmented Control
+              Container(
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  color: colors.surfaceContainerHighest.withOpacity(0.5),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+                    _buildChartToggleBtn(
+                      context,
+                      0,
+                      Icons.check_circle_outline,
+                    ),
+                    _buildChartToggleBtn(context, 1, Icons.timer_outlined),
+                    _buildChartToggleBtn(context, 2, Icons.mood_outlined),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+
+          // Gráfico selecionado
+          SizedBox(
+            height: 140, // Aumentado um pouco para acomodar legendas
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 300),
+              child: _selectedChartIndex == 0
+                  ? _buildHabitsBarChart(context)
+                  : (_selectedChartIndex == 1
+                        ? _buildFocusLineChart(context)
+                        : _buildMoodTrendChart(context)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildChartToggleBtn(BuildContext context, int index, IconData icon) {
+    final isSelected = _selectedChartIndex == index;
+    final colors = Theme.of(context).colorScheme;
+
+    return GestureDetector(
+      onTap: () {
+        HapticFeedback.selectionClick();
+        setState(() => _selectedChartIndex = index);
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: isSelected ? colors.surface : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: colors.shadow.withOpacity(0.1),
+                    blurRadius: 4,
+                  ),
+                ]
+              : null,
+        ),
+        child: Icon(
+          icon,
+          size: 18,
+          color: isSelected ? colors.primary : colors.onSurfaceVariant,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHabitsBarChart(BuildContext context) {
     final habitRepo = ref.watch(habitRepositoryProvider);
 
     return ValueListenableBuilder(
@@ -2823,158 +3282,380 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         final now = DateTime.now();
         final todayIndex = now.weekday - 1;
 
-        return OdysseyCard(
-          padding: const EdgeInsets.all(20),
-          margin: EdgeInsets.zero,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Flexible(
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.bar_chart_rounded,
-                          color: Theme.of(context).colorScheme.primary,
-                          size: 20,
-                        ),
-                        const SizedBox(width: 8),
-                        Flexible(
-                          child: Text(
-                            'Progresso Semanal',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                              color: Theme.of(context).colorScheme.onSurface,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Theme.of(
-                        context,
-                      ).colorScheme.primary.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      'Esta semana',
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            final barWidth = (constraints.maxWidth / 7 - 6).clamp(16.0, 24.0);
+
+            return Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: List.generate(7, (index) {
+                final rate = weekRates[index] ?? 0.0;
+                final isToday = index == todayIndex;
+                final maxBarHeight =
+                    constraints.maxHeight -
+                    30; // Altura disponível menos labels
+                final barHeight = (maxBarHeight * rate).clamp(
+                  4.0,
+                  maxBarHeight,
+                );
+
+                Color barColor;
+                if (rate >= 1.0) {
+                  barColor = const Color(0xFF07E092);
+                } else if (rate >= 0.5) {
+                  barColor = Theme.of(context).colorScheme.primary;
+                } else if (rate > 0) {
+                  barColor = Theme.of(context).colorScheme.tertiary;
+                } else {
+                  barColor = Theme.of(
+                    context,
+                  ).colorScheme.surfaceContainerHighest;
+                }
+
+                return Column(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      '${(rate * 100).round()}%',
                       style: TextStyle(
-                        fontSize: 11,
-                        color: Theme.of(context).colorScheme.primary,
-                        fontWeight: FontWeight.w500,
+                        fontSize: 9,
+                        fontWeight: FontWeight.w600,
+                        color: rate > 0 ? barColor : Colors.white24,
                       ),
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
-              // Barras
-              SizedBox(
-                height: 120,
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    // Largura da barra = espaço total / 7 - margem
-                    final barWidth = (constraints.maxWidth / 7 - 6).clamp(
-                      16.0,
-                      24.0,
-                    );
-
-                    return Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: List.generate(7, (index) {
-                        final rate = weekRates[index] ?? 0.0;
-                        final isToday = index == todayIndex;
-                        final barHeight = 70 * rate + 8;
-
-                        Color barColor;
-                        if (rate >= 1.0) {
-                          barColor = const Color(0xFF07E092);
-                        } else if (rate >= 0.5) {
-                          barColor = Theme.of(context).colorScheme.primary;
-                        } else if (rate > 0) {
-                          barColor = Theme.of(context).colorScheme.tertiary;
-                        } else {
-                          barColor = Theme.of(
-                            context,
-                          ).colorScheme.surfaceContainerHighest;
-                        }
-
-                        return Column(
-                          mainAxisAlignment: MainAxisAlignment.end,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            // Percentual
-                            Text(
-                              '${(rate * 100).round()}%',
-                              style: TextStyle(
-                                fontSize: 9,
-                                fontWeight: FontWeight.w600,
-                                color: rate > 0 ? barColor : Colors.white24,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            // Barra
-                            AnimatedContainer(
-                              duration: const Duration(milliseconds: 400),
-                              curve: Curves.easeOutCubic,
-                              width: barWidth,
-                              height: barHeight,
-                              decoration: BoxDecoration(
-                                color: barColor,
-                                borderRadius: BorderRadius.circular(6),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: isToday
-                                        ? barColor.withOpacity(0.4)
-                                        : Colors.transparent,
-                                    blurRadius: isToday ? 8 : 0,
-                                    spreadRadius: isToday ? 1 : 0,
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(height: 6),
-                            // Dia
-                            Text(
-                              dayNames[index],
-                              style: TextStyle(
-                                fontSize: 10,
-                                fontWeight: isToday
-                                    ? FontWeight.w700
-                                    : FontWeight.w400,
-                                color: isToday
-                                    ? Theme.of(context).colorScheme.primary
-                                    : Theme.of(
-                                        context,
-                                      ).colorScheme.onSurfaceVariant,
-                              ),
-                            ),
-                          ],
-                        );
-                      }),
-                    );
-                  },
-                ),
-              ),
-            ],
-          ),
+                    const SizedBox(height: 4),
+                    AnimatedContainer(
+                      duration: const Duration(milliseconds: 400),
+                      curve: Curves.easeOutCubic,
+                      width: barWidth,
+                      height: barHeight,
+                      decoration: BoxDecoration(
+                        color: barColor,
+                        borderRadius: BorderRadius.circular(6),
+                        boxShadow: [
+                          BoxShadow(
+                            color: isToday
+                                ? barColor.withOpacity(0.4)
+                                : Colors.transparent,
+                            blurRadius: isToday ? 8 : 0,
+                            spreadRadius: isToday ? 1 : 0,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      dayNames[index],
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: isToday ? FontWeight.w700 : FontWeight.w400,
+                        color: isToday
+                            ? Theme.of(context).colorScheme.primary
+                            : Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                );
+              }),
+            );
+          },
         );
       },
     );
   }
 
+  Widget _buildFocusLineChart(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final timeRepo = ref.watch(timeTrackingRepositoryProvider);
+
+    return ValueListenableBuilder(
+      valueListenable: timeRepo.box.listenable(),
+      builder: (context, box, _) {
+        // Calcular dados da semana
+        final now = DateTime.now();
+        final startOfWeek = _selectedDate.subtract(
+          Duration(days: _selectedDate.weekday - 1),
+        );
+        final dailyMinutes = List.filled(7, 0.0);
+
+        final allRecords = timeRepo.fetchAllTimeTrackingRecords();
+        for (var record in allRecords) {
+          if (record.startTime.isAfter(
+                startOfWeek.subtract(const Duration(seconds: 1)),
+              ) &&
+              record.startTime.isBefore(
+                startOfWeek.add(const Duration(days: 7)),
+              )) {
+            final dayIndex = record.startTime.weekday - 1; // 0=Seg, 6=Dom
+            if (dayIndex >= 0 && dayIndex < 7) {
+              dailyMinutes[dayIndex] += record.durationInSeconds / 60;
+            }
+          }
+        }
+
+        // Normalizar dados (0.0 a 1.0)
+        final maxMinutes = dailyMinutes.reduce((a, b) => a > b ? a : b);
+        final normalizedData = dailyMinutes
+            .map((m) => maxMinutes > 0 ? m / maxMinutes : 0.0)
+            .toList();
+        final dayNames = ['S', 'T', 'Q', 'Q', 'S', 'S', 'D'];
+        final todayIndex = now.weekday - 1;
+
+        if (maxMinutes == 0) {
+          return Center(
+            child: Text(
+              'Sem dados de foco esta semana',
+              style: TextStyle(color: colors.onSurfaceVariant, fontSize: 12),
+            ),
+          );
+        }
+
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            return Column(
+              children: [
+                Expanded(
+                  child: CustomPaint(
+                    size: Size(constraints.maxWidth, constraints.maxHeight),
+                    painter: _LineChartPainter(
+                      data: normalizedData,
+                      lineColor: const Color(0xFF5E60CE), // Roxo foco
+                      fillColor: const Color(0xFF5E60CE).withOpacity(0.2),
+                      lineWidth: 3,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: List.generate(7, (index) {
+                    final isToday = index == todayIndex;
+                    return SizedBox(
+                      width: 20,
+                      child: Center(
+                        child: Text(
+                          dayNames[index],
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: isToday
+                                ? FontWeight.bold
+                                : FontWeight.normal,
+                            color: isToday
+                                ? colors.primary
+                                : colors.onSurfaceVariant,
+                          ),
+                        ),
+                      ),
+                    );
+                  }),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildMoodTrendChart(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final moodRepo = ref.watch(moodRecordRepositoryProvider);
+
+    return ValueListenableBuilder(
+      valueListenable: moodRepo.box.listenable(),
+      builder: (context, box, _) {
+        // Calcular dados da semana
+        final now = DateTime.now();
+        final startOfWeek = _selectedDate.subtract(
+          Duration(days: _selectedDate.weekday - 1),
+        );
+        final dailyScores = List.filled(7, 0.0);
+        final dailyCounts = List.filled(7, 0);
+
+        final allRecords = moodRepo.fetchMoodRecords().values;
+        for (var record in allRecords) {
+          if (record.date.isAfter(
+                startOfWeek.subtract(const Duration(seconds: 1)),
+              ) &&
+              record.date.isBefore(startOfWeek.add(const Duration(days: 7)))) {
+            final dayIndex = record.date.weekday - 1;
+            if (dayIndex >= 0 && dayIndex < 7) {
+              dailyScores[dayIndex] += record.score;
+              dailyCounts[dayIndex]++;
+            }
+          }
+        }
+
+        // Média e Normalizar (Score 1 a 5)
+        final normalizedData = List<double>.generate(7, (i) {
+          if (dailyCounts[i] == 0) return 0.0;
+          final avg = dailyScores[i] / dailyCounts[i];
+          return avg / 5.0; // Normalizar para 0.0 - 1.0 (assumindo max score 5)
+        });
+
+        final dayNames = ['S', 'T', 'Q', 'Q', 'S', 'S', 'D'];
+        final todayIndex = now.weekday - 1;
+        final hasData = dailyCounts.any((c) => c > 0);
+
+        if (!hasData) {
+          return Center(
+            child: Text(
+              'Sem registros de humor esta semana',
+              style: TextStyle(color: colors.onSurfaceVariant, fontSize: 12),
+            ),
+          );
+        }
+
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            return Column(
+              children: [
+                Expanded(
+                  child: CustomPaint(
+                    size: Size(constraints.maxWidth, constraints.maxHeight),
+                    painter: _LineChartPainter(
+                      data: normalizedData,
+                      lineColor: const Color(0xFFFFB703), // Amarelo humor
+                      fillColor: const Color(0xFFFFB703).withOpacity(0.2),
+                      lineWidth: 3,
+                      isCurved: true,
+                      showPoints: true,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: List.generate(7, (index) {
+                    final isToday = index == todayIndex;
+                    return SizedBox(
+                      width: 20,
+                      child: Center(
+                        child: Text(
+                          dayNames[index],
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: isToday
+                                ? FontWeight.bold
+                                : FontWeight.normal,
+                            color: isToday
+                                ? colors.primary
+                                : colors.onSurfaceVariant,
+                          ),
+                        ),
+                      ),
+                    );
+                  }),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+class _LineChartPainter extends CustomPainter {
+  final List<double> data;
+  final Color lineColor;
+  final Color fillColor;
+  final double lineWidth;
+  final bool isCurved;
+  final bool showPoints;
+
+  _LineChartPainter({
+    required this.data,
+    required this.lineColor,
+    required this.fillColor,
+    this.lineWidth = 2,
+    this.isCurved = true,
+    this.showPoints = false,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (data.isEmpty) return;
+
+    final paint = Paint()
+      ..color = lineColor
+      ..strokeWidth = lineWidth
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+
+    final fillPaint = Paint()
+      ..color = fillColor
+      ..style = PaintingStyle.fill;
+
+    final path = Path();
+    final fillPath = Path();
+
+    final width = size.width;
+    final height = size.height;
+    final segmentWidth = width / (data.length - 1);
+
+    // Iniciar caminho
+    final firstVal = data[0];
+    path.moveTo(0, height * (1 - firstVal));
+    fillPath.moveTo(0, height);
+    fillPath.lineTo(0, height * (1 - firstVal));
+
+    for (int i = 0; i < data.length - 1; i++) {
+      final x1 = i * segmentWidth;
+      final y1 = height * (1 - data[i]);
+      final x2 = (i + 1) * segmentWidth;
+      final y2 = height * (1 - data[i + 1]);
+
+      if (isCurved) {
+        final controlX1 = x1 + segmentWidth / 2;
+        final controlY1 = y1;
+        final controlX2 = x1 + segmentWidth / 2;
+        final controlY2 = y2;
+        path.cubicTo(controlX1, controlY1, controlX2, controlY2, x2, y2);
+        fillPath.cubicTo(controlX1, controlY1, controlX2, controlY2, x2, y2);
+      } else {
+        path.lineTo(x2, y2);
+        fillPath.lineTo(x2, y2);
+      }
+    }
+
+    fillPath.lineTo(width, height);
+    fillPath.close();
+
+    // Desenhar fill and stroke
+    canvas.drawPath(fillPath, fillPaint);
+    canvas.drawPath(path, paint);
+
+    // Pontos
+    if (showPoints) {
+      final dotPaint = Paint()
+        ..color = lineColor
+        ..style = PaintingStyle.fill;
+      final whitePaint = Paint()
+        ..color = Colors.white
+        ..style = PaintingStyle.fill;
+
+      for (int i = 0; i < data.length; i++) {
+        if (data[i] > 0) {
+          final x = i * segmentWidth;
+          final y = height * (1 - data[i]);
+          canvas.drawCircle(Offset(x, y), 6, whitePaint);
+          canvas.drawCircle(Offset(x, y), 4, dotPaint);
+        }
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _LineChartPainter oldDelegate) {
+    return oldDelegate.data != data || oldDelegate.lineColor != lineColor;
+  }
+}
+
+// Continuation of _HomeScreenState methods
+extension _HomeScreenStateDataInsights on _HomeScreenState {
   // ==========================================
   // INSIGHTS BASEADOS EM DADOS
   // ==========================================
@@ -3530,6 +4211,30 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         ],
       ),
     );
+  }
+
+  // Helper method to create quick task
+  Future<void> _createQuickTask(TaskRepository taskRepo) async {
+    final text = _quickTaskController.text.trim();
+    if (text.isEmpty) return;
+
+    HapticFeedback.mediumImpact();
+    final newTask = TaskData(
+      key: DateTime.now().millisecondsSinceEpoch.toString(),
+      title: text,
+      notes: '',
+      completed: false,
+      priority: 'medium',
+      category: 'Personal',
+      dueDate: _selectedDate,
+      dueTime: null,
+      createdAt: DateTime.now(),
+      completedAt: null,
+    );
+
+    await taskRepo.addTask(newTask);
+    _quickTaskController.clear();
+    setState(() {}); // Refresh UI
   }
 
   // ==========================================
@@ -5192,6 +5897,584 @@ class _WellnessHeader extends StatelessWidget {
               : null,
         ),
         child: Icon(icon, color: color, size: 22),
+      ),
+    );
+  }
+}
+
+// ==========================================
+// CARD DE VISÃO GERAL DO DIA
+// ==========================================
+class _DayOverviewCard extends ConsumerWidget {
+  const _DayOverviewCard({
+    required this.habitRepoInitialized,
+    required this.taskRepoInitialized,
+  });
+
+  final bool habitRepoInitialized;
+  final bool taskRepoInitialized;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final colors = Theme.of(context).colorScheme;
+    final timerState = ref.watch(timerProvider);
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: colors.shadow.withOpacity(0.06),
+            blurRadius: 20,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      colors.primary.withOpacity(0.2),
+                      colors.tertiary.withOpacity(0.2),
+                    ],
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  Icons.dashboard_rounded,
+                  color: colors.primary,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Visão Geral',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: colors.onSurface,
+                      ),
+                    ),
+                    Text(
+                      DateFormat('EEEE, d MMM', 'pt_BR').format(DateTime.now()),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: colors.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (timerState.isRunning)
+                _ActiveTimerIndicator(timerState: timerState),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // Grid de Overview Items
+          if (!habitRepoInitialized || !taskRepoInitialized)
+            _buildLoadingGrid(colors)
+          else
+            _buildOverviewGrid(context, ref, colors, timerState),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLoadingGrid(ColorScheme colors) {
+    return GridView.count(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      crossAxisCount: 3,
+      mainAxisSpacing: 10,
+      crossAxisSpacing: 10,
+      childAspectRatio: 1.1,
+      children: List.generate(
+        6,
+        (index) => _OverviewItemPlaceholder(colors: colors),
+      ),
+    );
+  }
+
+  Widget _buildOverviewGrid(
+    BuildContext context,
+    WidgetRef ref,
+    ColorScheme colors,
+    TimerState timerState,
+  ) {
+    final taskRepo = ref.watch(taskRepositoryProvider);
+    final notesRepo = ref.watch(notesRepositoryProvider);
+    final moodRepo = ref.watch(moodRecordRepositoryProvider);
+    final timeTrackingRepo = ref.watch(timeTrackingRepositoryProvider);
+
+    return FutureBuilder(
+      future: Future.wait([
+        taskRepo.getPendingTasksForToday(),
+        Future.value(notesRepo.getAllNotes()),
+        Future.value(moodRepo.fetchMoodRecords()),
+        Future.value(
+          timeTrackingRepo.fetchTimeTrackingRecordsByDate(DateTime.now()),
+        ),
+      ]),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) {
+          return _buildLoadingGrid(colors);
+        }
+
+        final tasks = snapshot.data![0] as List<TaskData>;
+        final notes = snapshot.data![1] as List<Map<String, dynamic>>;
+        final moods = snapshot.data![2] as Map<dynamic, MoodRecord>;
+        final timeRecords = snapshot.data![3] as List<TimeTrackingRecord>;
+
+        // Filtrar ideias (notas marcadas como ideia ou sem categoria específica)
+        final ideas = notes
+            .where(
+              (n) =>
+                  (n['category'] as String?)?.toLowerCase() == 'ideia' ||
+                  (n['category'] as String?)?.toLowerCase() == 'idea' ||
+                  (n['tags'] as List?)?.any(
+                        (t) => t.toString().toLowerCase().contains('ideia'),
+                      ) ==
+                      true,
+            )
+            .toList();
+
+        // Pegar humor mais recente de hoje
+        final todayMoods = moods.entries.where((e) {
+          final moodDate = e.value.date;
+          final now = DateTime.now();
+          return moodDate.year == now.year &&
+              moodDate.month == now.month &&
+              moodDate.day == now.day;
+        }).toList();
+        todayMoods.sort((a, b) => b.value.date.compareTo(a.value.date));
+        final latestMood = todayMoods.isNotEmpty
+            ? todayMoods.first.value
+            : null;
+
+        // Contar sessões Pomodoro de hoje
+        final pomodoroSessions = timerState.pomodoroSessions;
+
+        // Tarefas de alta prioridade
+        final highPriorityTasks = tasks
+            .where((t) => t.priority == 'high')
+            .length;
+
+        return Column(
+          children: [
+            // Primeira linha - 3 cards
+            Row(
+              children: [
+                Expanded(
+                  child: _OverviewItem(
+                    icon: Icons.check_circle_outline_rounded,
+                    label: 'Tarefas',
+                    value: '${tasks.length}',
+                    subtitle: highPriorityTasks > 0
+                        ? '$highPriorityTasks urgentes'
+                        : 'pendentes',
+                    color: tasks.isEmpty
+                        ? colors.primary
+                        : (highPriorityTasks > 0
+                              ? colors.error
+                              : colors.tertiary),
+                    onTap: () {
+                      HapticFeedback.lightImpact();
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const TasksScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _OverviewItem(
+                    icon: Icons.lightbulb_outline_rounded,
+                    label: 'Ideias',
+                    value: '${ideas.length}',
+                    subtitle: notes.length > ideas.length
+                        ? '+${notes.length - ideas.length} notas'
+                        : 'capturadas',
+                    color: Colors.amber,
+                    onTap: () {
+                      HapticFeedback.lightImpact();
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const NotesScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _OverviewItem(
+                    icon: _getMoodIcon(latestMood),
+                    label: 'Humor',
+                    value: latestMood != null ? _getMoodLabel(latestMood) : '—',
+                    subtitle: latestMood != null
+                        ? DateFormat('HH:mm').format(latestMood.date)
+                        : 'registrar',
+                    color: latestMood != null
+                        ? _getMoodColor(latestMood)
+                        : colors.onSurfaceVariant.withOpacity(0.5),
+                    onTap: () {
+                      HapticFeedback.lightImpact();
+                      showModalBottomSheet(
+                        context: context,
+                        isScrollControlled: true,
+                        backgroundColor: Colors.transparent,
+                        builder: (context) => const AddMoodRecordForm(),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            // Segunda linha - 2 cards (Timer + Pomodoro)
+            Row(
+              children: [
+                Expanded(
+                  child: _OverviewItem(
+                    icon: timerState.isRunning
+                        ? Icons.timer_rounded
+                        : Icons.timer_outlined,
+                    label: 'Timer',
+                    value: timerState.isRunning
+                        ? _formatDuration(timerState.elapsed)
+                        : '${timeRecords.length}h',
+                    subtitle: timerState.isRunning
+                        ? (timerState.taskName ?? 'Em andamento')
+                        : 'registradas',
+                    color: timerState.isRunning
+                        ? WellnessColors.success
+                        : colors.primary,
+                    isActive: timerState.isRunning,
+                    onTap: () {
+                      HapticFeedback.lightImpact();
+                      ref.read(navigationProvider.notifier).goToTimer();
+                    },
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _OverviewItem(
+                    icon: Icons.local_fire_department_rounded,
+                    label: 'Pomodoro',
+                    value: '$pomodoroSessions',
+                    subtitle: pomodoroSessions == 1 ? 'sessão' : 'sessões',
+                    color: pomodoroSessions > 0
+                        ? Colors.deepOrange
+                        : colors.onSurfaceVariant.withOpacity(0.5),
+                    onTap: () {
+                      HapticFeedback.lightImpact();
+                      ref
+                          .read(timerProvider.notifier)
+                          .updatePomodoroSettings(openPomodoroScreen: true);
+                      ref.read(navigationProvider.notifier).goToTimer();
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  String _formatDuration(Duration duration) {
+    final hours = duration.inHours;
+    final minutes = duration.inMinutes.remainder(60);
+    final seconds = duration.inSeconds.remainder(60);
+
+    if (hours > 0) {
+      return '${hours}h${minutes.toString().padLeft(2, '0')}';
+    }
+    return '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+  }
+
+  IconData _getMoodIcon(MoodRecord? mood) {
+    if (mood == null) return Icons.sentiment_neutral_rounded;
+
+    switch (mood.score) {
+      case 1:
+        return Icons.sentiment_very_dissatisfied_rounded;
+      case 2:
+        return Icons.sentiment_dissatisfied_rounded;
+      case 3:
+        return Icons.sentiment_neutral_rounded;
+      case 4:
+        return Icons.sentiment_satisfied_rounded;
+      case 5:
+        return Icons.sentiment_very_satisfied_rounded;
+      default:
+        return Icons.sentiment_neutral_rounded;
+    }
+  }
+
+  String _getMoodLabel(MoodRecord mood) {
+    switch (mood.score) {
+      case 1:
+        return 'Péssimo';
+      case 2:
+        return 'Mal';
+      case 3:
+        return 'Ok';
+      case 4:
+        return 'Bem';
+      case 5:
+        return 'Ótimo';
+      default:
+        return 'Ok';
+    }
+  }
+
+  Color _getMoodColor(MoodRecord mood) {
+    switch (mood.score) {
+      case 1:
+        return WellnessColors.error;
+      case 2:
+        return Colors.orange;
+      case 3:
+        return Colors.amber;
+      case 4:
+        return WellnessColors.primary;
+      case 5:
+        return WellnessColors.success;
+      default:
+        return Colors.amber;
+    }
+  }
+}
+
+// Widget para indicar timer ativo no header
+class _ActiveTimerIndicator extends StatefulWidget {
+  const _ActiveTimerIndicator({required this.timerState});
+
+  final TimerState timerState;
+
+  @override
+  State<_ActiveTimerIndicator> createState() => _ActiveTimerIndicatorState();
+}
+
+class _ActiveTimerIndicatorState extends State<_ActiveTimerIndicator>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _animation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 1000),
+      vsync: this,
+    )..repeat(reverse: true);
+    _animation = Tween<double>(begin: 0.6, end: 1.0).animate(_controller);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _animation,
+      builder: (context, child) {
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: WellnessColors.success.withOpacity(0.15 * _animation.value),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: WellnessColors.success.withOpacity(0.3)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  color: WellnessColors.success,
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: WellnessColors.success.withOpacity(
+                        0.5 * _animation.value,
+                      ),
+                      blurRadius: 4,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 6),
+              Text(
+                'Ativo',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: WellnessColors.success,
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+// Item individual do overview
+class _OverviewItem extends StatelessWidget {
+  const _OverviewItem({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.subtitle,
+    required this.color,
+    required this.onTap,
+    this.isActive = false,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+  final String subtitle;
+  final Color color;
+  final VoidCallback onTap;
+  final bool isActive;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.08),
+          borderRadius: BorderRadius.circular(16),
+          border: isActive
+              ? Border.all(color: color.withOpacity(0.4), width: 1.5)
+              : null,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              children: [
+                Icon(icon, size: 18, color: color),
+                const Spacer(),
+                if (isActive)
+                  Container(
+                    width: 6,
+                    height: 6,
+                    decoration: BoxDecoration(
+                      color: color,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              value,
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: colors.onSurface,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: color,
+              ),
+            ),
+            Text(
+              subtitle,
+              style: TextStyle(fontSize: 10, color: colors.onSurfaceVariant),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// Placeholder para loading
+class _OverviewItemPlaceholder extends StatelessWidget {
+  const _OverviewItemPlaceholder({required this.colors});
+
+  final ColorScheme colors;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: colors.onSurface.withOpacity(0.04),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 20,
+            height: 20,
+            decoration: BoxDecoration(
+              color: colors.onSurface.withOpacity(0.08),
+              borderRadius: BorderRadius.circular(6),
+            ),
+          ),
+          const Spacer(),
+          Container(
+            width: 40,
+            height: 16,
+            decoration: BoxDecoration(
+              color: colors.onSurface.withOpacity(0.08),
+              borderRadius: BorderRadius.circular(4),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Container(
+            width: 50,
+            height: 10,
+            decoration: BoxDecoration(
+              color: colors.onSurface.withOpacity(0.06),
+              borderRadius: BorderRadius.circular(3),
+            ),
+          ),
+        ],
       ),
     );
   }

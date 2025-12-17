@@ -21,11 +21,11 @@ class _TimerDemoScreenState extends State<TimerDemoScreen> {
   bool _isBreak = false;
   int _completedSessions = 0;
   Timer? _timer;
-  
+
   // Configurações
-  final Color _accentColor = const Color(0xFFFF6B6B);
+  // Configurações
   String _taskName = 'Desenvolvimento App';
-  
+
   // Estilo selecionado (0 = Neumorphic, 1 = Tomato)
   int _selectedStyle = 1;
 
@@ -57,8 +57,8 @@ class _TimerDemoScreenState extends State<TimerDemoScreen> {
     _timer?.cancel();
     setState(() {
       _isRunning = false;
-      _timeLeft = _isBreak 
-          ? const Duration(minutes: 5) 
+      _timeLeft = _isBreak
+          ? const Duration(minutes: 5)
           : const Duration(minutes: 25);
       _totalTime = _timeLeft;
     });
@@ -71,8 +71,8 @@ class _TimerDemoScreenState extends State<TimerDemoScreen> {
       if (!_isBreak) {
         _completedSessions++;
         _isBreak = true;
-        _timeLeft = _completedSessions % 4 == 0 
-            ? const Duration(minutes: 15) 
+        _timeLeft = _completedSessions % 4 == 0
+            ? const Duration(minutes: 15)
             : const Duration(minutes: 5);
       } else {
         _isBreak = false;
@@ -88,30 +88,32 @@ class _TimerDemoScreenState extends State<TimerDemoScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Note: isDark is now determined by the theme brightness
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF0D0D14) : const Color(0xFFF5F5FA),
+      // Removed hardcoded background color, assuming Scaffold uses theme's scaffoldBackgroundColor
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
         title: Text(AppLocalizations.of(context)!.timerDemo),
         centerTitle: true,
         actions: [
-          // Seletor de estilo
+          // Select style
           IconButton(
             icon: Icon(
               _selectedStyle == 0 ? Icons.wb_sunny : Icons.eco,
-              color: _selectedStyle == 0 
-                  ? const Color(0xFFFF6B6B) 
-                  : const Color(0xFFE74C3C),
+              color: _selectedStyle == 0
+                  ? colorScheme.primary
+                  : colorScheme.secondary,
             ),
             onPressed: () {
               setState(() {
                 _selectedStyle = _selectedStyle == 0 ? 1 : 0;
               });
             },
-            tooltip: _selectedStyle == 0 ? 'Mudar para Tomate' : 'Mudar para Neumorphic',
+            tooltip: _selectedStyle == 0
+                ? 'Mudar para Tomate'
+                : 'Mudar para Neumorphic',
           ),
         ],
       ),
@@ -121,10 +123,10 @@ class _TimerDemoScreenState extends State<TimerDemoScreen> {
           child: Column(
             children: [
               // Style selector chips
-              _buildStyleSelector(),
+              _buildStyleSelector(colorScheme),
               const SizedBox(height: 24),
-              
-              // Widget do Timer (animação de troca)
+
+              // Timer Widget (switch animation)
               AnimatedSwitcher(
                 duration: const Duration(milliseconds: 500),
                 child: _selectedStyle == 0
@@ -137,7 +139,7 @@ class _TimerDemoScreenState extends State<TimerDemoScreen> {
                         completedSessions: _completedSessions,
                         totalSessions: 4,
                         xpToGain: 25,
-                        accentColor: _accentColor,
+                        accentColor: colorScheme.primary,
                         taskName: _taskName,
                         onStart: _startTimer,
                         onPause: _pauseTimer,
@@ -160,11 +162,11 @@ class _TimerDemoScreenState extends State<TimerDemoScreen> {
                         onSkip: _skipSession,
                       ),
               ),
-              
+
               const SizedBox(height: 40),
-              
-              // Controles de teste
-              _buildTestControls(isDark),
+
+              // Test controls
+              _buildTestControls(isDark, colorScheme),
             ],
           ),
         ),
@@ -172,7 +174,7 @@ class _TimerDemoScreenState extends State<TimerDemoScreen> {
     );
   }
 
-  Widget _buildStyleSelector() {
+  Widget _buildStyleSelector(ColorScheme colorScheme) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
@@ -180,12 +182,14 @@ class _TimerDemoScreenState extends State<TimerDemoScreen> {
           label: '🎮 Neumorphic',
           isSelected: _selectedStyle == 0,
           onTap: () => setState(() => _selectedStyle = 0),
+          selectedColor: colorScheme.primary,
         ),
         const SizedBox(width: 12),
         _buildStyleChip(
           label: '🍅 Tomate',
           isSelected: _selectedStyle == 1,
           onTap: () => setState(() => _selectedStyle = 1),
+          selectedColor: const Color(0xFFE74C3C), // Keep tomato red distinctive
         ),
       ],
     );
@@ -195,6 +199,7 @@ class _TimerDemoScreenState extends State<TimerDemoScreen> {
     required String label,
     required bool isSelected,
     required VoidCallback onTap,
+    required Color selectedColor,
   }) {
     return GestureDetector(
       onTap: onTap,
@@ -202,32 +207,27 @@ class _TimerDemoScreenState extends State<TimerDemoScreen> {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         decoration: BoxDecoration(
-          gradient: isSelected
-              ? LinearGradient(
-                  colors: label.contains('Tomate')
-                      ? [const Color(0xFFE74C3C), const Color(0xFFC0392B)]
-                      : [const Color(0xFFFF6B6B), const Color(0xFFFF8E53)],
-                )
-              : null,
-          color: isSelected ? null : Colors.white10,
+          color: isSelected ? selectedColor : Theme.of(context).cardColor,
           borderRadius: BorderRadius.circular(20),
           boxShadow: isSelected
               ? [
                   BoxShadow(
-                    color: (label.contains('Tomate')
-                            ? const Color(0xFFE74C3C)
-                            : const Color(0xFFFF6B6B))
-                        .withValues(alpha: 0.4),
+                    color: selectedColor.withValues(alpha: 0.4),
                     blurRadius: 12,
                     offset: const Offset(0, 4),
                   ),
                 ]
-              : null,
+              : [],
+          border: isSelected
+              ? null
+              : Border.all(color: Theme.of(context).dividerColor),
         ),
         child: Text(
           label,
           style: TextStyle(
-            color: isSelected ? Colors.white : Colors.white60,
+            color: isSelected
+                ? Colors.white
+                : Theme.of(context).textTheme.bodyMedium?.color,
             fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
             fontSize: 13,
           ),
@@ -236,11 +236,13 @@ class _TimerDemoScreenState extends State<TimerDemoScreen> {
     );
   }
 
-  Widget _buildTestControls(bool isDark) {
+  Widget _buildTestControls(bool isDark, ColorScheme colorScheme) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05),
+        color: Theme.of(
+          context,
+        ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Column(
@@ -251,11 +253,11 @@ class _TimerDemoScreenState extends State<TimerDemoScreen> {
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
-              color: isDark ? Colors.white : Colors.black87,
+              color: Theme.of(context).textTheme.titleLarge?.color,
             ),
           ),
           const SizedBox(height: 16),
-          
+
           // Simular sessões completadas
           Row(
             children: [
@@ -278,41 +280,35 @@ class _TimerDemoScreenState extends State<TimerDemoScreen> {
               ),
             ],
           ),
-          
+
           // Toggle break mode
           SwitchListTile(
             title: Text(
               'Modo Intervalo (Lua)',
-              style: TextStyle(
-                color: isDark ? Colors.white70 : Colors.black54,
-              ),
+              style: TextStyle(color: isDark ? Colors.white70 : Colors.black54),
             ),
             value: _isBreak,
             onChanged: (v) {
               setState(() {
                 _isBreak = v;
-                _timeLeft = v 
-                    ? const Duration(minutes: 5) 
+                _timeLeft = v
+                    ? const Duration(minutes: 5)
                     : const Duration(minutes: 25);
                 _totalTime = _timeLeft;
               });
             },
           ),
-          
+
           // Mudar tarefa
           ListTile(
             contentPadding: EdgeInsets.zero,
             title: Text(
               'Tarefa',
-              style: TextStyle(
-                color: isDark ? Colors.white70 : Colors.black54,
-              ),
+              style: TextStyle(color: isDark ? Colors.white70 : Colors.black54),
             ),
             subtitle: Text(
               _taskName,
-              style: TextStyle(
-                color: isDark ? Colors.white : Colors.black87,
-              ),
+              style: TextStyle(color: isDark ? Colors.white : Colors.black87),
             ),
             trailing: const Icon(Icons.edit),
             onTap: _showTaskPicker,
@@ -331,7 +327,7 @@ class _TimerDemoScreenState extends State<TimerDemoScreen> {
       'Meditação',
       AppLocalizations.of(context)!.categoryWork,
     ];
-    
+
     showModalBottomSheet(
       context: context,
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,

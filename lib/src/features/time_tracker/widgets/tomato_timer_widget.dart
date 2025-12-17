@@ -132,7 +132,7 @@ class _TomatoTimerWidgetState extends State<TomatoTimerWidget>
             style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w600,
-              color: currentColor.withValues(alpha: 0.6),
+              color: currentColor.withValues(alpha: 0.8),
               letterSpacing: 2.5,
             ),
           ),
@@ -143,7 +143,9 @@ class _TomatoTimerWidgetState extends State<TomatoTimerWidget>
         GestureDetector(
           onTap: () {
             HapticFeedback.mediumImpact();
-            _bounceController.forward().then((_) => _bounceController.reverse());
+            _bounceController.forward().then(
+              (_) => _bounceController.reverse(),
+            );
             if (widget.isRunning) {
               widget.onPause();
             } else {
@@ -183,7 +185,8 @@ class _TomatoTimerWidgetState extends State<TomatoTimerWidget>
                             fontFeatures: const [FontFeature.tabularFigures()],
                           ),
                         ),
-                        Text(AppLocalizations.of(context)!.min,
+                        Text(
+                          AppLocalizations.of(context)!.min,
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w500,
@@ -216,8 +219,8 @@ class _TomatoTimerWidgetState extends State<TomatoTimerWidget>
                 color: isCompleted
                     ? currentColor
                     : isCurrent
-                        ? currentColor.withValues(alpha: 0.5)
-                        : colors.surfaceContainerHighest,
+                    ? currentColor.withValues(alpha: 0.5)
+                    : colors.surfaceContainerHighest,
                 border: isCurrent
                     ? Border.all(color: currentColor, width: 2)
                     : null,
@@ -230,10 +233,7 @@ class _TomatoTimerWidgetState extends State<TomatoTimerWidget>
 
         Text(
           '${widget.completedSessions}/${widget.totalSessions} sessões',
-          style: TextStyle(
-            fontSize: 13,
-            color: colors.onSurfaceVariant,
-          ),
+          style: TextStyle(fontSize: 13, color: colors.onSurfaceVariant),
         ),
 
         const SizedBox(height: 24),
@@ -281,7 +281,7 @@ class _TomatoTimerWidgetState extends State<TomatoTimerWidget>
               color: colors.surfaceContainerHighest,
               iconColor: colors.onSurfaceVariant,
             ),
-            
+
             const SizedBox(width: 20),
 
             // Play/Pause button
@@ -356,10 +356,7 @@ class _TomatoTimerWidgetState extends State<TomatoTimerWidget>
       child: Container(
         width: 56,
         height: 56,
-        decoration: BoxDecoration(
-          color: color,
-          shape: BoxShape.circle,
-        ),
+        decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         child: Icon(icon, color: iconColor, size: 24),
       ),
     );
@@ -383,9 +380,15 @@ class _TomatoPainter extends CustomPainter {
     final tomatoRadius = size.width * 0.42;
 
     // Cores
-    final baseColor = isBreak ? const Color(0xFF3498DB) : const Color(0xFFE74C3C);
-    final lightColor = isBreak ? const Color(0xFF5DADE2) : const Color(0xFFFF6B6B);
-    final darkColor = isBreak ? const Color(0xFF2980B9) : const Color(0xFFC0392B);
+    final baseColor = isBreak
+        ? const Color(0xFF3498DB)
+        : const Color(0xFFE74C3C);
+    final lightColor = isBreak
+        ? const Color(0xFF5DADE2)
+        : const Color(0xFFFF6B6B);
+    final darkColor = isBreak
+        ? const Color(0xFF2980B9)
+        : const Color(0xFFC0392B);
     const leafColor = Color(0xFF27AE60);
     const leafDarkColor = Color(0xFF1E8449);
 
@@ -421,20 +424,29 @@ class _TomatoPainter extends CustomPainter {
 
     // Highlight (brilho)
     final highlightPaint = Paint()
-      ..shader = RadialGradient(
-        center: const Alignment(-0.5, -0.5),
-        radius: 0.8,
-        colors: [
-          Colors.white.withValues(alpha: 0.4),
-          Colors.white.withValues(alpha: 0.0),
-        ],
-      ).createShader(Rect.fromCircle(
-        center: Offset(center.dx - tomatoRadius * 0.3, center.dy - tomatoRadius * 0.3),
-        radius: tomatoRadius * 0.5,
-      ));
+      ..shader =
+          RadialGradient(
+            center: const Alignment(-0.5, -0.5),
+            radius: 0.8,
+            colors: [
+              Colors.white.withValues(alpha: 0.4),
+              Colors.white.withValues(alpha: 0.0),
+            ],
+          ).createShader(
+            Rect.fromCircle(
+              center: Offset(
+                center.dx - tomatoRadius * 0.3,
+                center.dy - tomatoRadius * 0.3,
+              ),
+              radius: tomatoRadius * 0.5,
+            ),
+          );
     canvas.drawOval(
       Rect.fromCenter(
-        center: Offset(center.dx - tomatoRadius * 0.3, center.dy - tomatoRadius * 0.3),
+        center: Offset(
+          center.dx - tomatoRadius * 0.3,
+          center.dy - tomatoRadius * 0.3,
+        ),
         width: tomatoRadius * 0.6,
         height: tomatoRadius * 0.4,
       ),
@@ -449,7 +461,7 @@ class _TomatoPainter extends CustomPainter {
 
       final progressPath = Path();
       progressPath.moveTo(center.dx, center.dy);
-      
+
       // Desenha a fatia do progresso (como uma pizza)
       final sweepAngle = progress * 2 * math.pi;
       progressPath.arcTo(
@@ -474,23 +486,88 @@ class _TomatoPainter extends CustomPainter {
     }
 
     // Folhas (caule)
-    _drawLeaves(canvas, Offset(center.dx, center.dy - tomatoRadius * 0.85), leafColor, leafDarkColor);
+    _drawLeaves(
+      canvas,
+      Offset(center.dx, center.dy - tomatoRadius * 0.85),
+      leafColor,
+      leafDarkColor,
+    );
+
+    // Ponteiro do relógio
+    _drawClockHand(canvas, center, tomatoRadius * 0.65, progress, darkColor);
 
     // Marcadores de minutos ao redor
     _drawMinuteMarkers(canvas, center, tomatoRadius);
   }
 
-  void _drawLeaves(Canvas canvas, Offset stemBase, Color leafColor, Color leafDarkColor) {
+  void _drawClockHand(
+    Canvas canvas,
+    Offset center,
+    double length,
+    double progress,
+    Color color,
+  ) {
+    // Ângulo do ponteiro baseado no progresso (-90° = topo, progride no sentido horário)
+    final angle = -math.pi / 2 + (progress * 2 * math.pi);
+
+    final endPoint = Offset(
+      center.dx + math.cos(angle) * length,
+      center.dy + math.sin(angle) * length,
+    );
+
+    // Sombra do ponteiro
+    final shadowPaint = Paint()
+      ..color = Colors.black.withValues(alpha: 0.2)
+      ..strokeWidth = 5
+      ..strokeCap = StrokeCap.round;
+    canvas.drawLine(
+      Offset(center.dx + 2, center.dy + 2),
+      Offset(endPoint.dx + 2, endPoint.dy + 2),
+      shadowPaint,
+    );
+
+    // Ponteiro principal
+    final handPaint = Paint()
+      ..color = color
+      ..strokeWidth = 4
+      ..strokeCap = StrokeCap.round;
+    canvas.drawLine(center, endPoint, handPaint);
+
+    // Centro do ponteiro (pino)
+    final centerPaint = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill;
+    canvas.drawCircle(center, 8, centerPaint);
+
+    // Borda branca do pino
+    final centerBorderPaint = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2;
+    canvas.drawCircle(center, 8, centerBorderPaint);
+  }
+
+  void _drawLeaves(
+    Canvas canvas,
+    Offset stemBase,
+    Color leafColor,
+    Color leafDarkColor,
+  ) {
     final leafPaint = Paint()..style = PaintingStyle.fill;
 
     // Caule central
     final stemPaint = Paint()
       ..color = leafDarkColor
       ..style = PaintingStyle.fill;
-    
+
     final stemPath = Path();
     stemPath.moveTo(stemBase.dx - 4, stemBase.dy);
-    stemPath.quadraticBezierTo(stemBase.dx, stemBase.dy - 15, stemBase.dx + 4, stemBase.dy);
+    stemPath.quadraticBezierTo(
+      stemBase.dx,
+      stemBase.dy - 15,
+      stemBase.dx + 4,
+      stemBase.dy,
+    );
     stemPath.close();
     canvas.drawPath(stemPath, stemPaint);
 
@@ -498,7 +575,7 @@ class _TomatoPainter extends CustomPainter {
     for (int i = 0; i < 5; i++) {
       final angle = (i - 2) * 0.5 - math.pi / 2;
       final leafLength = 25.0 + (i % 2) * 8;
-      
+
       leafPaint.shader = LinearGradient(
         colors: [leafColor, leafDarkColor],
         begin: Alignment.topCenter,
@@ -510,7 +587,7 @@ class _TomatoPainter extends CustomPainter {
         stemBase.dx + math.cos(angle) * leafLength,
         stemBase.dy + math.sin(angle) * leafLength,
       );
-      
+
       leafPath.moveTo(stemBase.dx, stemBase.dy - 5);
       leafPath.quadraticBezierTo(
         stemBase.dx + math.cos(angle + 0.3) * leafLength * 0.5,
@@ -524,7 +601,7 @@ class _TomatoPainter extends CustomPainter {
         stemBase.dx,
         stemBase.dy - 5,
       );
-      
+
       canvas.drawPath(leafPath, leafPaint);
     }
   }
@@ -576,19 +653,14 @@ class _RandomTextReveal extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final displayText = text.length > 20
-        ? '${text.substring(0, 18)}...'
-        : text;
+    final displayText = text.length > 20 ? '${text.substring(0, 18)}...' : text;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: color.withValues(alpha: 0.2),
-          width: 1,
-        ),
+        border: Border.all(color: color.withValues(alpha: 0.2), width: 1),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -601,10 +673,7 @@ class _RandomTextReveal extends StatelessWidget {
               color: color,
               shape: BoxShape.circle,
               boxShadow: [
-                BoxShadow(
-                  color: color.withValues(alpha: 0.5),
-                  blurRadius: 4,
-                ),
+                BoxShadow(color: color.withValues(alpha: 0.5), blurRadius: 4),
               ],
             ),
           ),

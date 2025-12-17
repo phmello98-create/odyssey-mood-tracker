@@ -49,14 +49,14 @@ class _GamifiedTimerWidgetState extends State<GamifiedTimerWidget>
   late AnimationController _particleController;
   late Animation<double> _pulseAnimation;
   late Animation<double> _glowAnimation;
-  
+
   final List<_Particle> _particles = [];
   final math.Random _random = math.Random();
 
   @override
   void initState() {
     super.initState();
-    
+
     _pulseController = AnimationController(
       duration: const Duration(milliseconds: 1200),
       vsync: this,
@@ -64,7 +64,7 @@ class _GamifiedTimerWidgetState extends State<GamifiedTimerWidget>
     _pulseAnimation = Tween<double>(begin: 1.0, end: 1.05).animate(
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
-    
+
     _glowController = AnimationController(
       duration: const Duration(milliseconds: 2000),
       vsync: this,
@@ -72,24 +72,26 @@ class _GamifiedTimerWidgetState extends State<GamifiedTimerWidget>
     _glowAnimation = Tween<double>(begin: 0.3, end: 0.6).animate(
       CurvedAnimation(parent: _glowController, curve: Curves.easeInOut),
     );
-    
+
     _particleController = AnimationController(
       duration: const Duration(seconds: 3),
       vsync: this,
     )..repeat();
-    
+
     _generateParticles();
   }
 
   void _generateParticles() {
     _particles.clear();
     for (int i = 0; i < 12; i++) {
-      _particles.add(_Particle(
-        angle: (i * 30) * math.pi / 180,
-        speed: 0.3 + _random.nextDouble() * 0.4,
-        size: 2 + _random.nextDouble() * 3,
-        opacity: 0.3 + _random.nextDouble() * 0.5,
-      ));
+      _particles.add(
+        _Particle(
+          angle: (i * 30) * math.pi / 180,
+          speed: 0.3 + _random.nextDouble() * 0.4,
+          size: 2 + _random.nextDouble() * 3,
+          opacity: 0.3 + _random.nextDouble() * 0.5,
+        ),
+      );
     }
   }
 
@@ -126,36 +128,60 @@ class _GamifiedTimerWidgetState extends State<GamifiedTimerWidget>
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final baseColor = isDark ? const Color(0xFF1E1E2E) : const Color(0xFFE8E8F0);
-    final shadowDark = isDark ? Colors.black54 : Colors.black26;
-    final shadowLight = isDark ? Colors.white10 : Colors.white;
-    
+    final colorScheme = Theme.of(context).colorScheme;
+
+    // Use surface container colors for better depth in both modes
+    final baseColor = isDark
+        ? colorScheme.surfaceContainerHighest
+        : colorScheme.surface;
+
+    // Dynamic shadows based on theme
+    final shadowDark = isDark
+        ? Colors.black.withValues(alpha: 0.5)
+        : Colors.black.withValues(alpha: 0.1);
+
+    final shadowLight = isDark
+        ? Colors.white.withValues(alpha: 0.05)
+        : Colors.white;
+
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         // Status da sessão (Break ou Focus)
-        _buildSessionStatus(isDark),
+        _buildSessionStatus(isDark, colorScheme),
         const SizedBox(height: 20),
-        
+
         // Timer principal com efeito 3D
-        _buildMainTimer(baseColor, shadowDark, shadowLight, isDark),
+        _buildMainTimer(
+          baseColor,
+          shadowDark,
+          shadowLight,
+          isDark,
+          colorScheme,
+        ),
         const SizedBox(height: 24),
-        
+
         // Barra de XP
-        _buildXPBar(isDark),
+        _buildXPBar(isDark, colorScheme),
         const SizedBox(height: 24),
-        
+
         // Indicador de sessões (flames)
-        _buildSessionIndicator(isDark),
+        _buildSessionIndicator(isDark, colorScheme),
         const SizedBox(height: 32),
-        
+
         // Controles
-        _buildControls(baseColor, shadowDark, shadowLight, isDark),
+        _buildControls(baseColor, shadowDark, shadowLight, isDark, colorScheme),
       ],
     );
   }
 
-  Widget _buildSessionStatus(bool isDark) {
+  Widget _buildSessionStatus(bool isDark, ColorScheme colorScheme) {
+    // Determine colors based on state
+    final breakColor = const Color(
+      0xFF4ECDC4,
+    ); // Keep generic nice teal for break
+    final activeColor = widget.accentColor;
+
     return AnimatedSwitcher(
       duration: const Duration(milliseconds: 300),
       child: Container(
@@ -164,14 +190,15 @@ class _GamifiedTimerWidgetState extends State<GamifiedTimerWidget>
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: widget.isBreak
-                ? [const Color(0xFF4ECDC4), const Color(0xFF44A08D)]
-                : [widget.accentColor, widget.accentColor.withValues(alpha: 0.7)],
+                ? [breakColor, breakColor.withValues(alpha: 0.8)]
+                : [activeColor, activeColor.withValues(alpha: 0.7)],
           ),
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: (widget.isBreak ? const Color(0xFF4ECDC4) : widget.accentColor)
-                  .withValues(alpha: 0.4),
+              color: (widget.isBreak ? breakColor : activeColor).withValues(
+                alpha: 0.4,
+              ),
               blurRadius: 15,
               offset: const Offset(0, 5),
             ),
@@ -200,13 +227,23 @@ class _GamifiedTimerWidgetState extends State<GamifiedTimerWidget>
     );
   }
 
-  Widget _buildMainTimer(Color baseColor, Color shadowDark, Color shadowLight, bool isDark) {
+  Widget _buildMainTimer(
+    Color baseColor,
+    Color shadowDark,
+    Color shadowLight,
+    bool isDark,
+    ColorScheme colorScheme,
+  ) {
     return AnimatedBuilder(
-      animation: Listenable.merge([_pulseAnimation, _glowAnimation, _particleController]),
+      animation: Listenable.merge([
+        _pulseAnimation,
+        _glowAnimation,
+        _particleController,
+      ]),
       builder: (context, child) {
         final pulse = widget.isRunning ? _pulseAnimation.value : 1.0;
         final glow = _glowAnimation.value;
-        
+
         return Transform.scale(
           scale: pulse,
           child: SizedBox(
@@ -216,9 +253,8 @@ class _GamifiedTimerWidgetState extends State<GamifiedTimerWidget>
               alignment: Alignment.center,
               children: [
                 // Partículas orbitando (quando rodando)
-                if (widget.isRunning)
-                  ..._buildParticles(),
-                
+                if (widget.isRunning) ..._buildParticles(),
+
                 // Glow externo animado
                 Container(
                   width: 290,
@@ -234,7 +270,7 @@ class _GamifiedTimerWidgetState extends State<GamifiedTimerWidget>
                     ],
                   ),
                 ),
-                
+
                 // Anel externo neumorphic
                 Container(
                   width: 280,
@@ -258,7 +294,7 @@ class _GamifiedTimerWidgetState extends State<GamifiedTimerWidget>
                     ],
                   ),
                 ),
-                
+
                 // Anel de progresso
                 SizedBox(
                   width: 260,
@@ -266,14 +302,18 @@ class _GamifiedTimerWidgetState extends State<GamifiedTimerWidget>
                   child: CustomPaint(
                     painter: _NeumorphicProgressPainter(
                       progress: progress,
-                      color: widget.isBreak ? const Color(0xFF4ECDC4) : widget.accentColor,
-                      backgroundColor: isDark ? Colors.white10 : Colors.black12,
+                      color: widget.isBreak
+                          ? const Color(0xFF4ECDC4)
+                          : widget.accentColor,
+                      backgroundColor: isDark
+                          ? Colors.white10
+                          : Colors.black.withValues(alpha: 0.05),
                       strokeWidth: 12,
                       glowIntensity: glow,
                     ),
                   ),
                 ),
-                
+
                 // Centro com tempo (estilo 3D inset)
                 Container(
                   width: 200,
@@ -307,7 +347,9 @@ class _GamifiedTimerWidgetState extends State<GamifiedTimerWidget>
                           return Transform.scale(
                             scale: scale,
                             child: Text(
-                              widget.isBreak ? '☕' : (widget.isRunning ? '🔥' : '🍅'),
+                              widget.isBreak
+                                  ? '☕'
+                                  : (widget.isRunning ? '🔥' : '🍅'),
                               style: const TextStyle(fontSize: 36),
                             ),
                           );
@@ -349,14 +391,10 @@ class _GamifiedTimerWidgetState extends State<GamifiedTimerWidget>
                     ],
                   ),
                 ),
-                
+
                 // Combo indicator (se tiver múltiplas sessões)
                 if (widget.completedSessions > 0)
-                  Positioned(
-                    top: 20,
-                    right: 20,
-                    child: _buildComboIndicator(),
-                  ),
+                  Positioned(top: 20, right: 20, child: _buildComboIndicator()),
               ],
             ),
           ),
@@ -372,7 +410,7 @@ class _GamifiedTimerWidgetState extends State<GamifiedTimerWidget>
       const radius = 135.0;
       final x = math.cos(angle) * radius;
       final y = math.sin(angle) * radius;
-      
+
       return Positioned(
         left: 150 + x - particle.size / 2,
         top: 150 + y - particle.size / 2,
@@ -428,10 +466,10 @@ class _GamifiedTimerWidgetState extends State<GamifiedTimerWidget>
     );
   }
 
-  Widget _buildXPBar(bool isDark) {
+  Widget _buildXPBar(bool isDark, ColorScheme colorScheme) {
     final xpProgress = widget.isRunning ? progress : 0.0;
     final earnedXP = (widget.xpToGain * xpProgress).round();
-    
+
     return Column(
       children: [
         // Label
@@ -513,13 +551,13 @@ class _GamifiedTimerWidgetState extends State<GamifiedTimerWidget>
     );
   }
 
-  Widget _buildSessionIndicator(bool isDark) {
+  Widget _buildSessionIndicator(bool isDark, ColorScheme colorScheme) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: List.generate(widget.totalSessions, (index) {
         final isCompleted = index < widget.completedSessions;
         final isCurrent = index == widget.completedSessions;
-        
+
         return Padding(
           padding: const EdgeInsets.symmetric(horizontal: 6),
           child: AnimatedContainer(
@@ -547,8 +585,8 @@ class _GamifiedTimerWidgetState extends State<GamifiedTimerWidget>
                     color: isCompleted
                         ? widget.accentColor
                         : (isCurrent
-                            ? widget.accentColor.withValues(alpha: 0.5)
-                            : (isDark ? Colors.white12 : Colors.black12)),
+                              ? widget.accentColor.withValues(alpha: 0.5)
+                              : (isDark ? Colors.white12 : Colors.black12)),
                   ),
                 ),
               ],
@@ -559,7 +597,13 @@ class _GamifiedTimerWidgetState extends State<GamifiedTimerWidget>
     );
   }
 
-  Widget _buildControls(Color baseColor, Color shadowDark, Color shadowLight, bool isDark) {
+  Widget _buildControls(
+    Color baseColor,
+    Color shadowDark,
+    Color shadowLight,
+    bool isDark,
+    ColorScheme colorScheme,
+  ) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
@@ -576,10 +620,12 @@ class _GamifiedTimerWidgetState extends State<GamifiedTimerWidget>
           size: 50,
         ),
         const SizedBox(width: 24),
-        
+
         // Botão Play/Pause (maior)
         _buildNeumorphicButton(
-          icon: widget.isRunning ? Icons.pause_rounded : Icons.play_arrow_rounded,
+          icon: widget.isRunning
+              ? Icons.pause_rounded
+              : Icons.play_arrow_rounded,
           onTap: () {
             HapticFeedback.heavyImpact();
             if (widget.isRunning) {
@@ -596,7 +642,7 @@ class _GamifiedTimerWidgetState extends State<GamifiedTimerWidget>
           accentColor: widget.accentColor,
         ),
         const SizedBox(width: 24),
-        
+
         // Botão Skip
         _buildNeumorphicButton(
           icon: Icons.skip_next_rounded,
@@ -637,10 +683,7 @@ class _GamifiedTimerWidgetState extends State<GamifiedTimerWidget>
               ? LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
-                  colors: [
-                    accentColor,
-                    accentColor.withValues(alpha: 0.7),
-                  ],
+                  colors: [accentColor, accentColor.withValues(alpha: 0.7)],
                 )
               : null,
           color: isPrimary ? null : baseColor,
@@ -666,10 +709,10 @@ class _GamifiedTimerWidgetState extends State<GamifiedTimerWidget>
           color: isPrimary
               ? Colors.white
               : (onTap != null
-                  ? (Theme.of(context).brightness == Brightness.dark
-                      ? Colors.white70
-                      : Colors.black54)
-                  : Colors.grey),
+                    ? (Theme.of(context).brightness == Brightness.dark
+                          ? Colors.white70
+                          : Colors.black54)
+                    : Colors.grey),
         ),
       ),
     );
@@ -696,16 +739,16 @@ class _NeumorphicProgressPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
     final radius = (size.width - strokeWidth) / 2;
-    
+
     // Background arc
     final bgPaint = Paint()
       ..color = backgroundColor
       ..style = PaintingStyle.stroke
       ..strokeWidth = strokeWidth
       ..strokeCap = StrokeCap.round;
-    
+
     canvas.drawCircle(center, radius, bgPaint);
-    
+
     // Progress arc com glow
     if (progress > 0) {
       // Glow
@@ -715,7 +758,7 @@ class _NeumorphicProgressPainter extends CustomPainter {
         ..strokeWidth = strokeWidth + 8
         ..strokeCap = StrokeCap.round
         ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8);
-      
+
       canvas.drawArc(
         Rect.fromCircle(center: center, radius: radius),
         -math.pi / 2,
@@ -723,24 +766,20 @@ class _NeumorphicProgressPainter extends CustomPainter {
         false,
         glowPaint,
       );
-      
+
       // Progress arc
       final progressPaint = Paint()
         ..shader = SweepGradient(
           startAngle: -math.pi / 2,
           endAngle: -math.pi / 2 + 2 * math.pi * progress,
-          colors: [
-            color,
-            color.withValues(alpha: 0.7),
-            color,
-          ],
+          colors: [color, color.withValues(alpha: 0.7), color],
           stops: const [0.0, 0.5, 1.0],
           transform: const GradientRotation(-math.pi / 2),
         ).createShader(Rect.fromCircle(center: center, radius: radius))
         ..style = PaintingStyle.stroke
         ..strokeWidth = strokeWidth
         ..strokeCap = StrokeCap.round;
-      
+
       canvas.drawArc(
         Rect.fromCircle(center: center, radius: radius),
         -math.pi / 2,
@@ -748,18 +787,18 @@ class _NeumorphicProgressPainter extends CustomPainter {
         false,
         progressPaint,
       );
-      
+
       // Dot no final do progresso
       final dotAngle = -math.pi / 2 + 2 * math.pi * progress;
       final dotX = center.dx + radius * math.cos(dotAngle);
       final dotY = center.dy + radius * math.sin(dotAngle);
-      
+
       // Glow do dot
       final dotGlowPaint = Paint()
         ..color = color.withValues(alpha: 0.6)
         ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6);
       canvas.drawCircle(Offset(dotX, dotY), strokeWidth / 2 + 4, dotGlowPaint);
-      
+
       // Dot
       final dotPaint = Paint()..color = Colors.white;
       canvas.drawCircle(Offset(dotX, dotY), strokeWidth / 2 - 1, dotPaint);

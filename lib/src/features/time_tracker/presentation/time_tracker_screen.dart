@@ -15,7 +15,9 @@ import 'package:odyssey/src/features/gamification/data/gamification_repository.d
 import 'package:odyssey/src/utils/services/notification_service.dart';
 import 'package:odyssey/src/utils/services/sound_service.dart';
 import 'package:odyssey/src/providers/timer_provider.dart';
-import 'package:odyssey/src/features/onboarding/services/showcase_service.dart' as showcase;
+import 'package:odyssey/src/features/onboarding/services/showcase_service.dart'
+    as showcase;
+import 'package:odyssey/src/features/time_tracker/widgets/tomato_timer_widget.dart';
 
 class TimeTrackerScreen extends ConsumerStatefulWidget {
   const TimeTrackerScreen({Key? key}) : super(key: key);
@@ -56,16 +58,16 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
   Duration _shortBreakDuration = const Duration(minutes: 5);
   Duration _longBreakDuration = const Duration(minutes: 15);
   bool _showPomodoroScreen = false; // Nova tela de Pomodoro
-  
+
   // View state
   bool _showProductivity = false;
   bool _showWeekStats = false;
   bool _showFullscreenTimer = false; // Nova variável para controlar tela cheia
-  
+
   // Tab state - 0 = Tempo Livre, 1 = Pomodoro
-  int _selectedTab = 0;
+
   late TabController _tabController;
-  
+
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
   late AnimationController _ringController;
@@ -74,32 +76,72 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
 
   // Predefined activities with colors (editáveis)
   final List<Map<String, dynamic>> _activities = [
-    {'name': 'Desenvolvimento App', 'icon': Icons.phone_android, 'color': const Color(0xFF9B51E0), 'category': 'Trabalho', 'project': 'Odyssey'},
-    {'name': 'Reunião de equipe', 'icon': Icons.groups, 'color': const Color(0xFFFFA556), 'category': 'Trabalho', 'project': 'Odyssey'},
-    {'name': 'Estudar Flutter', 'icon': Icons.code, 'color': const Color(0xFFFD5B71), 'category': 'Estudo', 'project': 'Aprendizado'},
-    {'name': 'Leitura', 'icon': Icons.menu_book, 'color': const Color(0xFF07E092), 'category': 'Pessoal', 'project': 'Leitura'},
-    {'name': 'Exercícios', 'icon': Icons.fitness_center, 'color': const Color(0xFFFF6B6B), 'category': 'Saúde', 'project': 'Fitness'},
-    {'name': 'Meditação', 'icon': Icons.self_improvement, 'color': UltravioletColors.accentPink, 'category': 'Pessoal', 'project': null},
+    {
+      'name': 'Desenvolvimento App',
+      'icon': Icons.phone_android,
+      'color': const Color(0xFF9B51E0),
+      'category': 'Trabalho',
+      'project': 'Odyssey',
+    },
+    {
+      'name': 'Reunião de equipe',
+      'icon': Icons.groups,
+      'color': const Color(0xFFFFA556),
+      'category': 'Trabalho',
+      'project': 'Odyssey',
+    },
+    {
+      'name': 'Estudar Flutter',
+      'icon': Icons.code,
+      'color': const Color(0xFFFD5B71),
+      'category': 'Estudo',
+      'project': 'Aprendizado',
+    },
+    {
+      'name': 'Leitura',
+      'icon': Icons.menu_book,
+      'color': const Color(0xFF07E092),
+      'category': 'Pessoal',
+      'project': 'Leitura',
+    },
+    {
+      'name': 'Exercícios',
+      'icon': Icons.fitness_center,
+      'color': const Color(0xFFFF6B6B),
+      'category': 'Saúde',
+      'project': 'Fitness',
+    },
+    {
+      'name': 'Meditação',
+      'icon': Icons.self_improvement,
+      'color': const Color(0xFFE91E63),
+      'category': 'Pessoal',
+      'project': null,
+    },
   ];
-  
+
   // Categorias disponíveis (editáveis)
-  final List<String> _categories = ['Trabalho', 'Pessoal', 'Estudo', 'Saúde', 'Outros'];
+  final List<String> _categories = [
+    'Trabalho',
+    'Pessoal',
+    'Estudo',
+    'Saúde',
+    'Outros',
+  ];
 
   @override
   void initState() {
     super.initState();
     _initShowcase();
-    
+
     // Tab controller para as abas
     _tabController = TabController(length: 2, vsync: this);
     _tabController.addListener(() {
       if (!_tabController.indexIsChanging) {
-        setState(() {
-          _selectedTab = _tabController.index;
-        });
+        setState(() {});
       }
     });
-    
+
     _pulseController = AnimationController(
       duration: const Duration(milliseconds: 1500),
       vsync: this,
@@ -118,80 +160,136 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
     _appleAnimation = Tween<double>(begin: 0, end: 1).animate(
       CurvedAnimation(parent: _appleController, curve: Curves.easeInOut),
     );
-    
+
     // Sincronizar com o provider global na inicialização
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _syncWithGlobalTimer();
       _addSampleData();
     });
   }
-  
+
   void _addSampleData() async {
     final repo = ref.read(timeTrackingRepositoryProvider);
     final records = repo.fetchAllTimeTrackingRecords();
-    
+
     // Se já tem dados suficientes (>20), não adiciona mais
     if (records.length > 20) return;
-    
+
     // Limpar dados antigos para recrear com dados novos
     for (final r in records) {
       await repo.deleteTimeTrackingRecord(r.id);
     }
-    
+
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    
+
     // Criar dados para toda a semana
     final sampleRecords = <TimeTrackingRecord>[];
     int idCounter = 1;
-    
+
     // Dados para cada dia da semana (últimos 7 dias)
     for (int dayOffset = 0; dayOffset < 7; dayOffset++) {
       final day = today.subtract(Duration(days: dayOffset));
-      
+
       // Variar quantidade de tarefas por dia
-      final numTasks = dayOffset == 0 ? 4 : (dayOffset % 3) + 2; // Mais tarefas hoje
-      
+      final numTasks = dayOffset == 0
+          ? 4
+          : (dayOffset % 3) + 2; // Mais tarefas hoje
+
       for (int taskIndex = 0; taskIndex < numTasks; taskIndex++) {
         final taskVariants = [
-          {'name': 'Desenvolvimento App', 'icon': Icons.phone_android, 'color': const Color(0xFF9B51E0), 'cat': 'Trabalho', 'proj': 'Odyssey'},
-          {'name': 'Reunião de equipe', 'icon': Icons.groups, 'color': const Color(0xFFFFA556), 'cat': 'Trabalho', 'proj': 'Odyssey'},
-          {'name': 'Estudar Flutter', 'icon': Icons.code, 'color': const Color(0xFFFD5B71), 'cat': 'Estudo', 'proj': 'Aprendizado'},
-          {'name': 'Leitura', 'icon': Icons.menu_book, 'color': const Color(0xFF07E092), 'cat': 'Pessoal', 'proj': 'Leitura'},
-          {'name': 'Exercícios', 'icon': Icons.fitness_center, 'color': const Color(0xFFFF6B6B), 'cat': 'Saúde', 'proj': 'Fitness'},
-          {'name': 'Meditação', 'icon': Icons.self_improvement, 'color': const Color(0xFF9B51E0), 'cat': 'Saúde', 'proj': null},
-          {'name': 'Design UI', 'icon': Icons.design_services, 'color': const Color(0xFF00B4D8), 'cat': 'Trabalho', 'proj': 'Odyssey'},
+          {
+            'name': 'Desenvolvimento App',
+            'icon': Icons.phone_android,
+            'color': const Color(0xFF9B51E0),
+            'cat': 'Trabalho',
+            'proj': 'Odyssey',
+          },
+          {
+            'name': 'Reunião de equipe',
+            'icon': Icons.groups,
+            'color': const Color(0xFFFFA556),
+            'cat': 'Trabalho',
+            'proj': 'Odyssey',
+          },
+          {
+            'name': 'Estudar Flutter',
+            'icon': Icons.code,
+            'color': const Color(0xFFFD5B71),
+            'cat': 'Estudo',
+            'proj': 'Aprendizado',
+          },
+          {
+            'name': 'Leitura',
+            'icon': Icons.menu_book,
+            'color': const Color(0xFF07E092),
+            'cat': 'Pessoal',
+            'proj': 'Leitura',
+          },
+          {
+            'name': 'Exercícios',
+            'icon': Icons.fitness_center,
+            'color': const Color(0xFFFF6B6B),
+            'cat': 'Saúde',
+            'proj': 'Fitness',
+          },
+          {
+            'name': 'Meditação',
+            'icon': Icons.self_improvement,
+            'color': const Color(0xFF9B51E0),
+            'cat': 'Saúde',
+            'proj': null,
+          },
+          {
+            'name': 'Design UI',
+            'icon': Icons.design_services,
+            'color': const Color(0xFF00B4D8),
+            'cat': 'Trabalho',
+            'proj': 'Odyssey',
+          },
         ];
-        
-        final task = taskVariants[(dayOffset + taskIndex) % taskVariants.length];
-        final durationMinutes = 30 + (taskIndex * 20) + (dayOffset * 10) % 90; // 30-120 min variável
+
+        final task =
+            taskVariants[(dayOffset + taskIndex) % taskVariants.length];
+        final durationMinutes =
+            30 +
+            (taskIndex * 20) +
+            (dayOffset * 10) % 90; // 30-120 min variável
         final startHour = 8 + (taskIndex * 2);
-        
-        sampleRecords.add(TimeTrackingRecord(
-          id: '${idCounter++}',
-          activityName: task['name'] as String,
-          iconCode: (task['icon'] as IconData).codePoint,
-          startTime: day.add(Duration(hours: startHour)),
-          endTime: day.add(Duration(hours: startHour, minutes: durationMinutes)),
-          duration: Duration(minutes: durationMinutes),
-          category: task['cat'] as String,
-          project: task['proj'] as String?,
-          isCompleted: dayOffset > 0 || taskIndex < 2, // Hoje: só 2 primeiras concluídas
-          colorValue: (task['color'] as Color).value,
-        ));
+
+        sampleRecords.add(
+          TimeTrackingRecord(
+            id: '${idCounter++}',
+            activityName: task['name'] as String,
+            iconCode: (task['icon'] as IconData).codePoint,
+            startTime: day.add(Duration(hours: startHour)),
+            endTime: day.add(
+              Duration(hours: startHour, minutes: durationMinutes),
+            ),
+            duration: Duration(minutes: durationMinutes),
+            category: task['cat'] as String,
+            project: task['proj'] as String?,
+            isCompleted:
+                dayOffset > 0 ||
+                taskIndex < 2, // Hoje: só 2 primeiras concluídas
+            colorValue: (task['color'] as Color).value,
+          ),
+        );
       }
     }
-    
+
     for (final record in sampleRecords) {
       await repo.addTimeTrackingRecord(record);
     }
-    
+
     if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
-    showcase.ShowcaseService.unregisterScreen(showcase.ShowcaseTour.timeTracker);
+    showcase.ShowcaseService.unregisterScreen(
+      showcase.ShowcaseTour.timeTracker,
+    );
     // NÃO cancelar o timer aqui - ele deve continuar rodando no provider global
     _notesController.dispose();
     _taskNameController.dispose();
@@ -219,7 +317,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
         _pomodoroTimeLeft = timerState.pomodoroTimeLeft;
         _pomodoroSessions = timerState.pomodoroSessions;
       });
-      
+
       // Reiniciar animação de pulso
       _pulseController.repeat(reverse: true);
     }
@@ -227,24 +325,29 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
 
   void _startTimer({Activity? activity, String? customTask}) {
     final taskName = customTask ?? _taskNameController.text;
-    
+
     // Pegar cor e ícone da atividade
     final activityData = _activities.firstWhere(
       (a) => a['name'] == taskName,
-      orElse: () => {'icon': Icons.timer, 'color': UltravioletColors.primary},
+      orElse: () => {
+        'icon': Icons.timer,
+        'color': Theme.of(context).colorScheme.primary,
+      },
     );
     final color = activityData['color'] as Color;
     final icon = activityData['icon'] as IconData;
-    
+
     // Usar o provider global para iniciar o timer
-    ref.read(timerProvider.notifier).startTimer(
-      taskName: taskName,
-      category: _selectedCategory,
-      project: _selectedProject,
-      iconCode: activity?.iconCode ?? icon.codePoint,
-      colorValue: color.value,
-    );
-    
+    ref
+        .read(timerProvider.notifier)
+        .startTimer(
+          taskName: taskName,
+          category: _selectedCategory,
+          project: _selectedProject,
+          iconCode: activity?.iconCode ?? icon.codePoint,
+          colorValue: color.value,
+        );
+
     // Atualizar estado local para UI
     setState(() {
       _selectedActivity = activity;
@@ -260,26 +363,37 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
   Future<void> _stopTimer() async {
     // Obter estado final do provider global
     final timerState = ref.read(timerProvider.notifier).stopTimer();
-    
+
     if (timerState.isRunning || _isRunning) {
       final activityName = timerState.taskName ?? _customTaskName ?? 'Timer';
-      final elapsed = timerState.elapsed.inSeconds > 0 ? timerState.elapsed : _elapsedTime;
-      final startTime = timerState.startTime ?? _startTime ?? DateTime.now().subtract(elapsed);
+      final elapsed = timerState.elapsed.inSeconds > 0
+          ? timerState.elapsed
+          : _elapsedTime;
+      final startTime =
+          timerState.startTime ??
+          _startTime ??
+          DateTime.now().subtract(elapsed);
       final endTime = DateTime.now();
-      
+
       // Pegar cor da atividade selecionada
       final activityData = _activities.firstWhere(
         (a) => a['name'] == activityName,
-        orElse: () => {'icon': Icons.timer, 'color': UltravioletColors.primary},
+        orElse: () => {
+          'icon': Icons.timer,
+          'color': Theme.of(context).colorScheme.primary,
+        },
       );
-      final color = timerState.colorValue != null 
-          ? Color(timerState.colorValue!) 
+      final color = timerState.colorValue != null
+          ? Color(timerState.colorValue!)
           : activityData['color'] as Color;
-      
+
       final record = TimeTrackingRecord(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
         activityName: activityName,
-        iconCode: timerState.iconCode ?? _selectedActivity?.iconCode ?? (activityData['icon'] as IconData).codePoint,
+        iconCode:
+            timerState.iconCode ??
+            _selectedActivity?.iconCode ??
+            (activityData['icon'] as IconData).codePoint,
         startTime: startTime,
         endTime: endTime,
         duration: elapsed,
@@ -301,31 +415,39 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
       // XP baseado no tempo e gamificação
       final minutes = elapsed.inMinutes;
       final xp = (minutes / 5).floor() * 5;
-      
+
       // Feedback melhorado com nome da tarefa
-      FeedbackService.showFocusSessionComplete(context, activityName, minutes, xp: xp > 0 ? xp : null);
-      
+      FeedbackService.showFocusSessionComplete(
+        context,
+        activityName,
+        minutes,
+        xp: xp > 0 ? xp : null,
+      );
+
       try {
         final gamificationRepo = ref.read(gamificationRepositoryProvider);
         final gamResult = await gamificationRepo.trackTime(minutes);
         final newBadges = gamResult.newBadges;
-        
+
         // Mostra badge se desbloqueou
         if (newBadges.isNotEmpty && mounted) {
           Future.delayed(const Duration(milliseconds: 3000), () {
             if (mounted) {
               FeedbackService.showAchievement(
-                context, 
+                context,
                 '${newBadges.first.icon} ${newBadges.first.name}',
                 newBadges.first.description,
               );
             }
           });
         }
-        
+
         // Notificação de sessão completa
         if (minutes >= 15) {
-          NotificationService.instance.showPomodoroComplete(activityName, minutes);
+          NotificationService.instance.showPomodoroComplete(
+            activityName,
+            minutes,
+          );
         }
       } catch (e) {
         // Gamificação falhou mas o registro foi salvo
@@ -343,10 +465,10 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
       });
       _notesController.clear();
       _taskNameController.clear();
-      
+
       // Parar sons do timer
       soundService.stopTimerSounds();
-      
+
       // Cancelar notificação do timer já foi feito no provider
     }
   }
@@ -354,13 +476,13 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
   void _resetTimer() {
     // Usar o provider global para resetar
     ref.read(timerProvider.notifier).resetTimer();
-    
+
     // Parar sons do timer
     soundService.stopTimerSounds();
-    
+
     _pulseController.stop();
     _pulseController.reset();
-    
+
     setState(() {
       _isRunning = false;
       _selectedActivity = null;
@@ -373,8 +495,9 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
   // Pomodoro methods
   void _startPomodoro() {
     soundService.playTimerStart(); // Som de início
-    final taskName = _customTaskName ?? _selectedActivity?.activityName ?? 'Tarefa';
-    
+    final taskName =
+        _customTaskName ?? _selectedActivity?.activityName ?? 'Tarefa';
+
     setState(() {
       _isPomodoroRunning = true;
       _isPomodoroBreak = false;
@@ -383,10 +506,10 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
 
     // Agendar notificação de conclusão
     NotificationService.instance.schedulePomodoroTimer(
-      _pomodoroDuration, 
-      taskName
+      _pomodoroDuration,
+      taskName,
     );
-    
+
     // Mostrar notificação persistente do Pomodoro
     NotificationService.instance.showTimerRunningNotification(
       taskName: taskName,
@@ -420,7 +543,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
             _pomodoroTimer?.cancel();
             _pulseController.stop();
             NotificationService.instance.cancelTimerNotification();
-            
+
             if (!_isPomodoroBreak) {
               _pomodoroSessions++;
               _showPomodoroComplete();
@@ -463,8 +586,10 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
   void _startBreak() {
     // Verificar se é pausa longa (após completar todas as sessões)
     final isLongBreak = _pomodoroSessions >= _pomodoroTotalSessions;
-    final breakDuration = isLongBreak ? _longBreakDuration : _shortBreakDuration;
-    
+    final breakDuration = isLongBreak
+        ? _longBreakDuration
+        : _shortBreakDuration;
+
     setState(() {
       _isPomodoroRunning = true;
       _isPomodoroBreak = true;
@@ -489,7 +614,10 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
             _pulseController.stop();
             HapticFeedback.mediumImpact();
             // Notificar que a pausa acabou
-            FeedbackService.showSuccess(context, '☕ Pausa finalizada! Hora de focar 🍅');
+            FeedbackService.showSuccess(
+              context,
+              '☕ Pausa finalizada! Hora de focar 🍅',
+            );
             _startPomodoro();
           }
         });
@@ -500,16 +628,18 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
   void _showPomodoroComplete() {
     HapticFeedback.heavyImpact();
     soundService.playTimerEnd(); // Som do timer terminando
-    
+
     // Verificar se é hora de pausa longa
     final isLongBreak = _pomodoroSessions >= _pomodoroTotalSessions;
-    final breakDuration = isLongBreak ? _longBreakDuration : _shortBreakDuration;
-    
+    final breakDuration = isLongBreak
+        ? _longBreakDuration
+        : _shortBreakDuration;
+
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
-        backgroundColor: UltravioletColors.surface,
+        backgroundColor: Theme.of(context).colorScheme.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -522,29 +652,31 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
               builder: (context, value, child) {
                 return Transform.scale(
                   scale: value,
-                  child: const Text('🍅', style: TextStyle(fontSize: 64)),
+                  child: Text('🍅', style: TextStyle(fontSize: 64)),
                 );
               },
             ),
             const SizedBox(height: 16),
             Text(
-              isLongBreak ? 'Parabéns! Meta atingida! 🎉' : 'Pomodoro Concluído!',
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.w700,
-              ),
+              isLongBreak
+                  ? 'Parabéns! Meta atingida! 🎉'
+                  : 'Pomodoro Concluído!',
+              style: Theme.of(
+                context,
+              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 12),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               decoration: BoxDecoration(
-                color: UltravioletColors.accentGreen.withOpacity(0.15),
+                color: const Color(0xFF27AE60).withOpacity(0.15),
                 borderRadius: BorderRadius.circular(20),
               ),
-              child: const Text(
+              child: Text(
                 '+25 XP',
                 style: TextStyle(
-                  color: UltravioletColors.accentGreen,
+                  color: const Color(0xFF27AE60),
                   fontWeight: FontWeight.w600,
                   fontSize: 18,
                 ),
@@ -572,7 +704,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
             Text(
               '$_pomodoroSessions de $_pomodoroTotalSessions sessões',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: UltravioletColors.onSurfaceVariant,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
             ),
           ],
@@ -586,7 +718,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                 _pomodoroTimeLeft = _pomodoroDuration;
               });
             },
-            child: const Text('Fechar'),
+            child: Text('Fechar'),
           ),
           ElevatedButton(
             onPressed: () {
@@ -597,16 +729,16 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
               backgroundColor: const Color(0xFF34D399),
             ),
             child: Text(
-              isLongBreak 
-                  ? 'Pausa Longa (${_longBreakDuration.inMinutes}min)' 
+              isLongBreak
+                  ? 'Pausa Longa (${_longBreakDuration.inMinutes}min)'
                   : 'Pausa (${_shortBreakDuration.inMinutes}min)',
-              style: const TextStyle(color: Colors.white),
+              style: TextStyle(color: Colors.white),
             ),
           ),
         ],
       ),
     );
-    
+
     // Gamificação
     try {
       final gamificationRepo = ref.read(gamificationRepositoryProvider);
@@ -632,27 +764,30 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
   }
 
   Color _getActivityColor(String? activityName) {
-    if (activityName == null) return UltravioletColors.primary;
+    if (activityName == null) return Theme.of(context).colorScheme.primary;
     final activity = _activities.firstWhere(
       (a) => a['name'] == activityName,
-      orElse: () => {'color': UltravioletColors.primary},
+      orElse: () => {'color': Theme.of(context).colorScheme.primary},
     );
     return activity['color'] as Color;
   }
+
   void _initShowcase() {
     final keys = [_showcaseTimer, _showcasePlay, _showcaseTasks];
     showcase.ShowcaseService.registerForScreen(
       tour: showcase.ShowcaseTour.timeTracker,
       firstAndLastKeys: [keys.first, keys.last],
     );
-    showcase.ShowcaseService.startIfNeeded(showcase.ShowcaseTour.timeTracker, keys);
+    showcase.ShowcaseService.startIfNeeded(
+      showcase.ShowcaseTour.timeTracker,
+      keys,
+    );
   }
-  
+
   void _startTour() {
     final keys = [_showcaseTimer, _showcasePlay, _showcaseTasks];
     showcase.ShowcaseService.start(showcase.ShowcaseTour.timeTracker, keys);
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -667,7 +802,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
           final notifier = ref.read(timerProvider.notifier);
           setState(() {
             _showPomodoroScreen = true;
-            _selectedTab = 1; // Ir para aba Pomodoro
+
             _tabController.animateTo(1);
             _pomodoroDuration = notifier.pomodoroDuration;
             _pomodoroTimeLeft = notifier.pomodoroDuration;
@@ -711,17 +846,17 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
       // Atualizar tempo do provider
       _elapsedTime = timerState.elapsed;
     }
-    
+
     // Se estiver no modo de timer ativo E quiser ver tela cheia
     if (_showFullscreenTimer && (_isRunning || _isPomodoroRunning)) {
       return _buildActiveTimerScreen();
     }
-    
+
     // Se estiver na tela de produtividade
     if (_showProductivity) {
       return _buildProductivityScreen();
     }
-    
+
     // Tela principal com abas modernas
     return _buildMainScreen();
   }
@@ -733,46 +868,140 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
     return SafeArea(
       child: Column(
         children: [
-          // Header com título e Stats
+          // Header com botões minimalistas
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  'Timer',
-                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: UltravioletColors.onSurface,
+                // Projetos
+                _buildHeaderButton(
+                  icon: Icons.folder_outlined,
+                  label: 'Projetos',
+                  onTap: _showProjectsDialog,
+                ),
+                // Add
+                _buildHeaderButton(
+                  icon: Icons.add,
+                  label: 'Add',
+                  onTap: _showAddTaskDialog,
+                  isPrimary: true,
+                ),
+                // Histórico
+                _buildHeaderButton(
+                  icon: Icons.history,
+                  label: 'Histórico',
+                  onTap: _showAllTasksDialogFromNav,
+                ),
+              ],
+            ),
+          ),
+
+          // Tab Bar - Design minimalista com pills
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+            child: Row(
+              children: [
+                // Tempo Livre
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () {
+                      _tabController.animateTo(0);
+                      HapticFeedback.lightImpact();
+                    },
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 250),
+                      curve: Curves.easeOutCubic,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: _tabController.index == 0
+                            ? Theme.of(context).colorScheme.primary
+                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(22),
+                        border: Border.all(
+                          color: _tabController.index == 0
+                              ? Theme.of(context).colorScheme.primary
+                              : Theme.of(
+                                  context,
+                                ).colorScheme.outlineVariant.withOpacity(0.5),
+                          width: 1.5,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.timer_outlined,
+                            size: 18,
+                            color: _tabController.index == 0
+                                ? Theme.of(context).colorScheme.onPrimary
+                                : Theme.of(
+                                    context,
+                                  ).colorScheme.onSurfaceVariant,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Tempo Livre',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: _tabController.index == 0
+                                  ? Theme.of(context).colorScheme.onPrimary
+                                  : Theme.of(
+                                      context,
+                                    ).colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
-                // Botão Stats
-                GestureDetector(
-                  onTap: () => setState(() => _showProductivity = true),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: UltravioletColors.surfaceVariant,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.bar_chart_rounded,
-                          color: UltravioletColors.primary,
-                          size: 18,
+                const SizedBox(width: 12),
+                // Pomodoro
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () {
+                      _tabController.animateTo(1);
+                      HapticFeedback.lightImpact();
+                    },
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 250),
+                      curve: Curves.easeOutCubic,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: _tabController.index == 1
+                            ? const Color(0xFFE74C3C)
+                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(22),
+                        border: Border.all(
+                          color: _tabController.index == 1
+                              ? const Color(0xFFE74C3C)
+                              : Theme.of(
+                                  context,
+                                ).colorScheme.outlineVariant.withOpacity(0.5),
+                          width: 1.5,
                         ),
-                        SizedBox(width: 6),
-                        Text(
-                          'Stats',
-                          style: TextStyle(
-                            color: UltravioletColors.primary,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text('🍅', style: TextStyle(fontSize: 16)),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Pomodoro',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: _tabController.index == 1
+                                  ? Colors.white
+                                  : Theme.of(
+                                      context,
+                                    ).colorScheme.onSurfaceVariant,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -780,76 +1009,6 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
             ),
           ),
 
-          // Tab Bar moderna com indicador elegante
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-            child: Container(
-              height: 48,
-              decoration: BoxDecoration(
-                color: UltravioletColors.surfaceVariant.withOpacity(0.5),
-                borderRadius: BorderRadius.circular(24),
-              ),
-              child: TabBar(
-                controller: _tabController,
-                indicator: BoxDecoration(
-                  borderRadius: BorderRadius.circular(24),
-                  gradient: LinearGradient(
-                    colors: _selectedTab == 0
-                        ? [UltravioletColors.primary, UltravioletColors.secondary]
-                        : [const Color(0xFFFF6B6B), const Color(0xFFFF8E53)],
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: (_selectedTab == 0 
-                          ? UltravioletColors.primary 
-                          : const Color(0xFFFF6B6B)).withOpacity(0.3),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                indicatorSize: TabBarIndicatorSize.tab,
-                dividerColor: Colors.transparent,
-                labelColor: Colors.white,
-                unselectedLabelColor: UltravioletColors.onSurfaceVariant,
-                labelStyle: const TextStyle(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 14,
-                ),
-                unselectedLabelStyle: const TextStyle(
-                  fontWeight: FontWeight.w500,
-                  fontSize: 14,
-                ),
-                tabs: const [
-                  Tab(
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.timer_outlined,
-                          size: 18,
-                        ),
-                        SizedBox(width: 6),
-                        Text('Tempo Livre'),
-                      ],
-                    ),
-                  ),
-                  Tab(
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text('🍅', style: TextStyle(fontSize: 16)),
-                        SizedBox(width: 6),
-                        Text('Pomodoro'),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-          // Conteúdo das abas
           Expanded(
             child: TabBarView(
               controller: _tabController,
@@ -862,9 +1021,56 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
             ),
           ),
 
-          // Bottom Navigation Bar
-          _buildBottomNavBar(),
+          // Remove Bottom Nav Bar usage since we moved items to header
+          // But keep a spacer if needed, or remove completely if not needed
+          // The old UI had _buildBottomNavBar(), we don't need it anymore.
         ],
+      ),
+    );
+  }
+
+  Widget _buildHeaderButton({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+    bool isPrimary = false,
+  }) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: isPrimary
+              ? colorScheme.primary
+              : colorScheme.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              size: 18,
+              color: isPrimary
+                  ? colorScheme.onPrimary
+                  : colorScheme.onSurfaceVariant,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: isPrimary
+                    ? colorScheme.onPrimary
+                    : colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -880,9 +1086,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
         _buildCurrentTimerCard(),
         const SizedBox(height: 16),
         // Lista de tarefas
-        Expanded(
-          child: _buildTodayTasksList(),
-        ),
+        Expanded(child: _buildTodayTasksList()),
       ],
     );
   }
@@ -891,125 +1095,279 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
   // POMODORO TAB - Aba de Pomodoro com timer de tomate
   // =====================================================
   Widget _buildPomodoroTab() {
-    final progress = 1 - (_pomodoroTimeLeft.inSeconds / _pomodoroDuration.inSeconds);
-    final taskName = _customTaskName ?? _selectedActivity?.activityName;
-    
-    return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Column(
-        children: [
-          const SizedBox(height: 16),
-          
-          // Timer de Tomate com relógio de ponteiro
-          _buildTomatoClockTimer(progress),
-          
-          const SizedBox(height: 24),
-          
-          // Controles do Pomodoro
-          _buildModernPomodoroControls(),
-          
-          const SizedBox(height: 24),
-          
-          // Stats do Pomodoro
-          _buildPomodoroQuickStats(),
-          
-          const SizedBox(height: 16),
-          
-          // Seletor de tarefa rápido
-          _buildQuickTaskSelector(),
-          
-          const SizedBox(height: 24),
-        ],
-      ),
+    final repo = ref.watch(timeTrackingRepositoryProvider);
+
+    return ValueListenableBuilder(
+      valueListenable: repo.box.listenable(),
+      builder: (context, box, _) {
+        final now = DateTime.now();
+        final allRecords = box.values.cast<TimeTrackingRecord>().toList();
+
+        // Filter Pomodoro sessions (duration ~25 min or records with pomodoro flag)
+        final pomodoroRecords = allRecords
+            .where((r) => _isSameDay(r.startTime, now))
+            .where(
+              (r) => r.durationInSeconds >= 1200 && r.durationInSeconds <= 1800,
+            ) // 20-30 min sessions
+            .toList();
+        pomodoroRecords.sort((a, b) => b.startTime.compareTo(a.startTime));
+
+        return SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(height: 16),
+
+              // Timer de Tomate reutilizável
+              TomatoTimerWidget(
+                timeLeft: _pomodoroTimeLeft,
+                totalTime: _pomodoroDuration,
+                isRunning: _isPomodoroRunning,
+                isBreak: _isPomodoroBreak,
+                onStart: _startPomodoro,
+                onPause: _pausePomodoro,
+                onReset: _resetPomodoro,
+              ),
+
+              const SizedBox(height: 24),
+
+              // Stats do Pomodoro
+              _buildPomodoroQuickStats(),
+
+              const SizedBox(height: 16),
+
+              // Seletor de tarefa rápido
+              _buildQuickTaskSelector(),
+
+              const SizedBox(height: 24),
+
+              // Histórico de sessões Pomodoro
+              _buildPomodoroHistory(pomodoroRecords),
+
+              const SizedBox(height: 100),
+            ],
+          ),
+        );
+      },
     );
   }
 
-  // Timer de Tomate estilo relógio de ponteiro
-  Widget _buildTomatoClockTimer(double progress) {
-    return GestureDetector(
-      onTap: () {
-        HapticFeedback.mediumImpact();
-        if (_isPomodoroRunning) {
-          _pausePomodoro();
-        } else {
-          _startPomodoro();
-        }
-      },
-      child: AnimatedBuilder(
-        animation: _pulseAnimation,
-        builder: (context, child) {
-          final scale = _isPomodoroRunning ? _pulseAnimation.value : 1.0;
-          return Transform.scale(scale: scale, child: child);
-        },
-        child: SizedBox(
-          width: 280,
-          height: 320,
-          child: CustomPaint(
-            painter: _TomatoClockPainter(
-              progress: progress,
-              isBreak: _isPomodoroBreak,
-              isRunning: _isPomodoroRunning,
+  Widget _buildPomodoroHistory(List<TimeTrackingRecord> sessions) {
+    final colorScheme = Theme.of(context).colorScheme;
+    const pomodoroColor = Color(0xFFE74C3C);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Header
+        Row(
+          children: [
+            Icon(Icons.history_rounded, size: 18, color: pomodoroColor),
+            const SizedBox(width: 8),
+            Text(
+              'Sessões de Hoje',
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: colorScheme.onSurface,
+              ),
             ),
-            child: Center(
-              child: Padding(
-                padding: const EdgeInsets.only(top: 30),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Status
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: (_isPomodoroBreak 
-                            ? const Color(0xFF3498DB) 
-                            : const Color(0xFFE74C3C)).withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        _isPomodoroBreak ? '☕ PAUSA' : '🔥 FOCO',
+            const SizedBox(width: 8),
+            if (sessions.isNotEmpty)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: pomodoroColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  '${sessions.length}',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: pomodoroColor,
+                  ),
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: 12),
+
+        if (sessions.isEmpty) ...[
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: colorScheme.surfaceContainerHighest.withOpacity(0.4),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: colorScheme.outlineVariant.withOpacity(0.2),
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.timer_outlined,
+                  size: 32,
+                  color: colorScheme.onSurfaceVariant.withOpacity(0.5),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Nenhuma sessão hoje',
                         style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                          color: _isPomodoroBreak 
-                              ? const Color(0xFF3498DB) 
-                              : const Color(0xFFE74C3C),
-                          letterSpacing: 1,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: colorScheme.onSurfaceVariant,
                         ),
                       ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Inicie um Pomodoro para começar!',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: colorScheme.onSurfaceVariant.withOpacity(0.7),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ] else ...[
+          ...sessions.map((session) => _buildPomodoroSessionCard(session)),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildPomodoroSessionCard(TimeTrackingRecord session) {
+    final colorScheme = Theme.of(context).colorScheme;
+    const pomodoroColor = Color(0xFFE74C3C);
+    final isCompleted = session.isCompleted;
+
+    final startTime = DateFormat('HH:mm').format(session.startTime);
+    final duration = session.duration;
+    final minutes = duration.inMinutes;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: isCompleted
+            ? const Color(0xFF27AE60).withOpacity(0.08)
+            : colorScheme.surfaceContainerHighest.withOpacity(0.5),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isCompleted
+              ? const Color(0xFF27AE60).withOpacity(0.3)
+              : colorScheme.outlineVariant.withOpacity(0.2),
+        ),
+      ),
+      child: Row(
+        children: [
+          // Tomato icon
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  pomodoroColor.withOpacity(0.2),
+                  pomodoroColor.withOpacity(0.1),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Center(
+              child: Text('🍅', style: TextStyle(fontSize: 18)),
+            ),
+          ),
+          const SizedBox(width: 12),
+
+          // Info
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  session.activityName,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: colorScheme.onSurface,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    Icon(
+                      Icons.schedule_rounded,
+                      size: 12,
+                      color: colorScheme.onSurfaceVariant,
                     ),
-                    const SizedBox(height: 8),
-                    // Tempo
+                    const SizedBox(width: 4),
                     Text(
-                      _formatDurationShort(_pomodoroTimeLeft),
-                      style: const TextStyle(
-                        fontSize: 52,
-                        fontWeight: FontWeight.w700,
-                        color: UltravioletColors.onSurface,
-                        fontFeatures: [FontFeature.tabularFigures()],
+                      startTime,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: colorScheme.onSurfaceVariant,
                       ),
                     ),
-                    const Text(
-                      'minutos',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                        color: UltravioletColors.onSurfaceVariant,
+                    const SizedBox(width: 10),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: pomodoroColor.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        '${minutes}m',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: pomodoroColor,
+                        ),
                       ),
                     ),
                   ],
                 ),
-              ),
+              ],
             ),
           ),
-        ),
+
+          // Completion status
+          if (isCompleted)
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: const BoxDecoration(
+                color: Color(0xFF27AE60),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.check, size: 14, color: Colors.white),
+            ),
+        ],
       ),
     );
   }
 
   // Controles modernos do Pomodoro
   Widget _buildModernPomodoroControls() {
-    final color = _isPomodoroBreak ? const Color(0xFF3498DB) : const Color(0xFFE74C3C);
-    
+    final color = _isPomodoroBreak
+        ? const Color(0xFF3498DB)
+        : const Color(0xFFE74C3C);
+
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
@@ -1019,9 +1377,9 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
           onTap: _resetPomodoro,
           isSmall: true,
         ),
-        
+
         const SizedBox(width: 24),
-        
+
         // Play/Pause principal
         GestureDetector(
           onTap: () {
@@ -1052,15 +1410,17 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
               ],
             ),
             child: Icon(
-              _isPomodoroRunning ? Icons.pause_rounded : Icons.play_arrow_rounded,
+              _isPomodoroRunning
+                  ? Icons.pause_rounded
+                  : Icons.play_arrow_rounded,
               color: Colors.white,
               size: 36,
             ),
           ),
         ),
-        
+
         const SizedBox(width: 24),
-        
+
         // Skip/Settings
         _buildPomodoroControlButton(
           icon: Icons.skip_next_rounded,
@@ -1084,13 +1444,13 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
       child: Container(
         width: isSmall ? 56 : 72,
         height: isSmall ? 56 : 72,
-        decoration: const BoxDecoration(
-          color: UltravioletColors.surfaceVariant,
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surfaceContainerHighest,
           shape: BoxShape.circle,
         ),
         child: Icon(
           icon,
-          color: UltravioletColors.onSurfaceVariant,
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
           size: isSmall ? 24 : 32,
         ),
       ),
@@ -1098,7 +1458,8 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
   }
 
   void _skipPomodoroSession() {
-    if (_isPomodoroRunning || _pomodoroTimeLeft.inSeconds < _pomodoroDuration.inSeconds) {
+    if (_isPomodoroRunning ||
+        _pomodoroTimeLeft.inSeconds < _pomodoroDuration.inSeconds) {
       _pomodoroTimer?.cancel();
       _pulseController.stop();
       if (!_isPomodoroBreak) {
@@ -1117,116 +1478,192 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
     }
   }
 
-  // Stats rápidas do Pomodoro
+  // Stats rápidas do Pomodoro - Design compacto inline
   Widget _buildPomodoroQuickStats() {
+    final colorScheme = Theme.of(context).colorScheme;
     final focusMinutes = _pomodoroSessions * _pomodoroDuration.inMinutes;
     final hours = focusMinutes ~/ 60;
     final mins = focusMinutes % 60;
-    
-    return OdysseyCard(
-      padding: const EdgeInsets.all(16),
-      margin: EdgeInsets.zero,
-      backgroundColor: Theme.of(context).colorScheme.surface,
-      borderRadius: 16,
+
+    final pomodoroColor = _isPomodoroBreak
+        ? const Color(0xFF3498DB)
+        : const Color(0xFFE74C3C);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerHighest.withOpacity(0.5),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: colorScheme.outlineVariant.withOpacity(0.3)),
+      ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          _buildStatItem(
-            emoji: '🍅',
+          // Sessões
+          _buildCompactStat(
+            icon: '🍅',
             value: '$_pomodoroSessions',
             label: 'Sessões',
+            color: pomodoroColor,
+            colorScheme: colorScheme,
           ),
-          Container(width: 1, height: 40, color: UltravioletColors.divider),
-          _buildStatItem(
-            emoji: '⏱️',
+
+          // Divider
+          Container(
+            width: 1,
+            height: 32,
+            color: colorScheme.outlineVariant.withOpacity(0.3),
+          ),
+
+          // Focado
+          _buildCompactStat(
+            icon: '⏱️',
             value: hours > 0 ? '${hours}h${mins}m' : '${mins}m',
             label: 'Focado',
+            color: const Color(0xFF27AE60),
+            colorScheme: colorScheme,
           ),
-          Container(width: 1, height: 40, color: UltravioletColors.divider),
-          _buildStatItem(
-            emoji: '🎯',
+
+          // Divider
+          Container(
+            width: 1,
+            height: 32,
+            color: colorScheme.outlineVariant.withOpacity(0.3),
+          ),
+
+          // Meta
+          _buildCompactStat(
+            icon: '🎯',
             value: '$_pomodoroTotalSessions',
             label: 'Meta',
+            color: const Color(0xFFF39C12),
+            colorScheme: colorScheme,
           ),
         ],
       ),
     );
   }
 
-  Widget _buildStatItem({
-    required String emoji,
+  Widget _buildCompactStat({
+    required String icon,
     required String value,
     required String label,
+    required Color color,
+    required ColorScheme colorScheme,
   }) {
-    return Column(
+    return Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
-        Text(emoji, style: const TextStyle(fontSize: 20)),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          style: const TextStyle(
-            color: UltravioletColors.onSurface,
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        Text(
-          label,
-          style: const TextStyle(
-            color: UltravioletColors.onSurfaceVariant,
-            fontSize: 11,
-          ),
+        Text(icon, style: TextStyle(fontSize: 18)),
+        const SizedBox(width: 8),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              value,
+              style: TextStyle(
+                color: colorScheme.onSurface,
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            Text(
+              label,
+              style: TextStyle(
+                color: colorScheme.onSurfaceVariant,
+                fontSize: 10,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
         ),
       ],
     );
   }
 
-  // Seletor de tarefa rápido
+  // Seletor de tarefa rápido - Design moderno
   Widget _buildQuickTaskSelector() {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            const Text(
-              'Tarefa atual',
-              style: TextStyle(
-                color: UltravioletColors.onSurfaceVariant,
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            GestureDetector(
-              onTap: _showPomodoroSettings,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                decoration: BoxDecoration(
-                  color: UltravioletColors.surfaceVariant,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.settings_outlined, size: 16, color: UltravioletColors.onSurfaceVariant),
-                    SizedBox(width: 4),
-                    Text(
-                      'Config',
-                      style: TextStyle(
-                        color: UltravioletColors.onSurfaceVariant,
-                        fontSize: 12,
-                      ),
+        // Header com título e botão de config
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 4,
+                    height: 16,
+                    decoration: BoxDecoration(
+                      color: _isPomodoroBreak
+                          ? const Color(0xFF3498DB)
+                          : const Color(0xFFE74C3C),
+                      borderRadius: BorderRadius.circular(2),
                     ),
-                  ],
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Escolha uma tarefa',
+                    style: TextStyle(
+                      color: colorScheme.onSurface,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+              GestureDetector(
+                onTap: _showPomodoroSettings,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: colorScheme.surfaceContainerHighest,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.tune_rounded,
+                        size: 14,
+                        color: colorScheme.onSurfaceVariant,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Ajustar',
+                        style: TextStyle(
+                          color: colorScheme.onSurfaceVariant,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
-        const SizedBox(height: 10),
-        // Lista horizontal de tarefas rápidas
+        const SizedBox(height: 12),
+
+        // Tarefa atualmente selecionada (se houver)
+        if (_customTaskName != null) ...[
+          _buildSelectedTaskCard(colorScheme),
+          const SizedBox(height: 12),
+        ],
+
+        // Lista horizontal de tarefas
         SizedBox(
-          height: 50,
+          height: 80,
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
             itemCount: _activities.length,
@@ -1234,42 +1671,104 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
               final activity = _activities[index];
               final isSelected = _customTaskName == activity['name'];
               final color = activity['color'] as Color;
-              
+              final icon = activity['icon'] as IconData;
+              final name = activity['name'] as String;
+
               return Padding(
-                padding: EdgeInsets.only(right: index < _activities.length - 1 ? 10 : 0),
+                padding: EdgeInsets.only(
+                  right: index < _activities.length - 1 ? 10 : 0,
+                ),
                 child: GestureDetector(
                   onTap: () {
                     setState(() {
-                      _customTaskName = activity['name'] as String;
-                      _selectedCategory = activity['category'] as String?;
+                      if (isSelected) {
+                        // Deselect if tapping same task
+                        _customTaskName = null;
+                        _selectedCategory = null;
+                      } else {
+                        _customTaskName = name;
+                        _selectedCategory = activity['category'] as String?;
+                      }
                     });
                     HapticFeedback.lightImpact();
                   },
                   child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    duration: const Duration(milliseconds: 250),
+                    curve: Curves.easeOutCubic,
+                    width: 100,
+                    padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: isSelected ? color.withOpacity(0.2) : UltravioletColors.surfaceVariant,
-                      borderRadius: BorderRadius.circular(12),
-                      border: isSelected ? Border.all(color: color, width: 2) : null,
+                      gradient: isSelected
+                          ? LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [
+                                color.withOpacity(0.25),
+                                color.withOpacity(0.1),
+                              ],
+                            )
+                          : null,
+                      color: isSelected
+                          ? null
+                          : colorScheme.surfaceContainerHighest.withOpacity(
+                              0.6,
+                            ),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: isSelected
+                            ? color.withOpacity(0.6)
+                            : colorScheme.outlineVariant.withOpacity(0.3),
+                        width: isSelected ? 2 : 1,
+                      ),
+                      boxShadow: isSelected
+                          ? [
+                              BoxShadow(
+                                color: color.withOpacity(0.2),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ]
+                          : null,
                     ),
-                    child: Row(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(
-                          activity['icon'] as IconData,
-                          color: isSelected ? color : UltravioletColors.onSurfaceVariant,
-                          size: 18,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          (activity['name'] as String).length > 15 
-                              ? '${(activity['name'] as String).substring(0, 12)}...'
-                              : activity['name'] as String,
-                          style: TextStyle(
-                            color: isSelected ? color : UltravioletColors.onSurfaceVariant,
-                            fontSize: 13,
-                            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                        // Ícone com background
+                        Container(
+                          width: 32,
+                          height: 32,
+                          decoration: BoxDecoration(
+                            color: isSelected
+                                ? color.withOpacity(0.2)
+                                : colorScheme.surfaceContainerHighest,
+                            shape: BoxShape.circle,
                           ),
+                          child: Icon(
+                            icon,
+                            color: isSelected
+                                ? color
+                                : colorScheme.onSurfaceVariant,
+                            size: 16,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        // Nome da tarefa (truncado)
+                        Text(
+                          name.length > 10
+                              ? '${name.substring(0, 8)}...'
+                              : name,
+                          style: TextStyle(
+                            color: isSelected
+                                ? color
+                                : colorScheme.onSurfaceVariant,
+                            fontSize: 11,
+                            fontWeight: isSelected
+                                ? FontWeight.w600
+                                : FontWeight.w500,
+                          ),
+                          textAlign: TextAlign.center,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ],
                     ),
@@ -1283,6 +1782,94 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
     );
   }
 
+  // Card mostrando a tarefa atualmente selecionada
+  Widget _buildSelectedTaskCard(ColorScheme colorScheme) {
+    final activity = _activities.firstWhere(
+      (a) => a['name'] == _customTaskName,
+      orElse: () => {
+        'name': _customTaskName,
+        'icon': Icons.task_alt,
+        'color': const Color(0xFFE74C3C),
+      },
+    );
+    final color = activity['color'] as Color;
+    final icon = activity['icon'] as IconData;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [color.withOpacity(0.15), color.withOpacity(0.05)],
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.2),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: color, size: 20),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Tarefa selecionada',
+                  style: TextStyle(
+                    color: colorScheme.onSurfaceVariant,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  _customTaskName ?? '',
+                  style: TextStyle(
+                    color: colorScheme.onSurface,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+          GestureDetector(
+            onTap: () {
+              setState(() {
+                _customTaskName = null;
+                _selectedCategory = null;
+              });
+              HapticFeedback.lightImpact();
+            },
+            child: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: colorScheme.surfaceContainerHighest,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.close,
+                size: 16,
+                color: colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   // =====================================================
   // LEGACY - Task Screen (não usado mais, mantido para referência)
   // =====================================================
@@ -1291,17 +1878,21 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
   }
 
   Widget _buildCurrentTimerCard() {
+    final colorScheme = Theme.of(context).colorScheme;
     final hasSelectedTask = _taskNameController.text.isNotEmpty;
-    final taskName = _isRunning 
+    final taskName = _isRunning
         ? (_customTaskName ?? _selectedActivity?.activityName ?? 'Tarefa')
-        : (_taskNameController.text.isEmpty ? 'Selecione uma tarefa' : _taskNameController.text);
-    final taskColor = _isRunning 
+        : (_taskNameController.text.isEmpty
+              ? 'Toque para começar'
+              : _taskNameController.text);
+    final taskColor = _isRunning
         ? _getActivityColor(_customTaskName ?? _selectedActivity?.activityName)
-        : (hasSelectedTask ? _getActivityColor(_taskNameController.text) : UltravioletColors.primary);
-    
-    // Calcular tempo total do dia
+        : (hasSelectedTask
+              ? _getActivityColor(_taskNameController.text)
+              : colorScheme.primary);
+
     final repo = ref.watch(timeTrackingRepositoryProvider);
-    
+
     return ValueListenableBuilder(
       valueListenable: repo.box.listenable(),
       builder: (context, box, _) {
@@ -1310,217 +1901,240 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
             .cast<TimeTrackingRecord>()
             .where((r) => _isSameDay(r.startTime, today))
             .toList();
-        
+
         final totalSeconds = todayRecords.fold<int>(
-          0, (sum, r) => sum + r.durationInSeconds,
+          0,
+          (sum, r) => sum + r.durationInSeconds,
         );
         final totalDuration = Duration(seconds: totalSeconds);
-        
-        // Se o timer está rodando, mostrar o tempo do timer atual
         final displayTime = _isRunning ? _elapsedTime : totalDuration;
-        
+
+        // Progress para o ring (baseado em meta diária de 8h)
+        final dailyGoalSeconds = 8 * 60 * 60;
+        final progress = (totalSeconds / dailyGoalSeconds).clamp(0.0, 1.0);
+
         return Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20),
-          child: OdysseyCard(
-            onTap: _isRunning 
+          child: GestureDetector(
+            onTap: _isRunning
                 ? () => setState(() => _showFullscreenTimer = true)
-                : (hasSelectedTask ? () => _startTimer(customTask: _taskNameController.text) : null),
-            padding: const EdgeInsets.all(20),
-            margin: EdgeInsets.zero,
-            gradientColors: _isRunning 
-                ? [taskColor.withOpacity(0.15), taskColor.withOpacity(0.05)]
-                : [const Color(0xFF0D0D15), const Color(0xFF151520)],
-            borderColor: _isRunning ? taskColor.withOpacity(0.5) : (hasSelectedTask ? taskColor.withOpacity(0.3) : Colors.transparent),
-            borderWidth: _isRunning ? 2 : 1,
-            borderRadius: 16,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Tempo
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Flexible(
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          if (_isRunning) ...[
-                            // Indicador de timer ativo
-                            Container(
-                              width: 10,
-                              height: 10,
-                              margin: const EdgeInsets.only(right: 12),
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: UltravioletColors.accentGreen,
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: UltravioletColors.accentGreen.withOpacity(0.5),
-                                    blurRadius: 6,
-                                    spreadRadius: 2,
-                                  ),
-                                ],
-                              ),
+                : (hasSelectedTask
+                      ? () => _startTimer(customTask: _taskNameController.text)
+                      : null),
+            child: Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: _isRunning
+                      ? [
+                          taskColor.withOpacity(0.15),
+                          taskColor.withOpacity(0.05),
+                        ]
+                      : [
+                          colorScheme.surfaceContainerHighest,
+                          colorScheme.surfaceContainerHighest.withOpacity(0.8),
+                        ],
+                ),
+                borderRadius: BorderRadius.circular(28),
+                border: Border.all(
+                  color: _isRunning
+                      ? taskColor.withOpacity(0.4)
+                      : colorScheme.outlineVariant.withOpacity(0.3),
+                  width: _isRunning ? 2 : 1,
+                ),
+                boxShadow: _isRunning
+                    ? [
+                        BoxShadow(
+                          color: taskColor.withOpacity(0.2),
+                          blurRadius: 20,
+                          spreadRadius: 0,
+                          offset: const Offset(0, 8),
+                        ),
+                      ]
+                    : [],
+              ),
+              child: Row(
+                children: [
+                  // Circular Timer
+                  SizedBox(
+                    width: 100,
+                    height: 100,
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        // Background ring
+                        SizedBox(
+                          width: 100,
+                          height: 100,
+                          child: CircularProgressIndicator(
+                            value: 1,
+                            strokeWidth: 8,
+                            backgroundColor: Colors.transparent,
+                            valueColor: AlwaysStoppedAnimation(
+                              colorScheme.outlineVariant.withOpacity(0.2),
                             ),
-                          ],
-                          Flexible(
-                            child: FittedBox(
-                              fit: BoxFit.scaleDown,
-                              child: Text(
-                                _formatDuration(displayTime),
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: _isRunning ? 40 : 36,
-                                  fontWeight: _isRunning ? FontWeight.w400 : FontWeight.w300,
-                                  letterSpacing: 2,
+                          ),
+                        ),
+                        // Progress ring
+                        SizedBox(
+                          width: 100,
+                          height: 100,
+                          child: CircularProgressIndicator(
+                            value: _isRunning ? null : progress,
+                            strokeWidth: 8,
+                            backgroundColor: Colors.transparent,
+                            valueColor: AlwaysStoppedAnimation(
+                              _isRunning ? taskColor : colorScheme.primary,
+                            ),
+                            strokeCap: StrokeCap.round,
+                          ),
+                        ),
+                        // Center content
+                        Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            if (_isRunning) ...[
+                              Container(
+                                width: 12,
+                                height: 12,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: const Color(0xFF27AE60),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: const Color(
+                                        0xFF27AE60,
+                                      ).withOpacity(0.5),
+                                      blurRadius: 8,
+                                      spreadRadius: 2,
+                                    ),
+                                  ],
                                 ),
                               ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    if (_isRunning) ...[
-                      // Botões quando timer ativo
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          // Botão expandir
-                          GestureDetector(
-                            onTap: () => setState(() => _showFullscreenTimer = true),
-                            child: Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(8),
+                              const SizedBox(height: 4),
+                            ] else ...[
+                              Icon(
+                                hasSelectedTask
+                                    ? Icons.play_arrow_rounded
+                                    : Icons.timer_outlined,
+                                size: 28,
+                                color: hasSelectedTask
+                                    ? taskColor
+                                    : colorScheme.onSurfaceVariant,
                               ),
-                              child: const Icon(Icons.fullscreen, color: Colors.white, size: 20),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          // Botão parar
-                          GestureDetector(
-                            onTap: _stopTimer,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                              decoration: BoxDecoration(
-                                color: UltravioletColors.error,
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              child: const Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(Icons.stop, color: Colors.white, size: 16),
-                                  SizedBox(width: 4),
-                                  Text(
-                                    'Parar',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ] else if (hasSelectedTask) ...[
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: taskColor,
-                          borderRadius: BorderRadius.circular(20),
+                            ],
+                          ],
                         ),
-                        child: const Row(
-                          mainAxisSize: MainAxisSize.min,
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 20),
+                  // Info section
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Time display
+                        Text(
+                          _formatDuration(displayTime),
+                          style: TextStyle(
+                            color: colorScheme.onSurface,
+                            fontSize: 32,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 1,
+                            fontFeatures: const [FontFeature.tabularFigures()],
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        // Task name
+                        Row(
                           children: [
-                            Icon(Icons.play_arrow, color: Colors.white, size: 16),
-                            SizedBox(width: 4),
-                            Text(
-                              'Iniciar',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
+                            Container(
+                              width: 8,
+                              height: 8,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: (_isRunning || hasSelectedTask)
+                                    ? taskColor
+                                    : colorScheme.outlineVariant,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                taskName,
+                                style: TextStyle(
+                                  color: (_isRunning || hasSelectedTask)
+                                      ? colorScheme.onSurface
+                                      : colorScheme.onSurfaceVariant,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
                           ],
                         ),
-                      ),
-                    ],
-                  ],
-                ),
-                const SizedBox(height: 16),
-                // Tarefa selecionada
-                Row(
-                  children: [
-                    Container(
-                      width: 10,
-                      height: 10,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: (_isRunning || hasSelectedTask) ? taskColor : Colors.grey,
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        taskName,
-                        style: TextStyle(
-                          color: (_isRunning || hasSelectedTask) ? Colors.white : Colors.white60,
-                          fontSize: 15,
-                          fontWeight: (_isRunning || hasSelectedTask) ? FontWeight.w500 : FontWeight.w400,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                ),
-                // Projeto selecionado
-                if (_selectedProject != null || _selectedCategory != null) ...[
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      const SizedBox(width: 20), // Alinhamento com o texto acima
-                      if (_selectedCategory != null) ...[
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(6),
+                        // Category/Project tags
+                        if (_selectedProject != null ||
+                            _selectedCategory != null) ...[
+                          const SizedBox(height: 8),
+                          Wrap(
+                            spacing: 6,
+                            runSpacing: 4,
+                            children: [
+                              if (_selectedCategory != null)
+                                _buildMiniTag(
+                                  _selectedCategory!,
+                                  colorScheme.outlineVariant,
+                                ),
+                              if (_selectedProject != null)
+                                _buildMiniTag(
+                                  _selectedProject!,
+                                  taskColor.withOpacity(0.7),
+                                ),
+                            ],
                           ),
-                          child: Text(
-                            _selectedCategory!,
-                            style: TextStyle(
-                              color: Colors.white.withOpacity(0.7),
-                              fontSize: 11,
-                            ),
-                          ),
-                        ),
+                        ],
                       ],
-                      if (_selectedProject != null) ...[
-                        const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: taskColor.withOpacity(0.2),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            _selectedProject!,
-                            style: TextStyle(
-                              color: taskColor,
-                              fontSize: 11,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ],
+                    ),
                   ),
+                  // Action button
+                  if (_isRunning) ...[
+                    Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _buildCircularButton(
+                          icon: Icons.fullscreen_rounded,
+                          color: colorScheme.surfaceContainerHighest,
+                          iconColor: colorScheme.onSurfaceVariant,
+                          onTap: () =>
+                              setState(() => _showFullscreenTimer = true),
+                        ),
+                        const SizedBox(height: 8),
+                        _buildCircularButton(
+                          icon: Icons.stop_rounded,
+                          color: colorScheme.error,
+                          iconColor: colorScheme.onError,
+                          onTap: _stopTimer,
+                        ),
+                      ],
+                    ),
+                  ] else if (hasSelectedTask) ...[
+                    _buildCircularButton(
+                      icon: Icons.play_arrow_rounded,
+                      color: taskColor,
+                      iconColor: Colors.white,
+                      size: 48,
+                      onTap: () =>
+                          _startTimer(customTask: _taskNameController.text),
+                    ),
+                  ],
                 ],
-              ],
+              ),
             ),
           ),
         );
@@ -1528,93 +2142,174 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
     );
   }
 
+  Widget _buildMiniTag(String text, Color color) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: isDark
+            ? colorScheme.surfaceContainerHighest
+            : color.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: color.withOpacity(0.3), width: 1),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+          color: isDark ? colorScheme.onSurface : color,
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCircularButton({
+    required IconData icon,
+    required Color color,
+    required Color iconColor,
+    required VoidCallback onTap,
+    double size = 40,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: color,
+          boxShadow: [
+            BoxShadow(
+              color: color.withOpacity(0.3),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Icon(icon, size: size * 0.5, color: iconColor),
+      ),
+    );
+  }
+
   Widget _buildTodayTasksList() {
     final repo = ref.watch(timeTrackingRepositoryProvider);
-    
+    final colorScheme = Theme.of(context).colorScheme;
+
     return ValueListenableBuilder(
       valueListenable: repo.box.listenable(),
       builder: (context, box, _) {
         final now = DateTime.now();
-        final yesterday = now.subtract(const Duration(days: 1));
-        
+
         final allRecords = box.values.cast<TimeTrackingRecord>().toList();
         allRecords.sort((a, b) => b.startTime.compareTo(a.startTime));
-        
-        final todayRecords = allRecords.where((r) => _isSameDay(r.startTime, now)).toList();
-        final yesterdayRecords = allRecords.where((r) => _isSameDay(r.startTime, yesterday)).toList();
+
+        // Separate today's records into pending and completed
+        final todayRecords = allRecords
+            .where((r) => _isSameDay(r.startTime, now))
+            .toList();
+        final todayPending = todayRecords.where((r) => !r.isCompleted).toList();
+        final todayCompleted = todayRecords
+            .where((r) => r.isCompleted)
+            .toList();
 
         return Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Today section header
+              // Header with actions
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    'Hoje',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  TextButton(
-                    onPressed: () => _showAllTasksDialog(context, allRecords),
-                    child: Text(
-                      'Ver Tudo',
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.primary,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
+                  Row(
+                    children: [
+                      Text(
+                        'Atividades',
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: colorScheme.primary.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          '${todayRecords.length}',
+                          style: TextStyle(
+                            color: colorScheme.primary,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  TextButton.icon(
+                    onPressed: () => _showAllTasksDialog(context, allRecords),
+                    icon: Icon(Icons.history_rounded, size: 18),
+                    label: Text('Histórico'),
+                    style: TextButton.styleFrom(
+                      foregroundColor: colorScheme.primary,
                     ),
                   ),
                 ],
               ),
               const SizedBox(height: 12),
-              
-              // Lista de tarefas
+
+              // Task list
               Expanded(
                 child: ListView(
                   padding: EdgeInsets.zero,
                   children: [
-                    // Tarefas de hoje
-                    if (todayRecords.isNotEmpty) ...[
-                      ...todayRecords.map((r) => _buildRecordCard(r)),
-                    ] else ...[
-                      // Se não há registros hoje, mostra sugestões
-                      ...(_activities.take(4).map((a) => _buildTaskCard(a, isPreset: true))),
-                    ],
-                    
-                    // Tarefas de ontem
-                    if (yesterdayRecords.isNotEmpty) ...[
-                      const SizedBox(height: 16),
-                      Text(
-                        'Ontem',
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
+                    // Pending tasks section
+                    if (todayPending.isNotEmpty) ...[
+                      _buildSectionHeader(
+                        icon: Icons.timer_outlined,
+                        title: 'Em andamento',
+                        count: todayPending.length,
+                        color: colorScheme.primary,
                       ),
-                      const SizedBox(height: 12),
-                      ...yesterdayRecords.take(3).map((r) => _buildRecordCard(r)),
+                      const SizedBox(height: 8),
+                      ...todayPending.map((r) => _buildRecordCard(r)),
                     ],
-                    
-                    // Sugestões de tarefas (se há pouco registro)
-                    if (todayRecords.length < 2) ...[
-                      const SizedBox(height: 16),
-                      Text(
-                        'Sugestões',
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
+
+                    // Suggestions if no pending
+                    if (todayPending.isEmpty) ...[
+                      _buildSectionHeader(
+                        icon: Icons.lightbulb_outline_rounded,
+                        title: 'Comece uma tarefa',
+                        count: null,
+                        color: colorScheme.tertiary,
                       ),
-                      const SizedBox(height: 12),
-                      ...(_activities.skip(todayRecords.length).take(3).map((a) => _buildTaskCard(a, isPreset: true))),
+                      const SizedBox(height: 8),
+                      ...(_activities
+                          .take(4)
+                          .map((a) => _buildTaskCard(a, isPreset: true))),
                     ],
-                    
-                    const SizedBox(height: 100), // Padding para bottom nav
+
+                    // Completed tasks section
+                    if (todayCompleted.isNotEmpty) ...[
+                      const SizedBox(height: 20),
+                      _buildSectionHeader(
+                        icon: Icons.check_circle_outline_rounded,
+                        title: 'Concluídos',
+                        count: todayCompleted.length,
+                        color: const Color(0xFF27AE60),
+                      ),
+                      const SizedBox(height: 8),
+                      ...todayCompleted.map((r) => _buildRecordCard(r)),
+                    ],
+
+                    const SizedBox(height: 100), // Padding for bottom nav
                   ],
                 ),
               ),
@@ -1625,10 +2320,53 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
     );
   }
 
-  void _showAllTasksDialog(BuildContext context, List<TimeTrackingRecord> allRecords) {
+  Widget _buildSectionHeader({
+    required IconData icon,
+    required String title,
+    required int? count,
+    required Color color,
+  }) {
+    return Row(
+      children: [
+        Icon(icon, size: 16, color: color),
+        const SizedBox(width: 6),
+        Text(
+          title,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: color,
+          ),
+        ),
+        if (count != null) ...[
+          const SizedBox(width: 6),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              '$count',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: color,
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  void _showAllTasksDialog(
+    BuildContext context,
+    List<TimeTrackingRecord> allRecords,
+  ) {
     showModalBottomSheet(
       context: context,
-      backgroundColor: UltravioletColors.surface,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -1643,7 +2381,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: UltravioletColors.outline,
+                  color: Theme.of(context).colorScheme.outlineVariant,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -1659,15 +2397,20 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                     ),
                   ),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
-                      color: UltravioletColors.surfaceVariant,
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.surfaceContainerHighest,
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
                       '${allRecords.length} registros',
-                      style: const TextStyle(
-                        color: UltravioletColors.onSurfaceVariant,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                         fontSize: 12,
                       ),
                     ),
@@ -1681,52 +2424,67 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                   constraints: BoxConstraints(
                     maxHeight: MediaQuery.of(context).size.height * 0.35,
                   ),
-              child: allRecords.isEmpty
-                  ? Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 40),
-                      child: Column(
-                        children: [
-                          Icon(
-                            Icons.history,
-                            size: 48,
-                            color: UltravioletColors.onSurfaceVariant.withOpacity(0.3),
-                          ),
-                          const SizedBox(height: 12),
-                          const Text(
-                            'Nenhum registro ainda',
-                            style: TextStyle(color: UltravioletColors.onSurfaceVariant),
-                          ),
-                        ],
-                      ),
-                    )
-                  : ListView.builder(
-                      shrinkWrap: true,
-                      itemCount: allRecords.length > 15 ? 15 : allRecords.length, // Limita para abrir mais rápido
-                      itemBuilder: (context, index) {
-                        final record = allRecords[index];
-                        final showDateHeader = index == 0 || 
-                            !_isSameDay(record.startTime, allRecords[index - 1].startTime);
-                        
-                        return Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            if (showDateHeader) ...[
-                              if (index > 0) const SizedBox(height: 12),
+                  child: allRecords.isEmpty
+                      ? Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 40),
+                          child: Column(
+                            children: [
+                              Icon(
+                                Icons.history,
+                                size: 48,
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurfaceVariant.withOpacity(0.3),
+                              ),
+                              const SizedBox(height: 12),
                               Text(
-                                _formatDateHeader(record.startTime),
-                                style: const TextStyle(
-                                  color: UltravioletColors.primary,
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 11,
+                                'Nenhum registro ainda',
+                                style: TextStyle(
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurfaceVariant,
                                 ),
                               ),
-                              const SizedBox(height: 6),
                             ],
-                            _buildRecordCard(record),
-                          ],
-                        );
-                      },
-                    ),
+                          ),
+                        )
+                      : ListView.builder(
+                          shrinkWrap: true,
+                          itemCount: allRecords.length > 15
+                              ? 15
+                              : allRecords
+                                    .length, // Limita para abrir mais rápido
+                          itemBuilder: (context, index) {
+                            final record = allRecords[index];
+                            final showDateHeader =
+                                index == 0 ||
+                                !_isSameDay(
+                                  record.startTime,
+                                  allRecords[index - 1].startTime,
+                                );
+
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                if (showDateHeader) ...[
+                                  if (index > 0) const SizedBox(height: 12),
+                                  Text(
+                                    _formatDateHeader(record.startTime),
+                                    style: TextStyle(
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.primary,
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 11,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 6),
+                                ],
+                                _buildRecordCard(record),
+                              ],
+                            );
+                          },
+                        ),
                 ),
               ),
             ],
@@ -1743,84 +2501,78 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
     return DateFormat('EEEE, d MMM', 'pt_BR').format(date);
   }
 
-  Widget _buildTaskCard(Map<String, dynamic> activity, {bool isPreset = false}) {
+  Widget _buildTaskCard(
+    Map<String, dynamic> activity, {
+    bool isPreset = false,
+  }) {
+    final colorScheme = Theme.of(context).colorScheme;
     final color = activity['color'] as Color;
     final name = activity['name'] as String;
     final icon = activity['icon'] as IconData;
     final category = activity['category'] as String?;
     final project = activity['project'] as String?;
     final isSelected = _taskNameController.text == name;
+    final isRunningThis =
+        _isRunning &&
+        (_customTaskName == name || _selectedActivity?.activityName == name);
 
-    return OdysseyCard(
+    return GestureDetector(
       onTap: () {
         setState(() {
           if (isSelected) {
-            // Deselect
             _taskNameController.text = '';
             _selectedCategory = null;
             _selectedProject = null;
           } else {
-            // Select
             _taskNameController.text = name;
             _selectedCategory = category;
             _selectedProject = project;
           }
         });
       },
-      padding: const EdgeInsets.all(16),
-      margin: const EdgeInsets.only(bottom: 12),
-      backgroundColor: isSelected ? color.withOpacity(0.1) : Theme.of(context).colorScheme.surface,
-      borderColor: isSelected ? color : Colors.transparent,
-      borderWidth: 1.5,
-      borderRadius: 12,
-      child: Row(
-        children: [
-            // Checkbox circular
-            GestureDetector(
-              onTap: () {
-                setState(() {
-                  if (isSelected) {
-                    _taskNameController.text = '';
-                    _selectedCategory = null;
-                    _selectedProject = null;
-                  } else {
-                    _taskNameController.text = name;
-                    _selectedCategory = category;
-                    _selectedProject = project;
-                  }
-                });
-              },
-              child: Container(
-                width: 24,
-                height: 24,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: isSelected ? color : Colors.transparent,
-                  border: Border.all(
-                    color: isSelected ? color : Theme.of(context).colorScheme.outline,
-                    width: 2,
-                  ),
-                ),
-                child: isSelected
-                    ? const Icon(Icons.check, color: Colors.white, size: 14)
-                    : null,
-              ),
-            ),
-            const SizedBox(width: 12),
-            
-            // Ícone circular colorido
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          gradient: isSelected || isRunningThis
+              ? LinearGradient(
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
+                  colors: [color.withOpacity(0.12), color.withOpacity(0.04)],
+                )
+              : null,
+          color: isSelected || isRunningThis
+              ? null
+              : colorScheme.surfaceContainerHighest.withOpacity(0.5),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isSelected
+                ? color.withOpacity(0.5)
+                : isRunningThis
+                ? const Color(0xFF27AE60).withOpacity(0.5)
+                : colorScheme.outlineVariant.withOpacity(0.2),
+            width: isSelected || isRunningThis ? 1.5 : 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            // Icon with colored background
             Container(
-              width: 40,
-              height: 40,
+              width: 44,
+              height: 44,
               decoration: BoxDecoration(
-                color: color.withOpacity(0.15),
-                shape: BoxShape.circle,
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [color.withOpacity(0.25), color.withOpacity(0.1)],
+                ),
+                borderRadius: BorderRadius.circular(12),
               ),
-              child: Icon(icon, color: color, size: 20),
+              child: Icon(icon, color: color, size: 22),
             ),
-            const SizedBox(width: 12),
-            
-            // Informações da tarefa
+            const SizedBox(width: 14),
+            // Task info
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1828,35 +2580,98 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                   Text(
                     name,
                     style: TextStyle(
-                      fontWeight: FontWeight.w500,
-                      fontSize: 14,
-                      color: isSelected ? color : Theme.of(context).colorScheme.onSurface,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 15,
+                      color: isSelected || isRunningThis
+                          ? color
+                          : colorScheme.onSurface,
                     ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 6),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 4,
-                    children: [
-                      if (category != null)
-                        _buildTag(category, Colors.grey.shade800, Colors.grey.shade400),
-                      if (project != null)
-                        _buildTag(project, color.withOpacity(0.2), color),
-                    ],
-                  ),
+                  if (category != null || project != null) ...[
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        if (category != null) ...[
+                          Text(
+                            category,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                        if (category != null && project != null)
+                          Text(
+                            ' • ',
+                            style: TextStyle(color: colorScheme.outlineVariant),
+                          ),
+                        if (project != null) ...[
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: color.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              project,
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: color,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ],
                 ],
               ),
             ),
-            
-            // Play/Pause button
-            GestureDetector(
-              onTap: () {
-                HapticFeedback.lightImpact();
-                // Se o timer está rodando nesta tarefa, parar
-                if (_isRunning && (_customTaskName == name || _selectedActivity?.activityName == name)) {
-                  _stopTimer();
-                } else {
-                  // Se está rodando outra tarefa, parar e iniciar esta
+            // Timer status or play button
+            if (isRunningThis) ...[
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF27AE60).withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 6,
+                      height: 6,
+                      decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Color(0xFF27AE60),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      _formatDurationShort(_elapsedTime),
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF27AE60),
+                        fontFeatures: [FontFeature.tabularFigures()],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ] else ...[
+              GestureDetector(
+                onTap: () {
+                  HapticFeedback.lightImpact();
                   if (_isRunning) {
                     _stopTimer();
                   }
@@ -1866,241 +2681,316 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                     _selectedProject = project;
                   });
                   _startTimer(customTask: name);
-                }
-              },
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  color: (_isRunning && (_customTaskName == name || _selectedActivity?.activityName == name))
-                      ? UltravioletColors.error.withOpacity(0.15)
-                      : color.withOpacity(0.15),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  (_isRunning && (_customTaskName == name || _selectedActivity?.activityName == name))
-                      ? Icons.pause_rounded
-                      : Icons.play_arrow_rounded,
-                  color: (_isRunning && (_customTaskName == name || _selectedActivity?.activityName == name))
-                      ? UltravioletColors.error
-                      : color,
-                  size: 20,
+                },
+                child: Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(Icons.play_arrow_rounded, color: color, size: 22),
                 ),
               ),
-            ),
+            ],
           ],
         ),
+      ),
     );
   }
 
   Widget _buildRecordCard(TimeTrackingRecord record) {
-    // Usar cor do registro se disponível, senão buscar da lista
-    final color = record.colorValue != null 
-        ? Color(record.colorValue!) 
+    final colorScheme = Theme.of(context).colorScheme;
+    final color = record.colorValue != null
+        ? Color(record.colorValue!)
         : _getActivityColor(record.activityName);
     final duration = record.duration;
     final hours = duration.inHours;
     final minutes = duration.inMinutes.remainder(60);
     final seconds = duration.inSeconds.remainder(60);
-    final timeStr = hours > 0 
-        ? '${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}'
-        : '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+    final timeStr = hours > 0
+        ? '${hours}h ${minutes}m'
+        : '${minutes}m ${seconds}s';
 
-    // Usar dados do registro se disponível
     final category = record.category ?? 'Pessoal';
     final project = record.project;
     final isCompleted = record.isCompleted;
 
-    return OdysseyCard(
+    // Format start time
+    final startTime = DateFormat('HH:mm').format(record.startTime);
+    final endTime = record.endTime != null
+        ? DateFormat('HH:mm').format(record.endTime!)
+        : null;
+
+    return GestureDetector(
       onTap: () {
-        // Nada por enquanto, pode expandir detalhes
+        // Show details modal
       },
-      padding: const EdgeInsets.all(14),
-      margin: const EdgeInsets.only(bottom: 12),
-      backgroundColor: isCompleted 
-          ? Theme.of(context).colorScheme.surface.withOpacity(0.6)
-          : Theme.of(context).colorScheme.surface,
-      borderColor: isCompleted 
-          ? UltravioletColors.accentGreen.withOpacity(0.3)
-          : Colors.transparent,
-      borderRadius: 14,
-      child: Row(
-        children: [
-              // Checkbox de conclusão com animação
-              Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: () async {
-                    HapticFeedback.mediumImpact();
-                    final repo = ref.read(timeTrackingRepositoryProvider);
-                    await repo.toggleCompleted(record.id);
-                    if (!isCompleted && mounted) {
-                      // Pega o nome da tarefa
-                      final taskName = record.activityName;
-                      
-                      // Atualiza gamificação
-                      try {
-                        final gamificationRepo = ref.read(gamificationRepositoryProvider);
-                        final gamResult = await gamificationRepo.completeTask();
-        final newBadges = gamResult.newBadges;
-                        
-                        if (mounted) {
-                          FeedbackService.showTaskCompleted(context, taskName, xp: 15);
-                        }
-                        
-                        if (newBadges.isNotEmpty) {
-                          Future.delayed(const Duration(milliseconds: 2500), () {
-                            if (mounted) {
-                              FeedbackService.showAchievement(
-                                context, 
-                                '${newBadges.first.icon} ${newBadges.first.name}',
-                                newBadges.first.description,
-                              );
-                            }
-                          });
-                        }
-                      } catch (e) {
-                        if (mounted) {
-                          FeedbackService.showTaskCompleted(context, taskName);
-                        }
-                      }
-                    }
-                  },
-                  borderRadius: BorderRadius.circular(13),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    width: 26,
-                    height: 26,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: isCompleted ? UltravioletColors.accentGreen : Colors.transparent,
-                      border: Border.all(
-                        color: isCompleted ? UltravioletColors.accentGreen : UltravioletColors.outline,
-                        width: 2,
-                      ),
-                    ),
-                    child: AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 200),
-                      child: isCompleted
-                          ? const Icon(Icons.check, color: Colors.white, size: 16, key: ValueKey('check'))
-                          : const SizedBox(key: ValueKey('empty')),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              
-              // Ícone circular colorido
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: color.withOpacity(isCompleted ? 0.3 : 0.15),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  IconData(record.iconCode, fontFamily: 'MaterialIcons'),
-                  color: isCompleted ? color.withOpacity(0.5) : color,
-                  size: 20,
-            ),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: isCompleted
+              ? colorScheme.surfaceContainerHighest.withOpacity(0.4)
+              : colorScheme.surfaceContainerHighest.withOpacity(0.6),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: isCompleted
+                ? const Color(0xFF27AE60).withOpacity(0.3)
+                : colorScheme.outlineVariant.withOpacity(0.2),
+            width: 1,
           ),
-          const SizedBox(width: 12),
-          
-          // Informações da tarefa
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  record.activityName,
-                  style: TextStyle(
-                    fontWeight: FontWeight.w500,
-                    fontSize: 14,
-                    color: isCompleted 
-                        ? UltravioletColors.onSurfaceVariant 
-                        : UltravioletColors.onSurface,
-                    decoration: isCompleted ? TextDecoration.lineThrough : null,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 4,
-                  children: [
-                    _buildTag(category, Colors.grey.shade800, Colors.grey.shade400),
-                    if (project != null && project.isNotEmpty)
-                      _buildTag(project, color.withOpacity(0.2), color),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Left side: Icon with gradient background
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    color.withOpacity(isCompleted ? 0.15 : 0.25),
+                    color.withOpacity(isCompleted ? 0.08 : 0.1),
                   ],
                 ),
-              ],
-            ),
-          ),
-          
-          // Tempo e ações
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                timeStr,
-                style: TextStyle(
-                  color: isCompleted 
-                      ? UltravioletColors.accentGreen 
-                      : UltravioletColors.onSurfaceVariant,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                ),
+                borderRadius: BorderRadius.circular(12),
               ),
-              const SizedBox(height: 4),
-              // Botão de play/pause tarefa
-              if (!isCompleted)
-                Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    onTap: () {
-                      HapticFeedback.lightImpact();
-                      // Se o timer está rodando nesta tarefa, parar
-                      if (_isRunning && (_customTaskName == record.activityName || _selectedActivity?.activityName == record.activityName)) {
-                        _stopTimer();
-                      } else {
-                        // Se está rodando outra tarefa, parar e iniciar esta
-                        if (_isRunning) {
-                          _stopTimer();
-                        }
-                        setState(() {
-                          _taskNameController.text = record.activityName;
-                          _selectedCategory = category;
-                          _selectedProject = project;
-                        });
-                        _startTimer(customTask: record.activityName);
-                      }
-                    },
-                    borderRadius: BorderRadius.circular(8),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      padding: const EdgeInsets.all(6),
-                      decoration: BoxDecoration(
-                        color: (_isRunning && (_customTaskName == record.activityName || _selectedActivity?.activityName == record.activityName))
-                            ? UltravioletColors.error.withOpacity(0.15)
-                            : color.withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(8),
+              child: Icon(
+                IconData(record.iconCode, fontFamily: 'MaterialIcons'),
+                color: isCompleted ? color.withOpacity(0.5) : color,
+                size: 22,
+              ),
+            ),
+            const SizedBox(width: 12),
+
+            // Middle: Task info
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Task name row with completion checkbox
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          record.activityName,
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 15,
+                            color: isCompleted
+                                ? colorScheme.onSurfaceVariant
+                                : colorScheme.onSurface,
+                            decoration: isCompleted
+                                ? TextDecoration.lineThrough
+                                : null,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
-                      child: Icon(
-                        (_isRunning && (_customTaskName == record.activityName || _selectedActivity?.activityName == record.activityName))
-                            ? Icons.pause_rounded
-                            : Icons.play_arrow_rounded,
-                        color: (_isRunning && (_customTaskName == record.activityName || _selectedActivity?.activityName == record.activityName))
-                            ? UltravioletColors.error
-                            : color,
-                        size: 18,
+                      // Completion checkbox
+                      GestureDetector(
+                        onTap: () async {
+                          HapticFeedback.mediumImpact();
+                          final repo = ref.read(timeTrackingRepositoryProvider);
+                          await repo.toggleCompleted(record.id);
+                          if (!isCompleted && mounted) {
+                            final taskName = record.activityName;
+                            try {
+                              final gamificationRepo = ref.read(
+                                gamificationRepositoryProvider,
+                              );
+                              final gamResult = await gamificationRepo
+                                  .completeTask();
+                              final newBadges = gamResult.newBadges;
+                              if (mounted) {
+                                FeedbackService.showTaskCompleted(
+                                  context,
+                                  taskName,
+                                  xp: 15,
+                                );
+                              }
+                              if (newBadges.isNotEmpty) {
+                                Future.delayed(
+                                  const Duration(milliseconds: 2500),
+                                  () {
+                                    if (mounted) {
+                                      FeedbackService.showAchievement(
+                                        context,
+                                        '${newBadges.first.icon} ${newBadges.first.name}',
+                                        newBadges.first.description,
+                                      );
+                                    }
+                                  },
+                                );
+                              }
+                            } catch (e) {
+                              if (mounted) {
+                                FeedbackService.showTaskCompleted(
+                                  context,
+                                  taskName,
+                                );
+                              }
+                            }
+                          }
+                        },
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          width: 22,
+                          height: 22,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: isCompleted
+                                ? const Color(0xFF27AE60)
+                                : Colors.transparent,
+                            border: Border.all(
+                              color: isCompleted
+                                  ? const Color(0xFF27AE60)
+                                  : colorScheme.outlineVariant,
+                              width: 2,
+                            ),
+                          ),
+                          child: isCompleted
+                              ? const Icon(
+                                  Icons.check,
+                                  color: Colors.white,
+                                  size: 14,
+                                )
+                              : null,
+                        ),
                       ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+
+                  // Time info row
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.schedule_rounded,
+                        size: 13,
+                        color: colorScheme.onSurfaceVariant,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        '$startTime${endTime != null ? ' → $endTime' : ''}',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: color.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          timeStr,
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: isCompleted
+                                ? const Color(0xFF27AE60)
+                                : color,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  // Category and project
+                  if (project != null && project.isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.folder_outlined,
+                          size: 12,
+                          color: color.withOpacity(0.7),
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          project,
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: color,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
                     ),
+                  ],
+                ],
+              ),
+            ),
+
+            // Right side: Play button (only if not completed)
+            if (!isCompleted) ...[
+              const SizedBox(width: 8),
+              GestureDetector(
+                onTap: () {
+                  HapticFeedback.lightImpact();
+                  if (_isRunning &&
+                      (_customTaskName == record.activityName ||
+                          _selectedActivity?.activityName ==
+                              record.activityName)) {
+                    _stopTimer();
+                  } else {
+                    if (_isRunning) {
+                      _stopTimer();
+                    }
+                    setState(() {
+                      _taskNameController.text = record.activityName;
+                      _selectedCategory = category;
+                      _selectedProject = project;
+                    });
+                    _startTimer(customTask: record.activityName);
+                  }
+                },
+                child: Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color:
+                        (_isRunning &&
+                            (_customTaskName == record.activityName ||
+                                _selectedActivity?.activityName ==
+                                    record.activityName))
+                        ? colorScheme.error.withOpacity(0.1)
+                        : color.withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    (_isRunning &&
+                            (_customTaskName == record.activityName ||
+                                _selectedActivity?.activityName ==
+                                    record.activityName))
+                        ? Icons.stop_rounded
+                        : Icons.play_arrow_rounded,
+                    color:
+                        (_isRunning &&
+                            (_customTaskName == record.activityName ||
+                                _selectedActivity?.activityName ==
+                                    record.activityName))
+                        ? colorScheme.error
+                        : color,
+                    size: 20,
                   ),
                 ),
+              ),
             ],
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -2127,7 +3017,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 40),
       decoration: BoxDecoration(
-        color: UltravioletColors.surface,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: const BorderRadius.only(
           topLeft: Radius.circular(28),
           topRight: Radius.circular(28),
@@ -2144,8 +3034,13 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           // Projetos
-          _buildNavItem(Icons.folder_outlined, false, 'Projetos', () => _showProjectsDialog()),
-          
+          _buildNavItem(
+            Icons.folder_outlined,
+            false,
+            'Projetos',
+            () => _showProjectsDialog(),
+          ),
+
           // Botão central de adicionar (refinado)
           Material(
             color: Colors.transparent,
@@ -2159,29 +3054,36 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                 width: 58,
                 height: 58,
                 decoration: BoxDecoration(
-                  color: UltravioletColors.primary,
+                  color: Theme.of(context).colorScheme.primary,
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-                      color: UltravioletColors.primary.withOpacity(0.35),
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.primary.withOpacity(0.35),
                       blurRadius: 12,
                       spreadRadius: 2,
                       offset: const Offset(0, 4),
                     ),
                   ],
                 ),
-                child: const Icon(Icons.add_rounded, color: Colors.white, size: 30),
+                child: Icon(Icons.add_rounded, color: Colors.white, size: 30),
               ),
             ),
           ),
-          
+
           // Histórico
-          _buildNavItem(Icons.history, false, 'Histórico', () => _showAllTasksDialogFromNav()),
+          _buildNavItem(
+            Icons.history,
+            false,
+            'Histórico',
+            () => _showAllTasksDialogFromNav(),
+          ),
         ],
       ),
     );
   }
-  
+
   void _showAllTasksDialogFromNav() {
     final repo = ref.read(timeTrackingRepositoryProvider);
     final allRecords = repo.fetchAllTimeTrackingRecords();
@@ -2189,7 +3091,12 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
     _showAllTasksDialog(context, allRecords);
   }
 
-  Widget _buildNavItem(IconData icon, bool isSelected, String label, VoidCallback onTap) {
+  Widget _buildNavItem(
+    IconData icon,
+    bool isSelected,
+    String label,
+    VoidCallback onTap,
+  ) {
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -2206,14 +3113,18 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
               Icon(
                 icon,
                 size: 24,
-                color: isSelected ? UltravioletColors.primary : UltravioletColors.onSurfaceVariant,
+                color: isSelected
+                    ? Theme.of(context).colorScheme.primary
+                    : Theme.of(context).colorScheme.onSurfaceVariant,
               ),
               const SizedBox(height: 4),
               Text(
                 label,
                 style: TextStyle(
                   fontSize: 10,
-                  color: isSelected ? UltravioletColors.primary : UltravioletColors.onSurfaceVariant,
+                  color: isSelected
+                      ? Theme.of(context).colorScheme.primary
+                      : Theme.of(context).colorScheme.onSurfaceVariant,
                   fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
                 ),
               ),
@@ -2227,7 +3138,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
   void _showProjectsDialog() {
     showModalBottomSheet(
       context: context,
-      backgroundColor: UltravioletColors.surface,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -2236,11 +3147,15 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
         // Combinar projetos dos registros + projetos das atividades predefinidas
         final repoProjects = repo.getAllProjects();
         final activityProjects = _activities
-            .where((a) => a['project'] != null && (a['project'] as String).isNotEmpty)
+            .where(
+              (a) =>
+                  a['project'] != null && (a['project'] as String).isNotEmpty,
+            )
             .map((a) => a['project'] as String)
             .toSet();
-        final allProjects = {...repoProjects, ...activityProjects}.toList()..sort();
-        
+        final allProjects = {...repoProjects, ...activityProjects}.toList()
+          ..sort();
+
         return SafeArea(
           child: ConstrainedBox(
             constraints: BoxConstraints(
@@ -2256,7 +3171,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                     width: 40,
                     height: 4,
                     decoration: BoxDecoration(
-                      color: UltravioletColors.outline,
+                      color: Theme.of(context).colorScheme.outlineVariant,
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
@@ -2266,269 +3181,319 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                    'Meus Projetos',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      onTap: () {
-                        Navigator.pop(context);
-                        _showAddProjectDialog();
-                      },
-                      borderRadius: BorderRadius.circular(8),
-                      child: Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: UltravioletColors.primary.withOpacity(0.15),
-                          borderRadius: BorderRadius.circular(8),
+                        'Meus Projetos',
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w600,
                         ),
-                        child: const Icon(Icons.add, color: UltravioletColors.primary, size: 20),
                       ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              // Lista de projetos
-              if (allProjects.isEmpty)
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 40),
-                  child: Column(
-                    children: [
-                      Icon(
-                        Icons.folder_open,
-                        size: 48,
-                        color: UltravioletColors.onSurfaceVariant.withOpacity(0.3),
-                      ),
-                      const SizedBox(height: 12),
-                      const Text(
-                        'Nenhum projeto ainda',
-                        style: TextStyle(color: UltravioletColors.onSurfaceVariant),
+                      Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: () {
+                            Navigator.pop(context);
+                            _showAddProjectDialog();
+                          },
+                          borderRadius: BorderRadius.circular(8),
+                          child: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.primary.withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Icon(
+                              Icons.add,
+                              color: Theme.of(context).colorScheme.primary,
+                              size: 20,
+                            ),
+                          ),
+                        ),
                       ),
                     ],
                   ),
-                )
-              else
-                ConstrainedBox(
-                  constraints: BoxConstraints(
-                    maxHeight: MediaQuery.of(context).size.height * 0.4,
+                  const SizedBox(height: 12),
+                  // Lista de projetos
+                  if (allProjects.isEmpty)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 40),
+                      child: Column(
+                        children: [
+                          Icon(
+                            Icons.folder_open,
+                            size: 48,
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurfaceVariant.withOpacity(0.3),
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            'Nenhum projeto ainda',
+                            style: TextStyle(
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  else
+                    ConstrainedBox(
+                      constraints: BoxConstraints(
+                        maxHeight: MediaQuery.of(context).size.height * 0.4,
+                      ),
+                      child: ListView.builder(
+                        shrinkWrap: true,
+                        itemCount: allProjects.length,
+                        itemBuilder: (context, index) {
+                          final project = allProjects[index];
+                          final projectTasks = repo.box.values
+                              .cast<TimeTrackingRecord>()
+                              .where((r) => r.project == project)
+                              .toList();
+                          final completedCount = projectTasks
+                              .where((r) => r.isCompleted)
+                              .length;
+                          final progress = projectTasks.isEmpty
+                              ? 0.0
+                              : completedCount / projectTasks.length;
+
+                          return Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              onTap: () {
+                                // Filtrar tarefas pelo projeto
+                                Navigator.pop(context);
+                                setState(() {
+                                  _selectedProject = project;
+                                });
+                              },
+                              borderRadius: BorderRadius.circular(12),
+                              child: Container(
+                                margin: const EdgeInsets.only(bottom: 10),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 14,
+                                  vertical: 12,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.surfaceContainerHighest,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Row(
+                                  children: [
+                                    // Ícone com progresso
+                                    Stack(
+                                      alignment: Alignment.center,
+                                      children: [
+                                        SizedBox(
+                                          width: 40,
+                                          height: 40,
+                                          child: CircularProgressIndicator(
+                                            value: progress,
+                                            backgroundColor: Theme.of(context)
+                                                .colorScheme
+                                                .surfaceContainerHighest,
+                                            color: Theme.of(
+                                              context,
+                                            ).colorScheme.primary,
+                                            strokeWidth: 3,
+                                          ),
+                                        ),
+                                        Icon(
+                                          Icons.folder,
+                                          color: Theme.of(
+                                            context,
+                                          ).colorScheme.primary,
+                                          size: 18,
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(width: 12),
+                                    // Info
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            project,
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.w600,
+                                              fontSize: 14,
+                                            ),
+                                          ),
+                                          Text(
+                                            projectTasks.isEmpty
+                                                ? 'Nenhuma tarefa'
+                                                : '${projectTasks.length} tarefas • $completedCount ✓',
+                                            style: TextStyle(
+                                              color: Theme.of(
+                                                context,
+                                              ).colorScheme.onSurfaceVariant,
+                                              fontSize: 11,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    // Botões editar e apagar
+                                    Material(
+                                      color: Colors.transparent,
+                                      child: InkWell(
+                                        onTap: () {
+                                          Navigator.pop(context);
+                                          _showEditProjectDialog(project);
+                                        },
+                                        borderRadius: BorderRadius.circular(8),
+                                        child: Padding(
+                                          padding: const EdgeInsets.all(8),
+                                          child: Icon(
+                                            Icons.edit_outlined,
+                                            color: Theme.of(
+                                              context,
+                                            ).colorScheme.onSurfaceVariant,
+                                            size: 20,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    Material(
+                                      color: Colors.transparent,
+                                      child: InkWell(
+                                        onTap: () {
+                                          Navigator.pop(context);
+                                          _showDeleteProjectDialog(
+                                            project,
+                                            projectTasks.length,
+                                          );
+                                        },
+                                        borderRadius: BorderRadius.circular(8),
+                                        child: Padding(
+                                          padding: const EdgeInsets.all(8),
+                                          child: Icon(
+                                            Icons.delete_outline,
+                                            color: Theme.of(
+                                              context,
+                                            ).colorScheme.error,
+                                            size: 20,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+
+                  // Seção de Categorias
+                  const SizedBox(height: 16),
+                  const Divider(),
+                  const SizedBox(height: 12),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Categorias',
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.w600),
+                      ),
+                      Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: () {
+                            Navigator.pop(context);
+                            _showAddCategoryDialog();
+                          },
+                          borderRadius: BorderRadius.circular(8),
+                          child: Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.secondary.withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Icon(
+                              Icons.add,
+                              color: Theme.of(context).colorScheme.secondary,
+                              size: 18,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                  child: ListView.builder(
-                    shrinkWrap: true,
-                    itemCount: allProjects.length,
-                    itemBuilder: (context, index) {
-                      final project = allProjects[index];
-                      final projectTasks = repo.box.values
-                          .cast<TimeTrackingRecord>()
-                          .where((r) => r.project == project)
-                          .toList();
-                      final completedCount = projectTasks.where((r) => r.isCompleted).length;
-                      final progress = projectTasks.isEmpty ? 0.0 : completedCount / projectTasks.length;
-                      
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: _categories.map((cat) {
                       return Material(
                         color: Colors.transparent,
                         child: InkWell(
                           onTap: () {
-                            // Filtrar tarefas pelo projeto
                             Navigator.pop(context);
-                            setState(() {
-                              _selectedProject = project;
-                            });
+                            _showEditCategoryDialog(cat);
                           },
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(20),
                           child: Container(
-                            margin: const EdgeInsets.only(bottom: 10),
-                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                            decoration: BoxDecoration(
-                              color: UltravioletColors.cardBackground,
-                              borderRadius: BorderRadius.circular(12),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 8,
                             ),
-                            child: Row(
-                              children: [
-                                // Ícone com progresso
-                                Stack(
-                                  alignment: Alignment.center,
-                                  children: [
-                                    SizedBox(
-                                      width: 40,
-                                      height: 40,
-                                      child: CircularProgressIndicator(
-                                        value: progress,
-                                        backgroundColor: UltravioletColors.surfaceVariant,
-                                        color: UltravioletColors.primary,
-                                        strokeWidth: 3,
-                                      ),
-                                    ),
-                                    const Icon(
-                                      Icons.folder,
-                                      color: UltravioletColors.primary,
-                                      size: 18,
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(width: 12),
-                                // Info
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        project,
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.w600,
-                                          fontSize: 14,
-                                        ),
-                                      ),
-                                      Text(
-                                        projectTasks.isEmpty 
-                                            ? 'Nenhuma tarefa'
-                                            : '${projectTasks.length} tarefas • $completedCount ✓',
-                                        style: const TextStyle(
-                                          color: UltravioletColors.onSurfaceVariant,
-                                          fontSize: 11,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                // Botões editar e apagar
-                                Material(
-                                  color: Colors.transparent,
-                                  child: InkWell(
-                                    onTap: () {
-                                      Navigator.pop(context);
-                                      _showEditProjectDialog(project);
-                                    },
-                                    borderRadius: BorderRadius.circular(8),
-                                    child: const Padding(
-                                      padding: EdgeInsets.all(8),
-                                      child: Icon(
-                                        Icons.edit_outlined,
-                                        color: UltravioletColors.onSurfaceVariant,
-                                        size: 20,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                Material(
-                                  color: Colors.transparent,
-                                  child: InkWell(
-                                    onTap: () {
-                                      Navigator.pop(context);
-                                      _showDeleteProjectDialog(project, projectTasks.length);
-                                    },
-                                    borderRadius: BorderRadius.circular(8),
-                                    child: const Padding(
-                                      padding: EdgeInsets.all(8),
-                                      child: Icon(
-                                        Icons.delete_outline,
-                                        color: UltravioletColors.error,
-                                        size: 20,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
+                            decoration: BoxDecoration(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .surfaceContainerHighest
+                                  .withOpacity(0.5),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Text(
+                              cat,
+                              style: TextStyle(
+                                color: Theme.of(context).colorScheme.onSurface,
+                                fontSize: 13,
+                              ),
                             ),
                           ),
                         ),
                       );
-                    },
-                  ),
-                ),
-              
-              // Seção de Categorias
-              const SizedBox(height: 16),
-              const Divider(),
-              const SizedBox(height: 12),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Categorias',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      onTap: () {
-                        Navigator.pop(context);
-                        _showAddCategoryDialog();
-                      },
-                      borderRadius: BorderRadius.circular(8),
-                      child: Container(
-                        padding: const EdgeInsets.all(6),
-                        decoration: BoxDecoration(
-                          color: UltravioletColors.secondary.withOpacity(0.15),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Icon(Icons.add, color: UltravioletColors.secondary, size: 18),
-                      ),
-                    ),
+                    }).toList(),
                   ),
                 ],
               ),
-              const SizedBox(height: 10),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: _categories.map((cat) {
-                  return Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      onTap: () {
-                        Navigator.pop(context);
-                        _showEditCategoryDialog(cat);
-                      },
-                      borderRadius: BorderRadius.circular(20),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: UltravioletColors.surfaceVariant.withOpacity(0.5),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Text(
-                          cat,
-                          style: const TextStyle(
-                            color: UltravioletColors.onSurface,
-                            fontSize: 13,
-                          ),
-                        ),
-                      ),
-                    ),
-                  );
-                }).toList(),
-              ),
-            ],
-          ),
             ),
           ),
         );
       },
     );
   }
-  
+
   void _showAddCategoryDialog() {
     final controller = TextEditingController();
-    
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: UltravioletColors.surface,
+        backgroundColor: Theme.of(context).colorScheme.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Nova Categoria'),
+        title: Text('Nova Categoria'),
         content: TextField(
           controller: controller,
           autofocus: true,
           decoration: InputDecoration(
             hintText: 'Nome da categoria...',
             filled: true,
-            fillColor: UltravioletColors.surfaceVariant.withOpacity(0.3),
+            fillColor: Theme.of(
+              context,
+            ).colorScheme.surfaceVariant.withOpacity(0.3),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide.none,
@@ -2538,36 +3503,40 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancelar'),
+            child: Text('Cancelar'),
           ),
           ElevatedButton(
             onPressed: () {
-              if (controller.text.isNotEmpty && !_categories.contains(controller.text)) {
+              if (controller.text.isNotEmpty &&
+                  !_categories.contains(controller.text)) {
                 setState(() {
                   _categories.add(controller.text);
                 });
                 Navigator.pop(context);
-                FeedbackService.showSuccess(context, 'Categoria "${controller.text}" criada');
+                FeedbackService.showSuccess(
+                  context,
+                  'Categoria "${controller.text}" criada',
+                );
               } else {
                 Navigator.pop(context);
               }
             },
-            child: const Text('Criar'),
+            child: Text('Criar'),
           ),
         ],
       ),
     );
   }
-  
+
   void _showEditCategoryDialog(String oldName) {
     final controller = TextEditingController(text: oldName);
-    
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: UltravioletColors.surface,
+        backgroundColor: Theme.of(context).colorScheme.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Editar Categoria'),
+        title: Text('Editar Categoria'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -2577,7 +3546,9 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
               decoration: InputDecoration(
                 hintText: 'Nome da categoria...',
                 filled: true,
-                fillColor: UltravioletColors.surfaceVariant.withOpacity(0.3),
+                fillColor: Theme.of(
+                  context,
+                ).colorScheme.surfaceVariant.withOpacity(0.3),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                   borderSide: BorderSide.none,
@@ -2592,11 +3563,14 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
               Navigator.pop(context);
               _showDeleteCategoryDialog(oldName);
             },
-            child: const Text('Apagar', style: TextStyle(color: UltravioletColors.error)),
+            child: Text(
+              'Apagar',
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
+            ),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancelar'),
+            child: Text('Cancelar'),
           ),
           ElevatedButton(
             onPressed: () {
@@ -2613,25 +3587,25 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                 Navigator.pop(context);
               }
             },
-            child: const Text('Salvar'),
+            child: Text('Salvar'),
           ),
         ],
       ),
     );
   }
-  
+
   void _showDeleteCategoryDialog(String categoryName) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: UltravioletColors.surface,
+        backgroundColor: Theme.of(context).colorScheme.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Apagar Categoria?'),
+        title: Text('Apagar Categoria?'),
         content: Text('Deseja apagar a categoria "$categoryName"?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancelar'),
+            child: Text('Cancelar'),
           ),
           ElevatedButton(
             onPressed: () {
@@ -2642,9 +3616,9 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
               FeedbackService.showSuccess(context, 'Categoria apagada');
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: UltravioletColors.error,
+              backgroundColor: Theme.of(context).colorScheme.error,
             ),
-            child: const Text('Apagar', style: TextStyle(color: Colors.white)),
+            child: Text('Apagar', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -2653,20 +3627,22 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
 
   void _showEditProjectDialog(String oldName) {
     final controller = TextEditingController(text: oldName);
-    
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: UltravioletColors.surface,
+        backgroundColor: Theme.of(context).colorScheme.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Editar Projeto'),
+        title: Text('Editar Projeto'),
         content: TextField(
           controller: controller,
           autofocus: true,
           decoration: InputDecoration(
             hintText: 'Nome do projeto...',
             filled: true,
-            fillColor: UltravioletColors.surfaceVariant.withOpacity(0.3),
+            fillColor: Theme.of(
+              context,
+            ).colorScheme.surfaceVariant.withOpacity(0.3),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide.none,
@@ -2676,7 +3652,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancelar'),
+            child: Text('Cancelar'),
           ),
           ElevatedButton(
             onPressed: () async {
@@ -2687,7 +3663,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                 Navigator.pop(context);
               }
             },
-            child: const Text('Salvar'),
+            child: Text('Salvar'),
           ),
         ],
       ),
@@ -2700,12 +3676,12 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
         .cast<TimeTrackingRecord>()
         .where((r) => r.project == oldName)
         .toList();
-    
+
     for (final record in records) {
       final updated = record.copyWith(project: newName);
       await repo.updateTimeTrackingRecord(record.id, updated);
     }
-    
+
     if (mounted) {
       setState(() {});
       FeedbackService.showSuccess(context, 'Projeto renomeado para "$newName"');
@@ -2716,9 +3692,9 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: UltravioletColors.surface,
+        backgroundColor: Theme.of(context).colorScheme.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Apagar Projeto?'),
+        title: Text('Apagar Projeto?'),
         content: Text(
           taskCount > 0
               ? 'O projeto "$projectName" tem $taskCount tarefa(s). As tarefas serão mantidas, mas ficarão sem projeto.'
@@ -2727,7 +3703,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancelar'),
+            child: Text('Cancelar'),
           ),
           ElevatedButton(
             onPressed: () async {
@@ -2735,9 +3711,9 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
               await _deleteProject(projectName);
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: UltravioletColors.error,
+              backgroundColor: Theme.of(context).colorScheme.error,
             ),
-            child: const Text('Apagar', style: TextStyle(color: Colors.white)),
+            child: Text('Apagar', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -2750,12 +3726,12 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
         .cast<TimeTrackingRecord>()
         .where((r) => r.project == projectName)
         .toList();
-    
+
     for (final record in records) {
       final updated = record.copyWith(project: null);
       await repo.updateTimeTrackingRecord(record.id, updated);
     }
-    
+
     if (mounted) {
       setState(() {});
       FeedbackService.showSuccess(context, 'Projeto "$projectName" apagado');
@@ -2764,20 +3740,22 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
 
   void _showAddProjectDialog() {
     final projectNameController = TextEditingController();
-    
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: UltravioletColors.surface,
+        backgroundColor: Theme.of(context).colorScheme.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Novo Projeto'),
+        title: Text('Novo Projeto'),
         content: TextField(
           controller: projectNameController,
           autofocus: true,
           decoration: InputDecoration(
             hintText: 'Nome do projeto...',
             filled: true,
-            fillColor: UltravioletColors.surfaceVariant.withOpacity(0.3),
+            fillColor: Theme.of(
+              context,
+            ).colorScheme.surfaceVariant.withOpacity(0.3),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide.none,
@@ -2787,7 +3765,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancelar'),
+            child: Text('Cancelar'),
           ),
           ElevatedButton(
             onPressed: () {
@@ -2801,7 +3779,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                 _showAddTaskDialog();
               }
             },
-            child: const Text('Criar'),
+            child: Text('Criar'),
           ),
         ],
       ),
@@ -2811,8 +3789,10 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
   void _showAddTaskDialog() {
     String? selectedCategory = _selectedCategory ?? 'Pessoal';
     String? selectedProject = _selectedProject;
-    final projectController = TextEditingController(text: _selectedProject ?? '');
-    
+    final projectController = TextEditingController(
+      text: _selectedProject ?? '',
+    );
+
     // Combinar projetos das atividades predefinidas com os do repositório
     final repo = ref.read(timeTrackingRepositoryProvider);
     final repoProjects = repo.getAllProjects();
@@ -2820,202 +3800,237 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
         .where((a) => a['project'] != null)
         .map((a) => a['project'] as String)
         .toSet();
-    final existingProjects = {...activityProjects, ...repoProjects}.toList()..sort();
+    final existingProjects = {...activityProjects, ...repoProjects}.toList()
+      ..sort();
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: UltravioletColors.surface,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      builder: (context) => StatefulBuilder(
-        builder: (context, setModalState) => Padding(
-          padding: EdgeInsets.only(
-            left: 20,
-            right: 20,
-            top: 20,
-            bottom: MediaQuery.of(context).viewInsets.bottom + 20,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Handle
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: UltravioletColors.outline,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'Nova Tarefa',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 20),
-              
-              // Nome da tarefa
-              TextField(
-                controller: _taskNameController,
-                autofocus: true,
-                decoration: InputDecoration(
-                  hintText: 'Nome da tarefa...',
-                  filled: true,
-                  fillColor: UltravioletColors.surfaceVariant.withOpacity(0.3),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
-                  ),
-                  prefixIcon: const Icon(Icons.task_alt),
-                ),
-              ),
-              const SizedBox(height: 16),
-              
-              // Categoria
-              const Text(
-                'Categoria',
-                style: TextStyle(
-                  fontWeight: FontWeight.w500,
-                  color: UltravioletColors.onSurfaceVariant,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: _categories.map((cat) {
-                  final isSelected = selectedCategory == cat;
-                  return GestureDetector(
-                    onTap: () => setModalState(() => selectedCategory = cat),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: isSelected 
-                            ? UltravioletColors.primary.withOpacity(0.2)
-                            : UltravioletColors.surfaceVariant.withOpacity(0.3),
-                        borderRadius: BorderRadius.circular(20),
-                        border: isSelected 
-                            ? Border.all(color: UltravioletColors.primary)
-                            : null,
-                      ),
-                      child: Text(
-                        cat,
-                        style: TextStyle(
-                          color: isSelected 
-                              ? UltravioletColors.primary
-                              : UltravioletColors.onSurfaceVariant,
-                          fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                        ),
-                      ),
+      builder: (context) {
+        final colorScheme = Theme.of(context).colorScheme;
+
+        return StatefulBuilder(
+          builder: (context, setModalState) => Padding(
+            padding: EdgeInsets.only(
+              left: 20,
+              right: 20,
+              top: 20,
+              bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Handle
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: colorScheme.outlineVariant,
+                      borderRadius: BorderRadius.circular(2),
                     ),
-                  );
-                }).toList(),
-              ),
-              const SizedBox(height: 16),
-              
-              // Projeto
-              const Text(
-                'Projeto (opcional)',
-                style: TextStyle(
-                  fontWeight: FontWeight.w500,
-                  color: UltravioletColors.onSurfaceVariant,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 8),
-              // Projetos existentes
-              if (existingProjects.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                Text(
+                  'Nova Tarefa',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 20),
+
+                // Nome da tarefa
+                TextField(
+                  controller: _taskNameController,
+                  autofocus: true,
+                  decoration: InputDecoration(
+                    hintText: 'Nome da tarefa...',
+                    filled: true,
+                    fillColor: colorScheme.surfaceContainerHighest.withOpacity(
+                      0.5,
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                    prefixIcon: Icon(
+                      Icons.task_alt,
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // Categoria
+                Text(
+                  'Categoria',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w500,
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: 8),
                 Wrap(
                   spacing: 8,
                   runSpacing: 8,
-                  children: [
-                    ...existingProjects.map((proj) {
-                      final isSelected = selectedProject == proj;
-                      return GestureDetector(
-                        onTap: () => setModalState(() {
-                          selectedProject = isSelected ? null : proj;
-                          projectController.text = isSelected ? '' : proj;
-                        }),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: isSelected 
-                                ? UltravioletColors.secondary.withOpacity(0.2)
-                                : UltravioletColors.surfaceVariant.withOpacity(0.3),
-                            borderRadius: BorderRadius.circular(16),
-                            border: isSelected 
-                                ? Border.all(color: UltravioletColors.secondary)
-                                : null,
-                          ),
-                          child: Text(
-                            proj,
-                            style: TextStyle(
-                              color: isSelected 
-                                  ? UltravioletColors.secondary
-                                  : UltravioletColors.onSurfaceVariant,
-                              fontSize: 13,
-                            ),
+                  children: _categories.map((cat) {
+                    final isSelected = selectedCategory == cat;
+                    return GestureDetector(
+                      onTap: () => setModalState(() => selectedCategory = cat),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? colorScheme.primary.withOpacity(0.2)
+                              : colorScheme.surfaceContainerHighest.withOpacity(
+                                  0.5,
+                                ),
+                          borderRadius: BorderRadius.circular(20),
+                          border: isSelected
+                              ? Border.all(color: colorScheme.primary)
+                              : null,
+                        ),
+                        child: Text(
+                          cat,
+                          style: TextStyle(
+                            color: isSelected
+                                ? colorScheme.primary
+                                : colorScheme.onSurfaceVariant,
+                            fontWeight: isSelected
+                                ? FontWeight.w600
+                                : FontWeight.w400,
                           ),
                         ),
-                      );
-                    }),
-                  ],
+                      ),
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 16),
+
+                // Projeto
+                Text(
+                  'Projeto (opcional)',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w500,
+                    color: colorScheme.onSurfaceVariant,
+                  ),
                 ),
                 const SizedBox(height: 8),
-              ],
-              // Campo para novo projeto
-              TextField(
-                controller: projectController,
-                decoration: InputDecoration(
-                  hintText: 'Ou digite um novo projeto...',
-                  filled: true,
-                  fillColor: UltravioletColors.surfaceVariant.withOpacity(0.3),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
+                // Projetos existentes
+                if (existingProjects.isNotEmpty) ...[
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      ...existingProjects.map((proj) {
+                        final isSelected = selectedProject == proj;
+                        return GestureDetector(
+                          onTap: () => setModalState(() {
+                            selectedProject = isSelected ? null : proj;
+                            projectController.text = isSelected ? '' : proj;
+                          }),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: isSelected
+                                  ? colorScheme.secondary.withOpacity(0.2)
+                                  : colorScheme.surfaceContainerHighest
+                                        .withOpacity(0.5),
+                              borderRadius: BorderRadius.circular(16),
+                              border: isSelected
+                                  ? Border.all(color: colorScheme.secondary)
+                                  : null,
+                            ),
+                            child: Text(
+                              proj,
+                              style: TextStyle(
+                                color: isSelected
+                                    ? colorScheme.secondary
+                                    : colorScheme.onSurfaceVariant,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ),
+                        );
+                      }),
+                    ],
                   ),
-                  prefixIcon: const Icon(Icons.folder_outlined, size: 20),
-                  isDense: true,
-                ),
-                onChanged: (value) => setModalState(() => selectedProject = value.isEmpty ? null : value),
-              ),
-              const SizedBox(height: 24),
-              
-              // Botão iniciar
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.pop(context);
-                    if (_taskNameController.text.isNotEmpty) {
-                      setState(() {
-                        _selectedCategory = selectedCategory;
-                        _selectedProject = selectedProject ?? projectController.text;
-                        if (_selectedProject?.isEmpty ?? true) _selectedProject = null;
-                      });
-                      _startTimer(customTask: _taskNameController.text);
-                    }
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: UltravioletColors.primary,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
+                  const SizedBox(height: 8),
+                ],
+                // Campo para novo projeto
+                TextField(
+                  controller: projectController,
+                  decoration: InputDecoration(
+                    hintText: 'Ou digite um novo projeto...',
+                    filled: true,
+                    fillColor: colorScheme.surfaceContainerHighest.withOpacity(
+                      0.5,
+                    ),
+                    border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                    prefixIcon: Icon(
+                      Icons.folder_outlined,
+                      size: 20,
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                    isDense: true,
+                  ),
+                  onChanged: (value) => setModalState(
+                    () => selectedProject = value.isEmpty ? null : value,
+                  ),
+                ),
+                const SizedBox(height: 24),
+
+                // Botão iniciar
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      if (_taskNameController.text.isNotEmpty) {
+                        setState(() {
+                          _selectedCategory = selectedCategory;
+                          _selectedProject =
+                              selectedProject ?? projectController.text;
+                          if (_selectedProject?.isEmpty ?? true)
+                            _selectedProject = null;
+                        });
+                        _startTimer(customTask: _taskNameController.text);
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: colorScheme.primary,
+                      foregroundColor: colorScheme.onPrimary,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: Text(
+                      'Iniciar Timer',
+                      style: TextStyle(fontWeight: FontWeight.w600),
                     ),
                   ),
-                  child: const Text('Iniciar Timer', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
@@ -3023,10 +4038,11 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
   // ACTIVE TIMER SCREEN - Tela com cronômetro em execução
   // =====================================================
   Widget _buildActiveTimerScreen() {
-    final taskName = _customTaskName ?? _selectedActivity?.activityName ?? 'Tarefa';
+    final taskName =
+        _customTaskName ?? _selectedActivity?.activityName ?? 'Tarefa';
     final color = _getActivityColor(taskName);
     final displayTime = _isPomodoroMode ? _pomodoroTimeLeft : _elapsedTime;
-    
+
     return SafeArea(
       child: Container(
         decoration: BoxDecoration(
@@ -3057,7 +4073,11 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                         color: Colors.white.withOpacity(0.08),
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: const Icon(Icons.keyboard_arrow_down_rounded, color: Colors.white70, size: 24),
+                      child: Icon(
+                        Icons.keyboard_arrow_down_rounded,
+                        color: Colors.white70,
+                        size: 24,
+                      ),
                     ),
                   ),
                   const Spacer(),
@@ -3067,17 +4087,21 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                     child: Container(
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
-                        color: soundService.isAmbientPlaying 
+                        color: soundService.isAmbientPlaying
                             ? color.withOpacity(0.2)
                             : Colors.white.withOpacity(0.08),
                         borderRadius: BorderRadius.circular(12),
-                        border: soundService.isAmbientPlaying 
+                        border: soundService.isAmbientPlaying
                             ? Border.all(color: color.withOpacity(0.5))
                             : null,
                       ),
                       child: Icon(
-                        soundService.isAmbientPlaying ? Icons.music_note : Icons.music_off,
-                        color: soundService.isAmbientPlaying ? color : Colors.white70,
+                        soundService.isAmbientPlaying
+                            ? Icons.music_note
+                            : Icons.music_off,
+                        color: soundService.isAmbientPlaying
+                            ? color
+                            : Colors.white70,
                         size: 24,
                       ),
                     ),
@@ -3095,7 +4119,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                 children: [
                   Text(
                     taskName,
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: Colors.white,
                       fontSize: 24,
                       fontWeight: FontWeight.w600,
@@ -3110,7 +4134,10 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                     children: [
                       if (_selectedCategory != null) ...[
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 6,
+                          ),
                           decoration: BoxDecoration(
                             color: Colors.white.withOpacity(0.08),
                             borderRadius: BorderRadius.circular(20),
@@ -3128,7 +4155,10 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                       if (_selectedProject != null) ...[
                         const SizedBox(width: 8),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 6,
+                          ),
                           decoration: BoxDecoration(
                             color: color.withOpacity(0.15),
                             borderRadius: BorderRadius.circular(20),
@@ -3171,10 +4201,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
     return AnimatedBuilder(
       animation: _pulseAnimation,
       builder: (context, child) {
-        return Transform.scale(
-          scale: _pulseAnimation.value,
-          child: child,
-        );
+        return Transform.scale(scale: _pulseAnimation.value, child: child);
       },
       child: SizedBox(
         width: 280,
@@ -3197,7 +4224,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                 ],
               ),
             ),
-            
+
             // Progress ring
             SizedBox(
               width: 260,
@@ -3206,8 +4233,8 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                 painter: _TimePadRingPainter(
                   progress: _isPomodoroMode
                       ? (_isPomodoroBreak
-                          ? _pomodoroTimeLeft.inSeconds / 300
-                          : _pomodoroTimeLeft.inSeconds / 1500)
+                            ? _pomodoroTimeLeft.inSeconds / 300
+                            : _pomodoroTimeLeft.inSeconds / 1500)
                       : 1.0,
                   color: color,
                   backgroundColor: color.withOpacity(0.1),
@@ -3215,19 +4242,19 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                 ),
               ),
             ),
-            
+
             // Inner circle with time
             Container(
               width: 200,
               height: 200,
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: Color(0xFF1A1A24),
+                color: Theme.of(context).colorScheme.surface,
               ),
               child: Center(
                 child: Text(
                   _formatDurationShort(displayTime),
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: Colors.white,
                     fontSize: 56,
                     fontWeight: FontWeight.w300,
@@ -3243,8 +4270,10 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
   }
 
   Widget _buildTimePadControls() {
-    final color = _getActivityColor(_customTaskName ?? _selectedActivity?.activityName);
-    
+    final color = _getActivityColor(
+      _customTaskName ?? _selectedActivity?.activityName,
+    );
+
     return Column(
       children: [
         Row(
@@ -3256,20 +4285,20 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
               child: Container(
                 width: 56,
                 height: 56,
-                decoration: const BoxDecoration(
-                  color: UltravioletColors.surfaceVariant,
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.keyboard_arrow_down,
                   color: Colors.white,
                   size: 28,
                 ),
               ),
             ),
-            
+
             const SizedBox(width: 20),
-            
+
             // Stop button (maior, destaque)
             GestureDetector(
               onTap: () {
@@ -3280,26 +4309,24 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                 width: 72,
                 height: 72,
                 decoration: BoxDecoration(
-                  color: UltravioletColors.error,
+                  color: Theme.of(context).colorScheme.error,
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-                      color: UltravioletColors.error.withOpacity(0.4),
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.error.withOpacity(0.4),
                       blurRadius: 16,
                       offset: const Offset(0, 4),
                     ),
                   ],
                 ),
-                child: const Icon(
-                  Icons.stop_rounded,
-                  color: Colors.white,
-                  size: 36,
-                ),
+                child: Icon(Icons.stop_rounded, color: Colors.white, size: 36),
               ),
             ),
-            
+
             const SizedBox(width: 20),
-            
+
             // Cancelar (descarta o tempo)
             GestureDetector(
               onTap: () {
@@ -3309,15 +4336,11 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
               child: Container(
                 width: 56,
                 height: 56,
-                decoration: const BoxDecoration(
-                  color: UltravioletColors.surfaceVariant,
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(
-                  Icons.close,
-                  color: Colors.white,
-                  size: 24,
-                ),
+                child: Icon(Icons.close, color: Colors.white, size: 24),
               ),
             ),
           ],
@@ -3378,12 +4401,12 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
       if (mounted) {
         setState(() {
           _showPomodoroScreen = false;
-          _selectedTab = 1;
+
           _tabController.animateTo(1);
         });
       }
     });
-    
+
     // Retornar a tela principal enquanto redireciona
     return _buildMainScreen();
   }
@@ -3395,12 +4418,14 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
     const pomodoroColor = Color(0xFFFF6B6B);
     const breakColor = Color(0xFF667EEA);
     final currentColor = _isPomodoroBreak ? breakColor : pomodoroColor;
-    
+
     // Calcular total time para o tomato timer
-    final totalDuration = _isPomodoroBreak 
-        ? (_pomodoroSessions >= _pomodoroTotalSessions ? _longBreakDuration : _shortBreakDuration)
+    final totalDuration = _isPomodoroBreak
+        ? (_pomodoroSessions >= _pomodoroTotalSessions
+              ? _longBreakDuration
+              : _shortBreakDuration)
         : _pomodoroDuration;
-    
+
     return SafeArea(
       child: Container(
         decoration: BoxDecoration(
@@ -3420,7 +4445,10 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
         child: SingleChildScrollView(
           child: ConstrainedBox(
             constraints: BoxConstraints(
-              minHeight: MediaQuery.of(context).size.height - MediaQuery.of(context).padding.top - MediaQuery.of(context).padding.bottom,
+              minHeight:
+                  MediaQuery.of(context).size.height -
+                  MediaQuery.of(context).padding.top -
+                  MediaQuery.of(context).padding.bottom,
             ),
             child: Column(
               children: [
@@ -3443,9 +4471,15 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                           decoration: BoxDecoration(
                             color: Colors.white.withValues(alpha: 0.06),
                             borderRadius: BorderRadius.circular(14),
-                            border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.08),
+                            ),
                           ),
-                          child: const Icon(Icons.arrow_back_rounded, color: Colors.white60, size: 22),
+                          child: Icon(
+                            Icons.arrow_back_rounded,
+                            color: Colors.white60,
+                            size: 22,
+                          ),
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -3489,8 +4523,12 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                             ),
                           ),
                           child: Icon(
-                            soundService.isAmbientPlaying ? Icons.music_note : Icons.music_off_rounded,
-                            color: soundService.isAmbientPlaying ? currentColor : Colors.white60,
+                            soundService.isAmbientPlaying
+                                ? Icons.music_note
+                                : Icons.music_off_rounded,
+                            color: soundService.isAmbientPlaying
+                                ? currentColor
+                                : Colors.white60,
                             size: 22,
                           ),
                         ),
@@ -3504,9 +4542,15 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                           decoration: BoxDecoration(
                             color: Colors.white.withValues(alpha: 0.06),
                             borderRadius: BorderRadius.circular(14),
-                            border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.08),
+                            ),
                           ),
-                          child: const Icon(Icons.tune_rounded, color: Colors.white60, size: 22),
+                          child: Icon(
+                            Icons.tune_rounded,
+                            color: Colors.white60,
+                            size: 22,
+                          ),
                         ),
                       ),
                     ],
@@ -3520,7 +4564,15 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   child: Column(
                     children: [
-                      _buildTomatoClockTimer(1 - (_pomodoroTimeLeft.inSeconds / totalDuration.inSeconds)),
+                      TomatoTimerWidget(
+                        timeLeft: _pomodoroTimeLeft,
+                        totalTime: _pomodoroDuration,
+                        isRunning: _isPomodoroRunning,
+                        isBreak: _isPomodoroBreak,
+                        onStart: _startPomodoro,
+                        onPause: _pausePomodoro,
+                        onReset: _resetPomodoro,
+                      ),
                       const SizedBox(height: 24),
                       _buildModernPomodoroControls(),
                     ],
@@ -3549,8 +4601,9 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
   /// Seletor de tarefas para o Pomodoro
   Widget _buildPomodoroTaskSelector() {
     const pomodoroColor = Color(0xFFFF6B6B);
-    final hasTask = _customTaskName != null || _taskNameController.text.isNotEmpty;
-    
+    final hasTask =
+        _customTaskName != null || _taskNameController.text.isNotEmpty;
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Column(
@@ -3572,7 +4625,10 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
               GestureDetector(
                 onTap: _showCreateTaskDialog,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: pomodoroColor.withOpacity(0.15),
                     borderRadius: BorderRadius.circular(20),
@@ -3598,15 +4654,15 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
             ],
           ),
           const SizedBox(height: 12),
-          
+
           // Tarefa selecionada ou placeholder
           if (hasTask)
             _buildSelectedPomodoroTask()
           else
             _buildTaskPlaceholder(),
-          
+
           const SizedBox(height: 12),
-          
+
           // Lista horizontal de tarefas rápidas
           SizedBox(
             height: 44,
@@ -3618,8 +4674,9 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                 final name = activity['name'] as String;
                 final color = activity['color'] as Color;
                 final icon = activity['icon'] as IconData;
-                final isSelected = _customTaskName == name || _taskNameController.text == name;
-                
+                final isSelected =
+                    _customTaskName == name || _taskNameController.text == name;
+
                 return GestureDetector(
                   onTap: () {
                     HapticFeedback.lightImpact();
@@ -3633,9 +4690,14 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 200),
                     margin: const EdgeInsets.only(right: 10),
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 10,
+                    ),
                     decoration: BoxDecoration(
-                      color: isSelected ? color.withOpacity(0.25) : Colors.white.withOpacity(0.08),
+                      color: isSelected
+                          ? color.withOpacity(0.25)
+                          : Colors.white.withOpacity(0.08),
                       borderRadius: BorderRadius.circular(22),
                       border: Border.all(
                         color: isSelected ? color : Colors.transparent,
@@ -3645,14 +4707,22 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(icon, color: isSelected ? color : Colors.white60, size: 18),
+                        Icon(
+                          icon,
+                          color: isSelected ? color : Colors.white60,
+                          size: 18,
+                        ),
                         const SizedBox(width: 8),
                         Text(
-                          name.length > 15 ? '${name.substring(0, 15)}...' : name,
+                          name.length > 15
+                              ? '${name.substring(0, 15)}...'
+                              : name,
                           style: TextStyle(
                             color: isSelected ? color : Colors.white70,
                             fontSize: 13,
-                            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                            fontWeight: isSelected
+                                ? FontWeight.w600
+                                : FontWeight.w400,
                           ),
                         ),
                       ],
@@ -3672,18 +4742,20 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
     final color = _getActivityColor(taskName);
     final activityData = _activities.firstWhere(
       (a) => a['name'] == taskName,
-      orElse: () => {'icon': Icons.timer, 'color': UltravioletColors.primary, 'category': null, 'project': null},
+      orElse: () => {
+        'icon': Icons.timer,
+        'color': Theme.of(context).colorScheme.primary,
+        'category': null,
+        'project': null,
+      },
     );
     final icon = activityData['icon'] as IconData;
-    
+
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [
-            color.withOpacity(0.15),
-            color.withOpacity(0.05),
-          ],
+          colors: [color.withOpacity(0.15), color.withOpacity(0.05)],
         ),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: color.withOpacity(0.3)),
@@ -3706,7 +4778,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
               children: [
                 Text(
                   taskName,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: Colors.white,
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
@@ -3717,7 +4789,10 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                   children: [
                     if (_selectedCategory != null) ...[
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 2,
+                        ),
                         decoration: BoxDecoration(
                           color: Colors.white.withOpacity(0.1),
                           borderRadius: BorderRadius.circular(8),
@@ -3734,17 +4809,17 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                     if (_selectedProject != null) ...[
                       const SizedBox(width: 6),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 2,
+                        ),
                         decoration: BoxDecoration(
                           color: color.withOpacity(0.2),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
                           _selectedProject!,
-                          style: TextStyle(
-                            color: color,
-                            fontSize: 11,
-                          ),
+                          style: TextStyle(color: color, fontSize: 11),
                         ),
                       ),
                     ],
@@ -3770,7 +4845,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                 color: Colors.white.withOpacity(0.1),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.close, color: Colors.white54, size: 18),
+              child: Icon(Icons.close, color: Colors.white54, size: 18),
             ),
           ),
         ],
@@ -3794,7 +4869,11 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.add_circle_outline, color: Colors.white.withOpacity(0.4), size: 22),
+            Icon(
+              Icons.add_circle_outline,
+              color: Colors.white.withOpacity(0.4),
+              size: 22,
+            ),
             const SizedBox(width: 10),
             Text(
               'Selecione ou crie uma tarefa',
@@ -3812,11 +4891,13 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
   /// Dialog para criar nova tarefa
   void _showCreateTaskDialog() {
     final taskController = TextEditingController();
-    String? selectedCategory = _categories.isNotEmpty ? _categories.first : null;
+    String? selectedCategory = _categories.isNotEmpty
+        ? _categories.first
+        : null;
     String? selectedProject;
-    Color selectedColor = UltravioletColors.primary;
+    Color selectedColor = Theme.of(context).colorScheme.primary;
     IconData selectedIcon = Icons.timer;
-    
+
     final colors = [
       const Color(0xFF9B51E0),
       const Color(0xFFFFA556),
@@ -3827,7 +4908,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
       const Color(0xFF00B4D8),
       const Color(0xFFFFD93D),
     ];
-    
+
     final icons = [
       Icons.timer,
       Icons.code,
@@ -3849,10 +4930,12 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
       isScrollControlled: true,
       builder: (context) => StatefulBuilder(
         builder: (context, setModalState) => Container(
-          padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
-          decoration: const BoxDecoration(
-            color: UltravioletColors.surface,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom,
+          ),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
           ),
           child: SafeArea(
             child: SingleChildScrollView(
@@ -3867,13 +4950,13 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                       width: 40,
                       height: 4,
                       decoration: BoxDecoration(
-                        color: UltravioletColors.outline,
+                        color: Theme.of(context).colorScheme.outlineVariant,
                         borderRadius: BorderRadius.circular(2),
                       ),
                     ),
                   ),
                   const SizedBox(height: 20),
-                  
+
                   // Título
                   const Row(
                     children: [
@@ -3890,16 +4973,20 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                     ],
                   ),
                   const SizedBox(height: 20),
-                  
+
                   // Campo nome da tarefa
                   TextField(
                     controller: taskController,
-                    style: const TextStyle(color: Colors.white),
+                    style: TextStyle(color: Colors.white),
                     decoration: InputDecoration(
                       labelText: 'Nome da tarefa',
-                      labelStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
+                      labelStyle: TextStyle(
+                        color: Colors.white.withOpacity(0.5),
+                      ),
                       hintText: 'Ex: Estudar Flutter',
-                      hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
+                      hintStyle: TextStyle(
+                        color: Colors.white.withOpacity(0.3),
+                      ),
                       filled: true,
                       fillColor: Colors.white.withOpacity(0.08),
                       border: OutlineInputBorder(
@@ -3915,7 +5002,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                     autofocus: true,
                   ),
                   const SizedBox(height: 16),
-                  
+
                   // Seletor de ícone
                   Text(
                     'Ícone',
@@ -3937,17 +5024,25 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                           width: 44,
                           height: 44,
                           decoration: BoxDecoration(
-                            color: isSelected ? selectedColor.withOpacity(0.2) : Colors.white.withOpacity(0.08),
+                            color: isSelected
+                                ? selectedColor.withOpacity(0.2)
+                                : Colors.white.withOpacity(0.08),
                             borderRadius: BorderRadius.circular(12),
-                            border: isSelected ? Border.all(color: selectedColor, width: 2) : null,
+                            border: isSelected
+                                ? Border.all(color: selectedColor, width: 2)
+                                : null,
                           ),
-                          child: Icon(icon, color: isSelected ? selectedColor : Colors.white60, size: 22),
+                          child: Icon(
+                            icon,
+                            color: isSelected ? selectedColor : Colors.white60,
+                            size: 22,
+                          ),
                         ),
                       );
                     }).toList(),
                   ),
                   const SizedBox(height: 16),
-                  
+
                   // Seletor de cor
                   Text(
                     'Cor',
@@ -3971,21 +5066,27 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                           decoration: BoxDecoration(
                             color: color,
                             shape: BoxShape.circle,
-                            border: isSelected ? Border.all(color: Colors.white, width: 3) : null,
-                            boxShadow: isSelected ? [
-                              BoxShadow(
-                                color: color.withOpacity(0.5),
-                                blurRadius: 8,
-                              ),
-                            ] : null,
+                            border: isSelected
+                                ? Border.all(color: Colors.white, width: 3)
+                                : null,
+                            boxShadow: isSelected
+                                ? [
+                                    BoxShadow(
+                                      color: color.withOpacity(0.5),
+                                      blurRadius: 8,
+                                    ),
+                                  ]
+                                : null,
                           ),
-                          child: isSelected ? const Icon(Icons.check, color: Colors.white, size: 18) : null,
+                          child: isSelected
+                              ? Icon(Icons.check, color: Colors.white, size: 18)
+                              : null,
                         ),
                       );
                     }).toList(),
                   ),
                   const SizedBox(height: 16),
-                  
+
                   // Categoria
                   Text(
                     'Categoria',
@@ -4002,20 +5103,32 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                     children: _categories.map((cat) {
                       final isSelected = selectedCategory == cat;
                       return GestureDetector(
-                        onTap: () => setModalState(() => selectedCategory = cat),
+                        onTap: () =>
+                            setModalState(() => selectedCategory = cat),
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 8,
+                          ),
                           decoration: BoxDecoration(
-                            color: isSelected ? selectedColor.withOpacity(0.2) : Colors.white.withOpacity(0.08),
+                            color: isSelected
+                                ? selectedColor.withOpacity(0.2)
+                                : Colors.white.withOpacity(0.08),
                             borderRadius: BorderRadius.circular(20),
-                            border: isSelected ? Border.all(color: selectedColor) : null,
+                            border: isSelected
+                                ? Border.all(color: selectedColor)
+                                : null,
                           ),
                           child: Text(
                             cat,
                             style: TextStyle(
-                              color: isSelected ? selectedColor : Colors.white70,
+                              color: isSelected
+                                  ? selectedColor
+                                  : Colors.white70,
                               fontSize: 13,
-                              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                              fontWeight: isSelected
+                                  ? FontWeight.w600
+                                  : FontWeight.w400,
                             ),
                           ),
                         ),
@@ -4023,17 +5136,20 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                     }).toList(),
                   ),
                   const SizedBox(height: 24),
-                  
+
                   // Botão criar
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
                       onPressed: () {
                         if (taskController.text.trim().isEmpty) {
-                          FeedbackService.showError(context, 'Digite um nome para a tarefa');
+                          FeedbackService.showError(
+                            context,
+                            'Digite um nome para a tarefa',
+                          );
                           return;
                         }
-                        
+
                         // Adicionar à lista de atividades
                         final newActivity = {
                           'name': taskController.text.trim(),
@@ -4042,7 +5158,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                           'category': selectedCategory,
                           'project': null,
                         };
-                        
+
                         setState(() {
                           _activities.insert(0, newActivity);
                           _customTaskName = taskController.text.trim();
@@ -4050,10 +5166,13 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                           _selectedCategory = selectedCategory;
                           _selectedProject = null;
                         });
-                        
+
                         Navigator.pop(context);
                         HapticFeedback.mediumImpact();
-                        FeedbackService.showSuccess(context, '✅ Tarefa "${taskController.text.trim()}" criada!');
+                        FeedbackService.showSuccess(
+                          context,
+                          '✅ Tarefa "${taskController.text.trim()}" criada!',
+                        );
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: selectedColor,
@@ -4062,7 +5181,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                           borderRadius: BorderRadius.circular(14),
                         ),
                       ),
-                      child: const Text(
+                      child: Text(
                         'Criar Tarefa',
                         style: TextStyle(
                           color: Colors.white,
@@ -4108,8 +5227,8 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                   '🍅',
                   style: TextStyle(
                     fontSize: isCurrent ? 28 : 22,
-                    color: isCompleted 
-                        ? null 
+                    color: isCompleted
+                        ? null
                         : (isCurrent ? null : Colors.white.withOpacity(0.2)),
                   ),
                 ),
@@ -4121,237 +5240,12 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
     );
   }
 
-  Widget _buildPomodoroTimerCircle(double progress, Color color) {
-    final minutes = _pomodoroTimeLeft.inMinutes;
-    final seconds = _pomodoroTimeLeft.inSeconds.remainder(60);
-    final timeStr = '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
-
-    return AnimatedBuilder(
-      animation: _pulseAnimation,
-      builder: (context, child) {
-        final scale = _isPomodoroRunning ? _pulseAnimation.value : 1.0;
-        return Transform.scale(
-          scale: scale,
-          child: child,
-        );
-      },
-      child: SizedBox(
-        width: 300,
-        height: 300,
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            // Glow effect
-            Container(
-              width: 280,
-              height: 280,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: color.withOpacity(_isPomodoroRunning ? 0.3 : 0.1),
-                    blurRadius: 60,
-                    spreadRadius: 10,
-                  ),
-                ],
-              ),
-            ),
-            
-            // Background ring
-            SizedBox(
-              width: 280,
-              height: 280,
-              child: CircularProgressIndicator(
-                value: 1,
-                strokeWidth: 14,
-                backgroundColor: Colors.transparent,
-                color: color.withOpacity(0.1),
-              ),
-            ),
-            
-            // Progress ring
-            SizedBox(
-              width: 280,
-              height: 280,
-              child: TweenAnimationBuilder<double>(
-                tween: Tween(begin: progress, end: progress),
-                duration: const Duration(milliseconds: 300),
-                builder: (context, value, _) {
-                  return CustomPaint(
-                    painter: _PomodoroRingPainter(
-                      progress: value,
-                      color: color,
-                      strokeWidth: 14,
-                    ),
-                  );
-                },
-              ),
-            ),
-            
-            // Inner circle with tomato
-            Container(
-              width: 220,
-              height: 220,
-              decoration: const BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [
-                    Color(0xFF1A1A24),
-                    Color(0xFF12121A),
-                  ],
-                ),
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  // Emoji maçã/tomate animado
-                  TweenAnimationBuilder<double>(
-                    tween: Tween(begin: 0.8, end: 1.0),
-                    duration: const Duration(milliseconds: 600),
-                    curve: Curves.elasticOut,
-                    builder: (context, value, child) {
-                      return Transform.scale(
-                        scale: value,
-                        child: Text(
-                          _isPomodoroBreak ? '☕' : '🍅',
-                          style: const TextStyle(fontSize: 48),
-                        ),
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 8),
-                  // Tempo
-                  Text(
-                    timeStr,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 48,
-                      fontWeight: FontWeight.w300,
-                      letterSpacing: 2,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPomodoroControls(Color color) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        // Reset
-        GestureDetector(
-          onTap: _resetPomodoro,
-          child: Container(
-            width: 56,
-            height: 56,
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.08),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              Icons.refresh_rounded,
-              color: Colors.white70,
-              size: 26,
-            ),
-          ),
-        ),
-        
-        const SizedBox(width: 24),
-        
-        // Play/Pause principal
-        GestureDetector(
-          onTap: () {
-            HapticFeedback.mediumImpact();
-            if (_isPomodoroRunning) {
-              _pausePomodoro();
-            } else {
-              _startPomodoro();
-            }
-          },
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            width: 80,
-            height: 80,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  color,
-                  color.withOpacity(0.8),
-                ],
-              ),
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: color.withOpacity(0.4),
-                  blurRadius: 20,
-                  offset: const Offset(0, 6),
-                ),
-              ],
-            ),
-            child: Icon(
-              _isPomodoroRunning ? Icons.pause_rounded : Icons.play_arrow_rounded,
-              color: Colors.white,
-              size: 42,
-            ),
-          ),
-        ),
-        
-        const SizedBox(width: 24),
-        
-        // Skip
-        GestureDetector(
-          onTap: () {
-            HapticFeedback.lightImpact();
-            if (_isPomodoroRunning || _pomodoroTimeLeft.inSeconds < (_pomodoroDuration.inSeconds)) {
-              // Pular para próxima sessão
-              _pomodoroTimer?.cancel();
-              _pulseController.stop();
-              if (!_isPomodoroBreak) {
-                setState(() {
-                  _pomodoroSessions++;
-                  _isPomodoroRunning = false;
-                });
-                _showPomodoroComplete();
-              } else {
-                setState(() {
-                  _isPomodoroBreak = false;
-                  _isPomodoroRunning = false;
-                  _pomodoroTimeLeft = _pomodoroDuration;
-                });
-              }
-            }
-          },
-          child: Container(
-            width: 56,
-            height: 56,
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.08),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              Icons.skip_next_rounded,
-              color: Colors.white70,
-              size: 26,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
   Widget _buildPomodoroStats() {
     // Calcular tempo total focado hoje via pomodoro
     final focusMinutes = _pomodoroSessions * 25;
     final hours = focusMinutes ~/ 60;
     final mins = focusMinutes % 60;
-    
+
     return OdysseyCard(
       margin: const EdgeInsets.symmetric(horizontal: 20),
       padding: const EdgeInsets.all(20),
@@ -4368,7 +5262,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
           Container(
             width: 1,
             height: 40,
-            color: UltravioletColors.divider,
+            color: Theme.of(context).colorScheme.outlineVariant,
           ),
           _buildPomodoroStatItem(
             icon: '⏱️',
@@ -4378,7 +5272,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
           Container(
             width: 1,
             height: 40,
-            color: UltravioletColors.divider,
+            color: Theme.of(context).colorScheme.outlineVariant,
           ),
           _buildPomodoroStatItem(
             icon: '🎯',
@@ -4397,11 +5291,11 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
   }) {
     return Column(
       children: [
-        Text(icon, style: const TextStyle(fontSize: 20)),
+        Text(icon, style: TextStyle(fontSize: 20)),
         const SizedBox(height: 4),
         Text(
           value,
-          style: const TextStyle(
+          style: TextStyle(
             color: Colors.white,
             fontSize: 18,
             fontWeight: FontWeight.w600,
@@ -4409,10 +5303,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
         ),
         Text(
           label,
-          style: TextStyle(
-            color: Colors.white.withOpacity(0.5),
-            fontSize: 12,
-          ),
+          style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12),
         ),
       ],
     );
@@ -4427,7 +5318,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
 
     showModalBottomSheet(
       context: context,
-      backgroundColor: UltravioletColors.surface,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
@@ -4449,7 +5340,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                       width: 40,
                       height: 4,
                       decoration: BoxDecoration(
-                        color: UltravioletColors.outline,
+                        color: Theme.of(context).colorScheme.outlineVariant,
                         borderRadius: BorderRadius.circular(2),
                       ),
                     ),
@@ -4462,13 +5353,21 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                           decoration: BoxDecoration(
                             gradient: LinearGradient(
                               colors: [
-                                UltravioletColors.secondary.withOpacity(0.3),
-                                UltravioletColors.primary.withOpacity(0.3),
+                                Theme.of(
+                                  context,
+                                ).colorScheme.secondary.withOpacity(0.3),
+                                Theme.of(
+                                  context,
+                                ).colorScheme.primary.withOpacity(0.3),
                               ],
                             ),
                             borderRadius: BorderRadius.circular(12),
                           ),
-                          child: const Icon(Icons.headphones, color: UltravioletColors.secondary, size: 22),
+                          child: Icon(
+                            Icons.headphones,
+                            color: Theme.of(context).colorScheme.secondary,
+                            size: 22,
+                          ),
                         ),
                         const SizedBox(width: 12),
                         const Column(
@@ -4493,12 +5392,14 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                       ],
                     ),
                     const SizedBox(height: 20),
-                    
+
                     // Tick sound section with type selector
                     Container(
                       padding: const EdgeInsets.all(14),
                       decoration: BoxDecoration(
-                        color: UltravioletColors.surfaceVariant,
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.surfaceContainerHighest,
                         borderRadius: BorderRadius.circular(14),
                       ),
                       child: Column(
@@ -4508,32 +5409,41 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                               Container(
                                 padding: const EdgeInsets.all(8),
                                 decoration: BoxDecoration(
-                                  color: tickEnabled 
-                                      ? UltravioletColors.primary.withOpacity(0.2)
+                                  color: tickEnabled
+                                      ? Theme.of(
+                                          context,
+                                        ).colorScheme.primary.withOpacity(0.2)
                                       : Colors.white.withOpacity(0.1),
                                   borderRadius: BorderRadius.circular(10),
                                 ),
-                                child: const Text('⏱️', style: TextStyle(fontSize: 20)),
+                                child: Text(
+                                  '⏱️',
+                                  style: TextStyle(fontSize: 20),
+                                ),
                               ),
                               const SizedBox(width: 12),
                               Expanded(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    const Text(
+                                    Text(
                                       'Som de Tick',
                                       style: TextStyle(
-                                        color: UltravioletColors.onSurface,
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.onSurface,
                                         fontSize: 14,
                                         fontWeight: FontWeight.w500,
                                       ),
                                     ),
                                     Text(
-                                      tickEnabled 
+                                      tickEnabled
                                           ? 'Vibração + som suave a cada segundo'
                                           : 'Desativado',
-                                      style: const TextStyle(
-                                        color: UltravioletColors.onSurfaceVariant,
+                                      style: TextStyle(
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.onSurfaceVariant,
                                         fontSize: 11,
                                       ),
                                     ),
@@ -4551,7 +5461,9 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                                   }
                                   setState(() {});
                                 },
-                                activeThumbColor: UltravioletColors.primary,
+                                activeThumbColor: Theme.of(
+                                  context,
+                                ).colorScheme.primary,
                               ),
                             ],
                           ),
@@ -4567,29 +5479,53 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                                       soundService.tickType = 'soft_tick';
                                       // Preview - para e inicia com await
                                       await soundService.stopTickSound();
-                                      await soundService.startTickSound(type: 'soft_tick');
+                                      await soundService.startTickSound(
+                                        type: 'soft_tick',
+                                      );
                                     },
                                     child: Container(
-                                      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 10,
+                                        horizontal: 12,
+                                      ),
                                       decoration: BoxDecoration(
-                                        color: soundService.tickType == 'soft_tick'
-                                            ? UltravioletColors.primary.withOpacity(0.2)
+                                        color:
+                                            soundService.tickType == 'soft_tick'
+                                            ? Theme.of(context)
+                                                  .colorScheme
+                                                  .primary
+                                                  .withOpacity(0.2)
                                             : Colors.white.withOpacity(0.05),
                                         borderRadius: BorderRadius.circular(10),
-                                        border: soundService.tickType == 'soft_tick'
-                                            ? Border.all(color: UltravioletColors.primary, width: 1.5)
+                                        border:
+                                            soundService.tickType == 'soft_tick'
+                                            ? Border.all(
+                                                color: Theme.of(
+                                                  context,
+                                                ).colorScheme.primary,
+                                                width: 1.5,
+                                              )
                                             : null,
                                       ),
                                       child: Column(
                                         children: [
-                                          const Text('🔔', style: TextStyle(fontSize: 18)),
+                                          Text(
+                                            '🔔',
+                                            style: TextStyle(fontSize: 18),
+                                          ),
                                           const SizedBox(height: 4),
                                           Text(
                                             'Suave',
                                             style: TextStyle(
-                                              color: soundService.tickType == 'soft_tick'
-                                                  ? UltravioletColors.primary
-                                                  : UltravioletColors.onSurfaceVariant,
+                                              color:
+                                                  soundService.tickType ==
+                                                      'soft_tick'
+                                                  ? Theme.of(
+                                                      context,
+                                                    ).colorScheme.primary
+                                                  : Theme.of(context)
+                                                        .colorScheme
+                                                        .onSurfaceVariant,
                                               fontSize: 11,
                                               fontWeight: FontWeight.w500,
                                             ),
@@ -4607,29 +5543,55 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                                       soundService.tickType = 'clock_tick';
                                       // Preview - para e inicia com await
                                       await soundService.stopTickSound();
-                                      await soundService.startTickSound(type: 'clock_tick');
+                                      await soundService.startTickSound(
+                                        type: 'clock_tick',
+                                      );
                                     },
                                     child: Container(
-                                      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 10,
+                                        horizontal: 12,
+                                      ),
                                       decoration: BoxDecoration(
-                                        color: soundService.tickType == 'clock_tick'
-                                            ? UltravioletColors.primary.withOpacity(0.2)
+                                        color:
+                                            soundService.tickType ==
+                                                'clock_tick'
+                                            ? Theme.of(context)
+                                                  .colorScheme
+                                                  .primary
+                                                  .withOpacity(0.2)
                                             : Colors.white.withOpacity(0.05),
                                         borderRadius: BorderRadius.circular(10),
-                                        border: soundService.tickType == 'clock_tick'
-                                            ? Border.all(color: UltravioletColors.primary, width: 1.5)
+                                        border:
+                                            soundService.tickType ==
+                                                'clock_tick'
+                                            ? Border.all(
+                                                color: Theme.of(
+                                                  context,
+                                                ).colorScheme.primary,
+                                                width: 1.5,
+                                              )
                                             : null,
                                       ),
                                       child: Column(
                                         children: [
-                                          const Text('🕐', style: TextStyle(fontSize: 18)),
+                                          Text(
+                                            '🕐',
+                                            style: TextStyle(fontSize: 18),
+                                          ),
                                           const SizedBox(height: 4),
                                           Text(
                                             'Relógio',
                                             style: TextStyle(
-                                              color: soundService.tickType == 'clock_tick'
-                                                  ? UltravioletColors.primary
-                                                  : UltravioletColors.onSurfaceVariant,
+                                              color:
+                                                  soundService.tickType ==
+                                                      'clock_tick'
+                                                  ? Theme.of(
+                                                      context,
+                                                    ).colorScheme.primary
+                                                  : Theme.of(context)
+                                                        .colorScheme
+                                                        .onSurfaceVariant,
                                               fontSize: 11,
                                               fontWeight: FontWeight.w500,
                                             ),
@@ -4645,20 +5607,35 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                             const SizedBox(height: 12),
                             Row(
                               children: [
-                                const Icon(Icons.volume_down, color: UltravioletColors.onSurfaceVariant, size: 16),
+                                Icon(
+                                  Icons.volume_down,
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurfaceVariant,
+                                  size: 16,
+                                ),
                                 Expanded(
                                   child: SliderTheme(
                                     data: SliderTheme.of(context).copyWith(
                                       trackHeight: 4,
-                                      thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
+                                      thumbShape: const RoundSliderThumbShape(
+                                        enabledThumbRadius: 6,
+                                      ),
                                     ),
                                     child: Slider(
-                                      value: soundService.tickVolume.clamp(0.1, 1.0),
+                                      value: soundService.tickVolume.clamp(
+                                        0.1,
+                                        1.0,
+                                      ),
                                       min: 0.1,
                                       max: 1.0,
                                       divisions: 9,
-                                      activeColor: UltravioletColors.primary,
-                                      inactiveColor: UltravioletColors.primary.withOpacity(0.2),
+                                      activeColor: Theme.of(
+                                        context,
+                                      ).colorScheme.primary,
+                                      inactiveColor: Theme.of(
+                                        context,
+                                      ).colorScheme.primary.withOpacity(0.2),
                                       onChanged: (value) {
                                         setModalState(() {});
                                         soundService.setTickVolume(value);
@@ -4666,53 +5643,73 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                                     ),
                                   ),
                                 ),
-                                const Icon(Icons.volume_up, color: UltravioletColors.onSurfaceVariant, size: 16),
+                                Icon(
+                                  Icons.volume_up,
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurfaceVariant,
+                                  size: 16,
+                                ),
                               ],
                             ),
                           ],
                         ],
                       ),
                     ),
-                    
+
                     const SizedBox(height: 20),
-                    
+
                     // Category filter chips
                     SingleChildScrollView(
                       scrollDirection: Axis.horizontal,
                       child: Row(
                         children: [
-                          _buildCategoryChip('all', '🎵 Todos', selectedCategory, (cat) {
-                            setModalState(() => selectedCategory = cat);
-                          }),
-                          const SizedBox(width: 8),
-                          ...SoundService.categoryNames.entries.map((e) => Padding(
-                            padding: const EdgeInsets.only(right: 8),
-                            child: _buildCategoryChip(e.key, e.value, selectedCategory, (cat) {
+                          _buildCategoryChip(
+                            'all',
+                            '🎵 Todos',
+                            selectedCategory,
+                            (cat) {
                               setModalState(() => selectedCategory = cat);
-                            }),
-                          )),
+                            },
+                          ),
+                          const SizedBox(width: 8),
+                          ...SoundService.categoryNames.entries.map(
+                            (e) => Padding(
+                              padding: const EdgeInsets.only(right: 8),
+                              child: _buildCategoryChip(
+                                e.key,
+                                e.value,
+                                selectedCategory,
+                                (cat) {
+                                  setModalState(() => selectedCategory = cat);
+                                },
+                              ),
+                            ),
+                          ),
                         ],
                       ),
                     ),
-                    
+
                     const SizedBox(height: 16),
-                    
+
                     // Ambient sounds grid
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
+                        Text(
                           '🎧 Som de Fundo (ambiente)',
                           style: TextStyle(
-                            color: UltravioletColors.onSurface,
+                            color: Theme.of(context).colorScheme.onSurface,
                             fontSize: 14,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
-                        const Text(
+                        Text(
                           'Sons ambiente são independentes do som de tick',
                           style: TextStyle(
-                            color: UltravioletColors.onSurfaceVariant,
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurfaceVariant,
                             fontSize: 11,
                           ),
                         ),
@@ -4725,20 +5722,32 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                             setState(() {});
                           },
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 12,
+                            ),
                             margin: const EdgeInsets.only(bottom: 10),
                             decoration: BoxDecoration(
-                              color: selectedAmbient == 'none' 
-                                  ? UltravioletColors.primary.withOpacity(0.2)
-                                  : UltravioletColors.surfaceVariant,
+                              color: selectedAmbient == 'none'
+                                  ? Theme.of(
+                                      context,
+                                    ).colorScheme.primary.withOpacity(0.2)
+                                  : Theme.of(
+                                      context,
+                                    ).colorScheme.surfaceVariant,
                               borderRadius: BorderRadius.circular(12),
                               border: selectedAmbient == 'none'
-                                  ? Border.all(color: UltravioletColors.primary, width: 2)
+                                  ? Border.all(
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.primary,
+                                      width: 2,
+                                    )
                                   : null,
                             ),
                             child: Row(
                               children: [
-                                const Text('🔇', style: TextStyle(fontSize: 22)),
+                                Text('🔇', style: TextStyle(fontSize: 22)),
                                 const SizedBox(width: 12),
                                 Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -4746,16 +5755,22 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                                     Text(
                                       'Sem Som',
                                       style: TextStyle(
-                                        color: selectedAmbient == 'none' 
-                                            ? UltravioletColors.primary 
-                                            : UltravioletColors.onSurface,
+                                        color: selectedAmbient == 'none'
+                                            ? Theme.of(
+                                                context,
+                                              ).colorScheme.primary
+                                            : Theme.of(
+                                                context,
+                                              ).colorScheme.onSurface,
                                         fontWeight: FontWeight.w500,
                                       ),
                                     ),
-                                    const Text(
+                                    Text(
                                       'Silêncio total',
                                       style: TextStyle(
-                                        color: UltravioletColors.onSurfaceVariant,
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.onSurfaceVariant,
                                         fontSize: 11,
                                       ),
                                     ),
@@ -4763,95 +5778,149 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                                 ),
                                 const Spacer(),
                                 if (selectedAmbient == 'none')
-                                  const Icon(Icons.check_circle, color: UltravioletColors.primary, size: 22),
+                                  Icon(
+                                    Icons.check_circle,
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.primary,
+                                    size: 22,
+                                  ),
                               ],
                             ),
                           ),
                         ),
                         // Other sounds
                         ...SoundService.ambientSoundsLibrary.entries
-                            .where((e) => e.key != 'none' && 
-                                (selectedCategory == 'all' || e.value.category == selectedCategory))
+                            .where(
+                              (e) =>
+                                  e.key != 'none' &&
+                                  (selectedCategory == 'all' ||
+                                      e.value.category == selectedCategory),
+                            )
                             .map((entry) {
-                          final isSelected = selectedAmbient == entry.key;
-                          final info = entry.value;
-                          return GestureDetector(
-                            onTap: () async {
-                              setModalState(() => selectedAmbient = entry.key);
-                              await soundService.startAmbientSound(entry.key);
-                              setState(() {});
-                            },
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                              margin: const EdgeInsets.only(bottom: 10),
-                              decoration: BoxDecoration(
-                                color: isSelected 
-                                    ? UltravioletColors.primary.withOpacity(0.2)
-                                    : UltravioletColors.surfaceVariant,
-                                borderRadius: BorderRadius.circular(12),
-                                border: isSelected
-                                    ? Border.all(color: UltravioletColors.primary, width: 2)
-                                    : null,
-                              ),
-                              child: Row(
-                                children: [
-                                  Text(info.name.split(' ')[0], style: const TextStyle(fontSize: 22)),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          info.name.substring(info.name.indexOf(' ') + 1),
-                                          style: TextStyle(
-                                            color: isSelected 
-                                                ? UltravioletColors.primary 
-                                                : UltravioletColors.onSurface,
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                        ),
-                                        Text(
-                                          info.description,
-                                          style: const TextStyle(
-                                            color: UltravioletColors.onSurfaceVariant,
-                                            fontSize: 11,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
+                              final isSelected = selectedAmbient == entry.key;
+                              final info = entry.value;
+                              return GestureDetector(
+                                onTap: () async {
+                                  setModalState(
+                                    () => selectedAmbient = entry.key,
+                                  );
+                                  await soundService.startAmbientSound(
+                                    entry.key,
+                                  );
+                                  setState(() {});
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 12,
                                   ),
-                                  if (!info.isLocal)
-                                    FutureBuilder<bool>(
-                                      future: soundService.isSoundDownloaded(entry.key),
-                                      builder: (context, snapshot) {
-                                        if (snapshot.data == true) {
-                                          return const Icon(Icons.download_done, 
-                                            color: UltravioletColors.accentGreen, 
-                                            size: 18);
-                                        }
-                                        return Icon(Icons.cloud_download_outlined, 
-                                          color: UltravioletColors.onSurfaceVariant.withOpacity(0.5), 
-                                          size: 18);
-                                      },
-                                    ),
-                                  const SizedBox(width: 8),
-                                  if (isSelected)
-                                    const Icon(Icons.check_circle, color: UltravioletColors.primary, size: 22),
-                                ],
-                              ),
-                            ),
-                          );
-                        }),
+                                  margin: const EdgeInsets.only(bottom: 10),
+                                  decoration: BoxDecoration(
+                                    color: isSelected
+                                        ? Theme.of(
+                                            context,
+                                          ).colorScheme.primary.withOpacity(0.2)
+                                        : Theme.of(
+                                            context,
+                                          ).colorScheme.surfaceVariant,
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: isSelected
+                                        ? Border.all(
+                                            color: Theme.of(
+                                              context,
+                                            ).colorScheme.primary,
+                                            width: 2,
+                                          )
+                                        : null,
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Text(
+                                        info.name.split(' ')[0],
+                                        style: TextStyle(fontSize: 22),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              info.name.substring(
+                                                info.name.indexOf(' ') + 1,
+                                              ),
+                                              style: TextStyle(
+                                                color: isSelected
+                                                    ? Theme.of(
+                                                        context,
+                                                      ).colorScheme.primary
+                                                    : Theme.of(
+                                                        context,
+                                                      ).colorScheme.onSurface,
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                            ),
+                                            Text(
+                                              info.description,
+                                              style: TextStyle(
+                                                color: Theme.of(
+                                                  context,
+                                                ).colorScheme.onSurfaceVariant,
+                                                fontSize: 11,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      if (!info.isLocal)
+                                        FutureBuilder<bool>(
+                                          future: soundService
+                                              .isSoundDownloaded(entry.key),
+                                          builder: (context, snapshot) {
+                                            if (snapshot.data == true) {
+                                              return Icon(
+                                                Icons.download_done,
+                                                color: const Color(0xFF27AE60),
+                                                size: 18,
+                                              );
+                                            }
+                                            return Icon(
+                                              Icons.cloud_download_outlined,
+                                              color: Theme.of(context)
+                                                  .colorScheme
+                                                  .onSurfaceVariant
+                                                  .withOpacity(0.5),
+                                              size: 18,
+                                            );
+                                          },
+                                        ),
+                                      const SizedBox(width: 8),
+                                      if (isSelected)
+                                        Icon(
+                                          Icons.check_circle,
+                                          color: Theme.of(
+                                            context,
+                                          ).colorScheme.primary,
+                                          size: 22,
+                                        ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            }),
                       ],
                     ),
-                    
+
                     // Volume slider for ambient (only if not 'none')
                     if (selectedAmbient != 'none') ...[
                       const SizedBox(height: 16),
                       Container(
                         padding: const EdgeInsets.all(14),
                         decoration: BoxDecoration(
-                          color: UltravioletColors.surfaceVariant,
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.surfaceContainerHighest,
                           borderRadius: BorderRadius.circular(14),
                         ),
                         child: Column(
@@ -4859,12 +5928,20 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                           children: [
                             Row(
                               children: [
-                                const Icon(Icons.volume_up, color: UltravioletColors.onSurfaceVariant, size: 18),
+                                Icon(
+                                  Icons.volume_up,
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurfaceVariant,
+                                  size: 18,
+                                ),
                                 const SizedBox(width: 8),
-                                const Text(
+                                Text(
                                   'Volume',
                                   style: TextStyle(
-                                    color: UltravioletColors.onSurface,
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.onSurface,
                                     fontSize: 13,
                                     fontWeight: FontWeight.w500,
                                   ),
@@ -4872,8 +5949,10 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                                 const Spacer(),
                                 Text(
                                   '${(ambientVolume * 100).toInt()}%',
-                                  style: const TextStyle(
-                                    color: UltravioletColors.primary,
+                                  style: TextStyle(
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.primary,
                                     fontSize: 13,
                                     fontWeight: FontWeight.w600,
                                   ),
@@ -4884,16 +5963,24 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                             SliderTheme(
                               data: SliderTheme.of(context).copyWith(
                                 trackHeight: 6,
-                                thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 8),
-                                overlayShape: const RoundSliderOverlayShape(overlayRadius: 16),
+                                thumbShape: const RoundSliderThumbShape(
+                                  enabledThumbRadius: 8,
+                                ),
+                                overlayShape: const RoundSliderOverlayShape(
+                                  overlayRadius: 16,
+                                ),
                               ),
                               child: Slider(
                                 value: ambientVolume,
                                 min: 0.0,
                                 max: 1.0,
                                 divisions: 20,
-                                activeColor: UltravioletColors.primary,
-                                inactiveColor: UltravioletColors.primary.withOpacity(0.2),
+                                activeColor: Theme.of(
+                                  context,
+                                ).colorScheme.primary,
+                                inactiveColor: Theme.of(
+                                  context,
+                                ).colorScheme.primary.withOpacity(0.2),
                                 onChanged: (value) {
                                   setModalState(() => ambientVolume = value);
                                   soundService.setAmbientVolume(value);
@@ -4904,7 +5991,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                         ),
                       ),
                     ],
-                    
+
                     const SizedBox(height: 12),
                   ],
                 ),
@@ -4915,28 +6002,36 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
       ),
     );
   }
-  
-  Widget _buildCategoryChip(String key, String label, String selected, Function(String) onTap) {
+
+  Widget _buildCategoryChip(
+    String key,
+    String label,
+    String selected,
+    Function(String) onTap,
+  ) {
     final isSelected = selected == key;
     return GestureDetector(
       onTap: () => onTap(key),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected 
-              ? UltravioletColors.primary.withOpacity(0.2)
-              : UltravioletColors.surfaceVariant,
+          color: isSelected
+              ? Theme.of(context).colorScheme.primary.withOpacity(0.2)
+              : Theme.of(context).colorScheme.surfaceVariant,
           borderRadius: BorderRadius.circular(20),
-          border: isSelected 
-              ? Border.all(color: UltravioletColors.primary, width: 1.5)
+          border: isSelected
+              ? Border.all(
+                  color: Theme.of(context).colorScheme.primary,
+                  width: 1.5,
+                )
               : null,
         ),
         child: Text(
           label,
           style: TextStyle(
-            color: isSelected 
-                ? UltravioletColors.primary 
-                : UltravioletColors.onSurfaceVariant,
+            color: isSelected
+                ? Theme.of(context).colorScheme.primary
+                : Theme.of(context).colorScheme.onSurfaceVariant,
             fontSize: 12,
             fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
           ),
@@ -4949,7 +6044,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: UltravioletColors.surface,
+        backgroundColor: Theme.of(context).colorScheme.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Row(
           children: [
@@ -4958,11 +6053,11 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
             Text('Sair do Pomodoro?'),
           ],
         ),
-        content: const Text('O timer será pausado, mas seu progresso será mantido.'),
+        content: Text('O timer será pausado, mas seu progresso será mantido.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Continuar'),
+            child: Text('Continuar'),
           ),
           ElevatedButton(
             onPressed: () {
@@ -4973,7 +6068,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFFFF6B6B),
             ),
-            child: const Text('Sair', style: TextStyle(color: Colors.white)),
+            child: Text('Sair', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -4991,7 +6086,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
 
     showModalBottomSheet(
       context: context,
-      backgroundColor: UltravioletColors.surface,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
@@ -4999,7 +6094,12 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
       builder: (context) => StatefulBuilder(
         builder: (context, setModalState) => SafeArea(
           child: Padding(
-            padding: EdgeInsets.fromLTRB(24, 16, 24, MediaQuery.of(context).viewInsets.bottom + 24),
+            padding: EdgeInsets.fromLTRB(
+              24,
+              16,
+              24,
+              MediaQuery.of(context).viewInsets.bottom + 24,
+            ),
             child: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -5009,7 +6109,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                     width: 40,
                     height: 4,
                     decoration: BoxDecoration(
-                      color: UltravioletColors.outline,
+                      color: Theme.of(context).colorScheme.outlineVariant,
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
@@ -5029,7 +6129,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                     ],
                   ),
                   const SizedBox(height: 24),
-                  
+
                   // Focus time
                   _buildPomodoroSettingRow(
                     label: 'Tempo de Foco',
@@ -5043,7 +6143,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                     }),
                   ),
                   const SizedBox(height: 16),
-                  
+
                   // Short break
                   _buildPomodoroSettingRow(
                     label: 'Pausa Curta',
@@ -5057,7 +6157,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                     }),
                   ),
                   const SizedBox(height: 16),
-                  
+
                   // Long break
                   _buildPomodoroSettingRow(
                     label: 'Pausa Longa',
@@ -5071,7 +6171,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                     }),
                   ),
                   const SizedBox(height: 16),
-                  
+
                   // Sessions
                   _buildPomodoroSettingRow(
                     label: 'Sessões até Pausa Longa',
@@ -5084,49 +6184,55 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                       if (sessions < 8) sessions += 1;
                     }),
                   ),
-                  
+
                   const SizedBox(height: 24),
-                  
+
                   // Divider
-                  const Divider(color: UltravioletColors.divider),
+                  Divider(color: Theme.of(context).colorScheme.outlineVariant),
                   const SizedBox(height: 16),
-                  
+
                   // Sound settings title
-                  const Row(
+                  Row(
                     children: [
-                      Icon(Icons.music_note, color: UltravioletColors.secondary, size: 20),
-                      SizedBox(width: 8),
+                      Icon(
+                        Icons.music_note,
+                        color: Theme.of(context).colorScheme.secondary,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 8),
                       Text(
                         'Sons & Ambiente',
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
-                          color: UltravioletColors.onSurface,
+                          color: Theme.of(context).colorScheme.onSurface,
                         ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 16),
-                  
+
                   // Tick sound toggle
                   Row(
                     children: [
-                      const Expanded(
+                      Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
                               '⏱️ Som de Tick',
                               style: TextStyle(
-                                color: UltravioletColors.onSurface,
+                                color: Theme.of(context).colorScheme.onSurface,
                                 fontSize: 14,
                               ),
                             ),
                             Text(
                               'Toca a cada segundo',
                               style: TextStyle(
-                                color: UltravioletColors.onSurfaceVariant,
-                                fontSize: 12,
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurfaceVariant,
+                                fontSize: 11,
                               ),
                             ),
                           ],
@@ -5137,20 +6243,20 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                         onChanged: (value) {
                           setModalState(() => tickEnabled = value);
                         },
-                        activeThumbColor: UltravioletColors.primary,
+                        activeThumbColor: Theme.of(context).colorScheme.primary,
                       ),
                     ],
                   ),
                   const SizedBox(height: 16),
-                  
+
                   // Ambient sound selector
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
+                      Text(
                         '🎵 Som de Fundo',
                         style: TextStyle(
-                          color: UltravioletColors.onSurface,
+                          color: Theme.of(context).colorScheme.onSurface,
                           fontSize: 14,
                         ),
                       ),
@@ -5158,13 +6264,17 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                       SingleChildScrollView(
                         scrollDirection: Axis.horizontal,
                         child: Row(
-                          children: SoundService.ambientSoundNames.entries.map((entry) {
+                          children: SoundService.ambientSoundNames.entries.map((
+                            entry,
+                          ) {
                             final isSelected = selectedAmbient == entry.key;
                             return Padding(
                               padding: const EdgeInsets.only(right: 8),
                               child: GestureDetector(
                                 onTap: () {
-                                  setModalState(() => selectedAmbient = entry.key);
+                                  setModalState(
+                                    () => selectedAmbient = entry.key,
+                                  );
                                   // Preview do som
                                   if (entry.key != 'none') {
                                     soundService.startAmbientSound(entry.key);
@@ -5173,24 +6283,42 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                                   }
                                 },
                                 child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 8,
+                                  ),
                                   decoration: BoxDecoration(
-                                    color: isSelected 
-                                        ? UltravioletColors.primary.withOpacity(0.2)
-                                        : UltravioletColors.surfaceVariant,
+                                    color: isSelected
+                                        ? Theme.of(
+                                            context,
+                                          ).colorScheme.primary.withOpacity(0.2)
+                                        : Theme.of(
+                                            context,
+                                          ).colorScheme.surfaceVariant,
                                     borderRadius: BorderRadius.circular(20),
-                                    border: isSelected 
-                                        ? Border.all(color: UltravioletColors.primary, width: 2)
+                                    border: isSelected
+                                        ? Border.all(
+                                            color: Theme.of(
+                                              context,
+                                            ).colorScheme.primary,
+                                            width: 2,
+                                          )
                                         : null,
                                   ),
                                   child: Text(
                                     entry.value,
                                     style: TextStyle(
-                                      color: isSelected 
-                                          ? UltravioletColors.primary 
-                                          : UltravioletColors.onSurfaceVariant,
+                                      color: isSelected
+                                          ? Theme.of(
+                                              context,
+                                            ).colorScheme.primary
+                                          : Theme.of(
+                                              context,
+                                            ).colorScheme.onSurfaceVariant,
                                       fontSize: 13,
-                                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                                      fontWeight: isSelected
+                                          ? FontWeight.w600
+                                          : FontWeight.w400,
                                     ),
                                   ),
                                 ),
@@ -5201,34 +6329,44 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                       ),
                     ],
                   ),
-                  
+
                   // Volume slider for ambient (only if not 'none')
                   if (selectedAmbient != 'none') ...[
                     const SizedBox(height: 16),
                     Row(
                       children: [
-                        const Icon(Icons.volume_down, color: UltravioletColors.onSurfaceVariant, size: 20),
+                        Icon(
+                          Icons.volume_down,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          size: 20,
+                        ),
                         Expanded(
                           child: Slider(
                             value: ambientVolume,
                             min: 0.0,
                             max: 1.0,
                             divisions: 10,
-                            activeColor: UltravioletColors.primary,
-                            inactiveColor: UltravioletColors.surfaceVariant,
+                            activeColor: Theme.of(context).colorScheme.primary,
+                            inactiveColor: Theme.of(
+                              context,
+                            ).colorScheme.surfaceVariant,
                             onChanged: (value) {
                               setModalState(() => ambientVolume = value);
                               soundService.setAmbientVolume(value);
                             },
                           ),
                         ),
-                        const Icon(Icons.volume_up, color: UltravioletColors.onSurfaceVariant, size: 20),
+                        Icon(
+                          Icons.volume_up,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          size: 20,
+                        ),
                       ],
                     ),
                   ],
-                  
+
                   const SizedBox(height: 24),
-                  
+
                   // Save button
                   SizedBox(
                     width: double.infinity,
@@ -5236,28 +6374,35 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                       onPressed: () {
                         setState(() {
                           _pomodoroDuration = Duration(minutes: focusMinutes);
-                          _shortBreakDuration = Duration(minutes: shortBreakMinutes);
-                          _longBreakDuration = Duration(minutes: longBreakMinutes);
+                          _shortBreakDuration = Duration(
+                            minutes: shortBreakMinutes,
+                          );
+                          _longBreakDuration = Duration(
+                            minutes: longBreakMinutes,
+                          );
                           _pomodoroTotalSessions = sessions;
                           if (!_isPomodoroRunning) {
                             _pomodoroTimeLeft = _pomodoroDuration;
                           }
                         });
-                        
+
                         // Aplicar configurações de som
                         if (tickEnabled) {
                           soundService.startTickSound();
                         } else {
                           soundService.stopTickSound();
                         }
-                        
+
                         // Se não está tocando, parar o preview
                         if (!_isPomodoroRunning && selectedAmbient == 'none') {
                           soundService.stopAmbientSound();
                         }
-                        
+
                         Navigator.pop(context);
-                        FeedbackService.showSuccess(context, '⚙️ Configurações salvas');
+                        FeedbackService.showSuccess(
+                          context,
+                          '⚙️ Configurações salvas',
+                        );
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFFFF6B6B),
@@ -5266,7 +6411,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                           borderRadius: BorderRadius.circular(12),
                         ),
                       ),
-                      child: const Text(
+                      child: Text(
                         'Salvar',
                         style: TextStyle(
                           color: Colors.white,
@@ -5296,8 +6441,8 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
         Expanded(
           child: Text(
             label,
-            style: const TextStyle(
-              color: UltravioletColors.onSurfaceVariant,
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
               fontSize: 14,
             ),
           ),
@@ -5305,7 +6450,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
         // Stepper
         Container(
           decoration: BoxDecoration(
-            color: UltravioletColors.surfaceVariant,
+            color: Theme.of(context).colorScheme.surfaceContainerHighest,
             borderRadius: BorderRadius.circular(12),
           ),
           child: Row(
@@ -5314,9 +6459,9 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                 onTap: onDecrease,
                 child: Container(
                   padding: const EdgeInsets.all(10),
-                  child: const Icon(
+                  child: Icon(
                     Icons.remove,
-                    color: UltravioletColors.onSurfaceVariant,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                     size: 20,
                   ),
                 ),
@@ -5326,19 +6471,16 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                 alignment: Alignment.center,
                 child: Text(
                   '$value${unit.isNotEmpty ? " $unit" : ""}',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 14,
-                  ),
+                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
                 ),
               ),
               GestureDetector(
                 onTap: onIncrease,
                 child: Container(
                   padding: const EdgeInsets.all(10),
-                  child: const Icon(
+                  child: Icon(
                     Icons.add,
-                    color: UltravioletColors.onSurfaceVariant,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                     size: 20,
                   ),
                 ),
@@ -5355,7 +6497,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
   // =====================================================
   Widget _buildProductivityScreen() {
     final repo = ref.watch(timeTrackingRepositoryProvider);
-    
+
     return SafeArea(
       child: ValueListenableBuilder(
         valueListenable: repo.box.listenable(),
@@ -5365,16 +6507,19 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
           final todayRecords = allRecords
               .where((r) => _isSameDay(r.startTime, today))
               .toList();
-          
+
           // Debug
           debugPrint('📊 Total records: ${allRecords.length}');
           debugPrint('📊 Today records: ${todayRecords.length}');
-          
+
           // Contar tarefas concluídas hoje
-          final completedToday = todayRecords.where((r) => r.isCompleted).length;
-          
+          final completedToday = todayRecords
+              .where((r) => r.isCompleted)
+              .length;
+
           final totalMinutes = todayRecords.fold<int>(
-            0, (sum, r) => sum + r.durationInSeconds ~/ 60,
+            0,
+            (sum, r) => sum + r.durationInSeconds ~/ 60,
           );
           final hours = totalMinutes ~/ 60;
           final minutes = totalMinutes % 60;
@@ -5395,10 +6540,16 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                       child: Container(
                         padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
-                          color: UltravioletColors.surfaceVariant,
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.surfaceContainerHighest,
                           borderRadius: BorderRadius.circular(10),
                         ),
-                        child: const Icon(Icons.arrow_back, color: Colors.white, size: 20),
+                        child: Icon(
+                          Icons.arrow_back,
+                          color: Colors.white,
+                          size: 20,
+                        ),
                       ),
                     ),
                     const SizedBox(width: 16),
@@ -5422,7 +6573,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                     Expanded(
                       child: _buildStatCard(
                         icon: Icons.check_circle,
-                        iconColor: UltravioletColors.accentGreen,
+                        iconColor: const Color(0xFF27AE60),
                         label: 'Tarefas\nConcluídas',
                         value: '$completedToday',
                       ),
@@ -5431,17 +6582,18 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                     Expanded(
                       child: _buildStatCard(
                         icon: Icons.access_time,
-                        iconColor: UltravioletColors.secondary,
+                        iconColor: Theme.of(context).colorScheme.secondary,
                         label: 'Tempo\nTotal',
-                        value: '${hours}h${minutes.toString().padLeft(2, '0')}m',
+                        value:
+                            '${hours}h${minutes.toString().padLeft(2, '0')}m',
                       ),
                     ),
                   ],
                 ),
               ),
-              
+
               const SizedBox(height: 12),
-              
+
               // Segunda linha de stats
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -5450,7 +6602,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                     Expanded(
                       child: _buildStatCard(
                         icon: Icons.timer,
-                        iconColor: UltravioletColors.tertiary,
+                        iconColor: Theme.of(context).colorScheme.tertiary,
                         label: 'Sessões\nHoje',
                         value: '${todayRecords.length}',
                       ),
@@ -5459,10 +6611,10 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                     Expanded(
                       child: _buildStatCard(
                         icon: Icons.trending_up,
-                        iconColor: UltravioletColors.primary,
+                        iconColor: Theme.of(context).colorScheme.primary,
                         label: 'Taxa de\nConclusão',
-                        value: todayRecords.isEmpty 
-                            ? '0%' 
+                        value: todayRecords.isEmpty
+                            ? '0%'
                             : '${(completedToday / todayRecords.length * 100).round()}%',
                       ),
                     ),
@@ -5478,7 +6630,9 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                 child: Container(
                   padding: const EdgeInsets.all(4),
                   decoration: BoxDecoration(
-                    color: UltravioletColors.surfaceVariant,
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.surfaceContainerHighest,
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Row(
@@ -5489,14 +6643,20 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                           child: Container(
                             padding: const EdgeInsets.symmetric(vertical: 12),
                             decoration: BoxDecoration(
-                              color: !_showWeekStats ? UltravioletColors.primary : Colors.transparent,
+                              color: !_showWeekStats
+                                  ? Theme.of(context).colorScheme.primary
+                                  : Colors.transparent,
                               borderRadius: BorderRadius.circular(10),
                             ),
                             child: Center(
                               child: Text(
                                 'Day',
                                 style: TextStyle(
-                                  color: !_showWeekStats ? Colors.white : UltravioletColors.onSurfaceVariant,
+                                  color: !_showWeekStats
+                                      ? Colors.white
+                                      : Theme.of(
+                                          context,
+                                        ).colorScheme.onSurfaceVariant,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
@@ -5510,14 +6670,20 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                           child: Container(
                             padding: const EdgeInsets.symmetric(vertical: 12),
                             decoration: BoxDecoration(
-                              color: _showWeekStats ? UltravioletColors.primary : Colors.transparent,
+                              color: _showWeekStats
+                                  ? Theme.of(context).colorScheme.primary
+                                  : Colors.transparent,
                               borderRadius: BorderRadius.circular(10),
                             ),
                             child: Center(
                               child: Text(
                                 'Week',
                                 style: TextStyle(
-                                  color: _showWeekStats ? Colors.white : UltravioletColors.onSurfaceVariant,
+                                  color: _showWeekStats
+                                      ? Colors.white
+                                      : Theme.of(
+                                          context,
+                                        ).colorScheme.onSurfaceVariant,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
@@ -5577,18 +6743,15 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
             children: [
               Text(
                 label,
-                style: const TextStyle(
-                  color: UltravioletColors.onSurfaceVariant,
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                   fontSize: 11,
                   height: 1.3,
                 ),
               ),
               Text(
                 value,
-                style: const TextStyle(
-                  fontWeight: FontWeight.w700,
-                  fontSize: 20,
-                ),
+                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 20),
               ),
             ],
           ),
@@ -5600,22 +6763,29 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
   List<double> _calculateWeekData(List<TimeTrackingRecord> records) {
     final now = DateTime.now();
     final weekData = List<double>.filled(7, 0);
-    
+
     for (int i = 0; i < 7; i++) {
       final day = now.subtract(Duration(days: 6 - i));
       final dayRecords = records.where((r) => _isSameDay(r.startTime, day));
-      final totalMinutes = dayRecords.fold<int>(0, (sum, r) => sum + r.durationInSeconds ~/ 60);
+      final totalMinutes = dayRecords.fold<int>(
+        0,
+        (sum, r) => sum + r.durationInSeconds ~/ 60,
+      );
       weekData[i] = totalMinutes / 60; // Converter para horas
     }
-    
+
     return weekData;
   }
 
   Widget _buildWeekChart(List<double> weekData) {
-    final maxValue = weekData.isEmpty ? 1.0 : weekData.reduce((a, b) => a > b ? a : b);
-    final chartMax = maxValue > 0 ? maxValue + 0.5 : 2.0; // Adiciona margem ao topo
+    final maxValue = weekData.isEmpty
+        ? 1.0
+        : weekData.reduce((a, b) => a > b ? a : b);
+    final chartMax = maxValue > 0
+        ? maxValue + 0.5
+        : 2.0; // Adiciona margem ao topo
     final now = DateTime.now();
-    
+
     return OdysseyCard(
       padding: const EdgeInsets.all(16),
       margin: EdgeInsets.zero,
@@ -5634,11 +6804,41 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      Text('${chartMax.toStringAsFixed(1)}h', style: const TextStyle(color: UltravioletColors.onSurfaceVariant, fontSize: 10)),
-                      Text('${(chartMax * 0.75).toStringAsFixed(1)}h', style: const TextStyle(color: UltravioletColors.onSurfaceVariant, fontSize: 10)),
-                      Text('${(chartMax * 0.5).toStringAsFixed(1)}h', style: const TextStyle(color: UltravioletColors.onSurfaceVariant, fontSize: 10)),
-                      Text('${(chartMax * 0.25).toStringAsFixed(1)}h', style: const TextStyle(color: UltravioletColors.onSurfaceVariant, fontSize: 10)),
-                      const Text('0h', style: TextStyle(color: UltravioletColors.onSurfaceVariant, fontSize: 10)),
+                      Text(
+                        '${chartMax.toStringAsFixed(1)}h',
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          fontSize: 10,
+                        ),
+                      ),
+                      Text(
+                        '${(chartMax * 0.75).toStringAsFixed(1)}h',
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          fontSize: 10,
+                        ),
+                      ),
+                      Text(
+                        '${(chartMax * 0.5).toStringAsFixed(1)}h',
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          fontSize: 10,
+                        ),
+                      ),
+                      Text(
+                        '${(chartMax * 0.25).toStringAsFixed(1)}h',
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          fontSize: 10,
+                        ),
+                      ),
+                      Text(
+                        '0h',
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          fontSize: 10,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -5651,7 +6851,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                       painter: _WeekChartPainter(
                         data: weekData,
                         maxValue: chartMax,
-                        color: UltravioletColors.primary,
+                        color: Theme.of(context).colorScheme.primary,
                       ),
                       size: Size.infinite,
                     ),
@@ -5669,14 +6869,24 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
               children: List.generate(7, (i) {
                 final day = now.subtract(Duration(days: 6 - i));
                 final isToday = i == 6;
-                final dayNames = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
+                final dayNames = [
+                  'Seg',
+                  'Ter',
+                  'Qua',
+                  'Qui',
+                  'Sex',
+                  'Sáb',
+                  'Dom',
+                ];
                 final dayName = dayNames[day.weekday - 1];
                 return Column(
                   children: [
                     Text(
                       dayName,
                       style: TextStyle(
-                        color: isToday ? UltravioletColors.primary : UltravioletColors.onSurfaceVariant,
+                        color: isToday
+                            ? Theme.of(context).colorScheme.primary
+                            : Theme.of(context).colorScheme.onSurfaceVariant,
                         fontSize: 10,
                         fontWeight: isToday ? FontWeight.w600 : FontWeight.w400,
                       ),
@@ -5685,7 +6895,11 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                     Text(
                       '${day.day}',
                       style: TextStyle(
-                        color: isToday ? UltravioletColors.primary : UltravioletColors.onSurfaceVariant.withOpacity(0.6),
+                        color: isToday
+                            ? Theme.of(context).colorScheme.primary
+                            : Theme.of(
+                                context,
+                              ).colorScheme.onSurfaceVariant.withOpacity(0.6),
                         fontSize: 9,
                       ),
                     ),
@@ -5701,243 +6915,6 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
 
   bool _isSameDay(DateTime a, DateTime b) {
     return a.year == b.year && a.month == b.month && a.day == b.day;
-  }
-}
-
-// =====================================================
-// TOMATO CLOCK PAINTER - Timer de Tomate estilo relógio
-// =====================================================
-class _TomatoClockPainter extends CustomPainter {
-  final double progress;
-  final bool isBreak;
-  final bool isRunning;
-
-  _TomatoClockPainter({
-    required this.progress,
-    required this.isBreak,
-    required this.isRunning,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final center = Offset(size.width / 2, size.height / 2 + 20);
-    final tomatoRadius = size.width * 0.42;
-
-    // Cores
-    final baseColor = isBreak ? const Color(0xFF3498DB) : const Color(0xFFE74C3C);
-    final lightColor = isBreak ? const Color(0xFF5DADE2) : const Color(0xFFFF6B6B);
-    final darkColor = isBreak ? const Color(0xFF2980B9) : const Color(0xFFC0392B);
-    const leafColor = Color(0xFF27AE60);
-    const leafDarkColor = Color(0xFF1E8449);
-
-    // Sombra do tomate
-    final shadowPaint = Paint()
-      ..color = Colors.black.withOpacity(0.15)
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 15);
-    canvas.drawOval(
-      Rect.fromCenter(
-        center: Offset(center.dx, center.dy + tomatoRadius * 0.9),
-        width: tomatoRadius * 1.4,
-        height: tomatoRadius * 0.3,
-      ),
-      shadowPaint,
-    );
-
-    // Corpo do tomate (base)
-    final tomatoPaint = Paint()
-      ..shader = RadialGradient(
-        center: const Alignment(-0.3, -0.3),
-        radius: 1.2,
-        colors: [lightColor, baseColor, darkColor],
-        stops: const [0.0, 0.5, 1.0],
-      ).createShader(Rect.fromCircle(center: center, radius: tomatoRadius));
-
-    // Desenha o tomate com forma levemente achatada
-    final tomatoRect = Rect.fromCenter(
-      center: center,
-      width: tomatoRadius * 2,
-      height: tomatoRadius * 1.85,
-    );
-    canvas.drawOval(tomatoRect, tomatoPaint);
-
-    // Highlight (brilho)
-    final highlightPaint = Paint()
-      ..shader = RadialGradient(
-        center: const Alignment(-0.5, -0.5),
-        radius: 0.8,
-        colors: [
-          Colors.white.withOpacity(0.4),
-          Colors.white.withOpacity(0.0),
-        ],
-      ).createShader(Rect.fromCircle(
-        center: Offset(center.dx - tomatoRadius * 0.3, center.dy - tomatoRadius * 0.3),
-        radius: tomatoRadius * 0.5,
-      ));
-    canvas.drawOval(
-      Rect.fromCenter(
-        center: Offset(center.dx - tomatoRadius * 0.3, center.dy - tomatoRadius * 0.3),
-        width: tomatoRadius * 0.6,
-        height: tomatoRadius * 0.4,
-      ),
-      highlightPaint,
-    );
-
-    // Indicador de progresso (fatia estilo relógio)
-    if (progress > 0) {
-      final progressPaint = Paint()
-        ..color = Colors.white.withOpacity(0.85)
-        ..style = PaintingStyle.fill;
-
-      final progressPath = Path();
-      progressPath.moveTo(center.dx, center.dy);
-      
-      // Desenha a fatia do progresso (como um relógio)
-      final sweepAngle = progress * 2 * math.pi;
-      progressPath.arcTo(
-        Rect.fromCircle(center: center, radius: tomatoRadius * 0.75),
-        -math.pi / 2, // Começa do topo
-        sweepAngle,
-        false,
-      );
-      progressPath.close();
-
-      canvas.save();
-      canvas.clipPath(Path()..addOval(tomatoRect));
-      canvas.drawPath(progressPath, progressPaint);
-      canvas.restore();
-
-      // Borda da fatia
-      final borderPaint = Paint()
-        ..color = darkColor.withOpacity(0.3)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 2;
-      canvas.drawPath(progressPath, borderPaint);
-    }
-
-    // Ponteiro do relógio
-    _drawClockHand(canvas, center, tomatoRadius * 0.65, progress, darkColor);
-
-    // Folhas (caule)
-    _drawLeaves(canvas, Offset(center.dx, center.dy - tomatoRadius * 0.85), leafColor, leafDarkColor);
-
-    // Marcadores de minutos ao redor
-    _drawMinuteMarkers(canvas, center, tomatoRadius);
-  }
-
-  void _drawClockHand(Canvas canvas, Offset center, double length, double progress, Color color) {
-    final angle = -math.pi / 2 + (progress * 2 * math.pi);
-    final endX = center.dx + math.cos(angle) * length;
-    final endY = center.dy + math.sin(angle) * length;
-
-    // Sombra do ponteiro
-    final shadowPaint = Paint()
-      ..color = Colors.black.withOpacity(0.2)
-      ..strokeWidth = 5
-      ..strokeCap = StrokeCap.round;
-    canvas.drawLine(
-      Offset(center.dx + 2, center.dy + 2),
-      Offset(endX + 2, endY + 2),
-      shadowPaint,
-    );
-
-    // Ponteiro principal
-    final handPaint = Paint()
-      ..color = color
-      ..strokeWidth = 4
-      ..strokeCap = StrokeCap.round;
-    canvas.drawLine(center, Offset(endX, endY), handPaint);
-
-    // Centro do ponteiro
-    final centerPaint = Paint()
-      ..color = color
-      ..style = PaintingStyle.fill;
-    canvas.drawCircle(center, 8, centerPaint);
-    
-    // Brilho no centro
-    final centerHighlight = Paint()
-      ..color = Colors.white.withOpacity(0.5);
-    canvas.drawCircle(Offset(center.dx - 2, center.dy - 2), 3, centerHighlight);
-  }
-
-  void _drawLeaves(Canvas canvas, Offset stemBase, Color leafColor, Color leafDarkColor) {
-    final leafPaint = Paint()..style = PaintingStyle.fill;
-
-    // Caule central
-    final stemPaint = Paint()
-      ..color = leafDarkColor
-      ..style = PaintingStyle.fill;
-    
-    final stemPath = Path();
-    stemPath.moveTo(stemBase.dx - 4, stemBase.dy);
-    stemPath.quadraticBezierTo(stemBase.dx, stemBase.dy - 15, stemBase.dx + 4, stemBase.dy);
-    stemPath.close();
-    canvas.drawPath(stemPath, stemPaint);
-
-    // Folhas
-    for (int i = 0; i < 5; i++) {
-      final angle = (i - 2) * 0.5 - math.pi / 2;
-      final leafLength = 25.0 + (i % 2) * 8;
-      
-      leafPaint.shader = LinearGradient(
-        colors: [leafColor, leafDarkColor],
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-      ).createShader(Rect.fromLTWH(stemBase.dx - 20, stemBase.dy - 30, 40, 30));
-
-      final leafPath = Path();
-      final leafTip = Offset(
-        stemBase.dx + math.cos(angle) * leafLength,
-        stemBase.dy + math.sin(angle) * leafLength,
-      );
-      
-      leafPath.moveTo(stemBase.dx, stemBase.dy - 5);
-      leafPath.quadraticBezierTo(
-        stemBase.dx + math.cos(angle + 0.3) * leafLength * 0.5,
-        stemBase.dy + math.sin(angle + 0.3) * leafLength * 0.5,
-        leafTip.dx,
-        leafTip.dy,
-      );
-      leafPath.quadraticBezierTo(
-        stemBase.dx + math.cos(angle - 0.3) * leafLength * 0.5,
-        stemBase.dy + math.sin(angle - 0.3) * leafLength * 0.5,
-        stemBase.dx,
-        stemBase.dy - 5,
-      );
-      
-      canvas.drawPath(leafPath, leafPaint);
-    }
-  }
-
-  void _drawMinuteMarkers(Canvas canvas, Offset center, double radius) {
-    final markerPaint = Paint()
-      ..color = Colors.white.withOpacity(0.6)
-      ..strokeWidth = 2
-      ..strokeCap = StrokeCap.round;
-
-    // Marcadores a cada 5 minutos (12 marcadores)
-    for (int i = 0; i < 12; i++) {
-      final angle = (i * 30 - 90) * math.pi / 180;
-      final innerRadius = radius * 0.82;
-      final outerRadius = radius * 0.88;
-
-      final start = Offset(
-        center.dx + math.cos(angle) * innerRadius,
-        center.dy + math.sin(angle) * outerRadius * 0.92,
-      );
-      final end = Offset(
-        center.dx + math.cos(angle) * outerRadius,
-        center.dy + math.sin(angle) * outerRadius * 0.92,
-      );
-
-      canvas.drawLine(start, end, markerPaint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(_TomatoClockPainter oldDelegate) {
-    return oldDelegate.progress != progress ||
-        oldDelegate.isBreak != isBreak ||
-        oldDelegate.isRunning != isRunning;
   }
 }
 
@@ -5971,16 +6948,12 @@ class _TimePadRingPainter extends CustomPainter {
 
     // Progress ring with gradient
     final sweepAngle = 2 * math.pi * progress;
-    
+
     final rect = Rect.fromCircle(center: center, radius: radius);
     final gradient = SweepGradient(
       startAngle: -math.pi / 2,
       endAngle: -math.pi / 2 + sweepAngle,
-      colors: [
-        color.withOpacity(0.6),
-        color,
-        color.withOpacity(0.8),
-      ],
+      colors: [color.withOpacity(0.6), color, color.withOpacity(0.8)],
       stops: const [0.0, 0.5, 1.0],
     );
 
@@ -5990,13 +6963,7 @@ class _TimePadRingPainter extends CustomPainter {
       ..strokeWidth = strokeWidth
       ..strokeCap = StrokeCap.round;
 
-    canvas.drawArc(
-      rect,
-      -math.pi / 2,
-      sweepAngle,
-      false,
-      progressPaint,
-    );
+    canvas.drawArc(rect, -math.pi / 2, sweepAngle, false, progressPaint);
   }
 
   @override
@@ -6032,22 +6999,19 @@ class _WeekChartPainter extends CustomPainter {
       ..shader = LinearGradient(
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
-        colors: [
-          color.withOpacity(0.3),
-          color.withOpacity(0.0),
-        ],
+        colors: [color.withOpacity(0.3), color.withOpacity(0.0)],
       ).createShader(Rect.fromLTWH(0, 0, size.width, size.height))
       ..style = PaintingStyle.fill;
 
     final path = Path();
     final fillPath = Path();
-    
+
     final stepX = size.width / (data.length - 1);
-    
+
     for (int i = 0; i < data.length; i++) {
       final x = i * stepX;
       final y = size.height - (data[i] / maxValue) * size.height;
-      
+
       if (i == 0) {
         path.moveTo(x, y);
         fillPath.moveTo(x, size.height);
@@ -6057,10 +7021,10 @@ class _WeekChartPainter extends CustomPainter {
         fillPath.lineTo(x, y);
       }
     }
-    
+
     fillPath.lineTo(size.width, size.height);
     fillPath.close();
-    
+
     canvas.drawPath(fillPath, fillPaint);
     canvas.drawPath(path, paint);
 
@@ -6083,80 +7047,3 @@ class _WeekChartPainter extends CustomPainter {
 }
 
 // Pomodoro ring painter with beautiful gradient
-class _PomodoroRingPainter extends CustomPainter {
-  final double progress;
-  final Color color;
-  final double strokeWidth;
-
-  _PomodoroRingPainter({
-    required this.progress,
-    required this.color,
-    this.strokeWidth = 14,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final center = Offset(size.width / 2, size.height / 2);
-    final radius = size.width / 2 - strokeWidth / 2;
-
-    // Background ring
-    final bgPaint = Paint()
-      ..color = color.withOpacity(0.15)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = strokeWidth
-      ..strokeCap = StrokeCap.round;
-
-    canvas.drawCircle(center, radius, bgPaint);
-
-    // Progress ring with gradient
-    final sweepAngle = 2 * math.pi * progress;
-    
-    if (progress > 0) {
-      final rect = Rect.fromCircle(center: center, radius: radius);
-      
-      // Gradiente mais bonito para o pomodoro
-      final gradient = SweepGradient(
-        startAngle: -math.pi / 2,
-        endAngle: -math.pi / 2 + sweepAngle,
-        colors: [
-          color.withOpacity(0.4),
-          color,
-          color.withOpacity(0.9),
-          color,
-        ],
-        stops: const [0.0, 0.3, 0.7, 1.0],
-        transform: const GradientRotation(-math.pi / 2),
-      );
-
-      final progressPaint = Paint()
-        ..shader = gradient.createShader(rect)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = strokeWidth
-        ..strokeCap = StrokeCap.round;
-
-      canvas.drawArc(
-        rect,
-        -math.pi / 2,
-        sweepAngle,
-        false,
-        progressPaint,
-      );
-
-      // Brilho na ponta
-      final endAngle = -math.pi / 2 + sweepAngle;
-      final endX = center.dx + radius * math.cos(endAngle);
-      final endY = center.dy + radius * math.sin(endAngle);
-      
-      final glowPaint = Paint()
-        ..color = color
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6);
-      
-      canvas.drawCircle(Offset(endX, endY), strokeWidth / 2, glowPaint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _PomodoroRingPainter oldDelegate) {
-    return oldDelegate.progress != progress || oldDelegate.color != color;
-  }
-}

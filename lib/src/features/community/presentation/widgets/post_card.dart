@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:timeago/timeago.dart' as timeago;
 import '../../domain/post.dart';
+import '../screens/post_detail_screen.dart';
 import 'user_avatar.dart';
+import 'reaction_button.dart';
 
 /// Card de post no feed da comunidade
 class PostCard extends StatelessWidget {
@@ -16,7 +18,15 @@ class PostCard extends StatelessWidget {
     final colors = Theme.of(context).colorScheme;
 
     return GestureDetector(
-      onTap: onTap,
+      onTap: onTap ??
+          () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => PostDetailScreen(post: post),
+              ),
+            );
+          },
       child: Container(
         decoration: BoxDecoration(
           color: colors.surface,
@@ -184,7 +194,10 @@ class PostCard extends StatelessWidget {
       child: Row(
         children: [
           // Reações
-          _buildReactionButton(context, colors),
+          ReactionButton(
+            postId: post.id,
+            reactions: post.reactions,
+          ),
           const SizedBox(width: 16),
           // Comentários
           _buildCommentButton(context, colors),
@@ -206,41 +219,8 @@ class PostCard extends StatelessWidget {
   }
 
   Widget _buildReactionButton(BuildContext context, ColorScheme colors) {
-    final hasReactions = post.totalReactions > 0;
-
-    return InkWell(
-      onTap: () {
-        HapticFeedback.lightImpact();
-        // TODO: Implementar reações
-      },
-      borderRadius: BorderRadius.circular(8),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              hasReactions
-                  ? Icons.favorite_rounded
-                  : Icons.favorite_border_rounded,
-              size: 20,
-              color: hasReactions ? Colors.red : colors.onSurfaceVariant,
-            ),
-            if (hasReactions) ...[
-              const SizedBox(width: 6),
-              Text(
-                '${post.totalReactions}',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: colors.onSurface,
-                ),
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
+    // Deprecated - usando ReactionButton widget agora
+    return const SizedBox.shrink();
   }
 
   Widget _buildCommentButton(BuildContext context, ColorScheme colors) {
@@ -249,7 +229,12 @@ class PostCard extends StatelessWidget {
     return InkWell(
       onTap: () {
         HapticFeedback.lightImpact();
-        // TODO: Navegar para tela de comentários
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => PostDetailScreen(post: post),
+          ),
+        );
       },
       borderRadius: BorderRadius.circular(8),
       child: Padding(

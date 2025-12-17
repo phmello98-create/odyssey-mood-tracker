@@ -1,0 +1,245 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ====================================
+    // FUNÇÕES AUXILIARES
+    // ====================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    function isValidString(text, minLength, maxLength) {
+      return text is string 
+        && text.size() >= minLength 
+        && text.size() <= maxLength;
+    }
+    
+    // ====================================
+    // POSTS DA COMUNIDADE
+    // ====================================
+    
+    match /posts/{postId} {
+      // Qualquer um pode ler posts
+      allow read: if true;
+      
+      // Apenas usuários autenticados podem criar posts
+      allow create: if isAuthenticated()
+        && request.resource.data.userId == request.auth.uid
+        && isValidString(request.resource.data.content, 1, 500)
+        && request.resource.data.type in ['text', 'mood', 'achievement', 'insight']
+        && request.resource.data.reactions is map
+        && request.resource.data.commentCount == 0
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time;
+      
+      // Apenas o autor pode atualizar seu post
+      allow update: if isOwner(resource.data.userId)
+        && request.resource.data.userId == resource.data.userId
+        && request.resource.data.type == resource.data.type
+        && request.resource.data.createdAt == resource.data.createdAt;
+      
+      // Apenas o autor pode deletar seu post
+      allow delete: if isOwner(resource.data.userId);
+      
+      // ====================================
+      // COMENTÁRIOS
+      // ====================================
+      
+      match /comments/{commentId} {
+        // Qualquer um pode ler comentários
+        allow read: if true;
+        
+        // Apenas usuários autenticados podem comentar
+        allow create: if isAuthenticated()
+          && request.resource.data.userId == request.auth.uid
+          && request.resource.data.postId == postId
+          && isValidString(request.resource.data.content, 1, 300)
+          && request.resource.data.createdAt == request.time;
+        
+        // Apenas o autor pode deletar seu comentário
+        allow delete: if isOwner(resource.data.userId);
+      }
+      
+      // ====================================
+      // REAÇÕES (LIKES)
+      // ====================================
+      
+      match /reactions/{userId} {
+        // Qualquer um pode ler reações
+        allow read: if true;
+        
+        // Apenas o próprio usuário pode adicionar/remover sua reação
+        allow write: if isOwner(userId)
+          && request.resource.data.emoji is string
+          && request.resource.data.createdAt is timestamp;
+      }
+    }
+    
+    // ====================================
+    // PERFIS PÚBLICOS
+    // ====================================
+    
+    match /users_public/{userId} {
+      // Qualquer um pode ler perfis públicos
+      allow read: if true;
+      
+      // Apenas o próprio usuário pode criar/atualizar seu perfil
+      allow create, update: if isOwner(userId)
+        && request.resource.data.userId == userId
+        && isValidString(request.resource.data.displayName, 1, 50)
+        && request.resource.data.level is int
+        && request.resource.data.level > 0
+        && request.resource.data.totalXP is int
+        && request.resource.data.totalXP >= 0;
+      
+      // Perfis não podem ser deletados (soft delete no app)
+      allow delete: if false;
+    }
+    
+    // ====================================
+    // DADOS PRIVADOS DO USUÁRIO
+    // ====================================
+    
+    match /users/{userId} {
+      // Apenas o próprio usuário pode ler seus dados privados
+      allow read: if isOwner(userId);
+      
+      // Apenas o próprio usuário pode escrever seus dados
+      allow write: if isOwner(userId);
+      
+      // Sub-collections privadas
+      match /{document=**} {
+        allow read, write: if isOwner(userId);
+      }
+    }
+    
+    // ====================================
+    // MOOD RECORDS (PRIVADO)
+    // ====================================
+    
+    match /mood_records/{userId}/{document=**} {
+      allow read, write: if isOwner(userId);
+    }
+    
+    // ====================================
+    // DIARY ENTRIES (PRIVADO)
+    // ====================================
+    
+    match /diary_entries/{userId}/{document=**} {
+      allow read, write: if isOwner(userId);
+    }
+    
+    // ====================================
+    // TASKS (PRIVADO COM SYNC)
+    // ====================================
+    
+    match /tasks/{userId}/{document=**} {
+      allow read, write: if isOwner(userId);
+    }
+    
+    // ====================================
+    // HABITS (PRIVADO COM SYNC)
+    // ====================================
+    
+    match /habits/{userId}/{document=**} {
+      allow read, write: if isOwner(userId);
+    }
+    
+    // ====================================
+    // NOTES (PRIVADO COM SYNC)
+    // ====================================
+    
+    match /notes/{userId}/{document=**} {
+      allow read, write: if isOwner(userId);
+    }
+    
+    // ====================================
+    // BOOKS (COMPARTILHÁVEL)
+    // ====================================
+    
+    match /books/{userId}/{document=**} {
+      // Livros podem ser públicos se usuário permitir
+      allow read: if true; // TODO: Adicionar verificação de privacidade
+      allow write: if isOwner(userId);
+    }
+    
+    // ====================================
+    // GAMIFICATION STATS (PÚBLICO)
+    // ====================================
+    
+    match /gamification/{userId} {
+      // Stats de gamificação são públicos para leaderboards
+      allow read: if true;
+      allow write: if isOwner(userId);
+    }
+    
+    // ====================================
+    // SETTINGS (PRIVADO)
+    // ====================================
+    
+    match /settings/{userId} {
+      allow read, write: if isOwner(userId);
+    }
+    
+    // ====================================
+    // BACKUP METADATA (PRIVADO)
+    // ====================================
+    
+    match /backup_metadata/{userId} {
+      allow read, write: if isOwner(userId);
+    }
+    
+    // ====================================
+    // SYNC QUEUE (PRIVADO)
+    // ====================================
+    
+    match /sync_queue/{userId}/{document=**} {
+      allow read, write: if isOwner(userId);
+    }
+    
+    // ====================================
+    // NOTIFICAÇÕES (PRIVADO)
+    // ====================================
+    
+    match /notifications/{userId}/{document=**} {
+      allow read, write: if isOwner(userId);
+    }
+    
+    // ====================================
+    // REPORTS/MODERAÇÃO (ADMIN ONLY)
+    // ====================================
+    
+    match /reports/{reportId} {
+      // Usuários podem criar reports
+      allow create: if isAuthenticated();
+      
+      // Apenas admins podem ler/atualizar
+      // TODO: Implementar verificação de admin
+      allow read, update, delete: if false;
+    }
+    
+    // ====================================
+    // BLOQUEIOS (PRIVADO)
+    // ====================================
+    
+    match /blocks/{userId}/{document=**} {
+      // Lista de usuários bloqueados
+      allow read, write: if isOwner(userId);
+    }
+    
+    // ====================================
+    // SEGURANÇA PADRÃO
+    // ====================================
+    
+    // Negar acesso a tudo que não foi explicitamente permitido
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

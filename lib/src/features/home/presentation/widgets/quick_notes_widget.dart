@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:odyssey/src/localization/app_localizations.dart';
 import 'package:flutter/services.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:odyssey/src/features/notes/presentation/notes_screen.dart';
@@ -15,41 +14,30 @@ class QuickNotesWidget extends StatefulWidget {
   State<QuickNotesWidget> createState() => _QuickNotesWidgetState();
 }
 
-class _QuickNotesWidgetState extends State<QuickNotesWidget> with SingleTickerProviderStateMixin {
+class _QuickNotesWidgetState extends State<QuickNotesWidget> {
   Box? _notesBox;
   bool _isLoading = true;
   final _quickNoteController = TextEditingController();
   int _previousTextLength = 0;
-  late AnimationController _animationController;
-  late Animation<double> _fadeAnimation;
   bool _isFocused = false;
 
   @override
   void initState() {
     super.initState();
-    _animationController = AnimationController(
-      duration: const Duration(milliseconds: 300),
-      vsync: this,
-    );
-    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _animationController, curve: Curves.easeOut),
-    );
     _initBox();
     _quickNoteController.addListener(_onTextChanged);
   }
 
   void _onTextChanged() {
     final currentLength = _quickNoteController.text.length;
-    
+
     if (currentLength > _previousTextLength) {
-      // Texto adicionado - som de digitação
       soundService.playSndType();
     } else if (currentLength < _previousTextLength) {
-      // Texto deletado - som de delete
       soundService.playSndType();
       HapticFeedback.selectionClick();
     }
-    
+
     _previousTextLength = currentLength;
   }
 
@@ -68,7 +56,6 @@ class _QuickNotesWidgetState extends State<QuickNotesWidget> with SingleTickerPr
 
   @override
   void dispose() {
-    _animationController.dispose();
     _quickNoteController.removeListener(_onTextChanged);
     _quickNoteController.dispose();
     super.dispose();
@@ -90,18 +77,31 @@ class _QuickNotesWidgetState extends State<QuickNotesWidget> with SingleTickerPr
 
     _quickNoteController.clear();
     HapticFeedback.mediumImpact();
-    
+
     if (mounted) {
-      FeedbackService.showSuccess(context, AppLocalizations.of(context)!.notaSalva, icon: Icons.note_add_rounded);
+      FeedbackService.showSuccess(
+        context,
+        'Nota salva!',
+        icon: Icons.note_add_rounded,
+      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
+    const notesColor = Color(0xFFFFA726);
 
     if (_isLoading) {
-      return _buildContainer(colors, child: const Center(child: CircularProgressIndicator(strokeWidth: 2)));
+      return _buildContainer(
+        colors,
+        child: const Center(
+          child: Padding(
+            padding: EdgeInsets.all(20),
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+        ),
+      );
     }
 
     return _buildContainer(
@@ -109,7 +109,7 @@ class _QuickNotesWidgetState extends State<QuickNotesWidget> with SingleTickerPr
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header melhorado
+          // Header
           Row(
             children: [
               Container(
@@ -117,15 +117,19 @@ class _QuickNotesWidgetState extends State<QuickNotesWidget> with SingleTickerPr
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [
-                      const Color(0xFFFFA726).withValues(alpha: 0.2),
-                      const Color(0xFFFF7043).withValues(alpha: 0.15),
+                      notesColor.withOpacity(0.2),
+                      const Color(0xFFFF7043).withOpacity(0.15),
                     ],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Icon(Icons.sticky_note_2_rounded, color: Color(0xFFFFA726), size: 20),
+                child: const Icon(
+                  Icons.sticky_note_2_rounded,
+                  color: notesColor,
+                  size: 20,
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -133,87 +137,91 @@ class _QuickNotesWidgetState extends State<QuickNotesWidget> with SingleTickerPr
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      AppLocalizations.of(context)!.notasRapidas, 
+                      'Notas Rápidas',
                       style: TextStyle(
-                        fontSize: 16, 
-                        fontWeight: FontWeight.w600, 
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
                         color: colors.onSurface,
-                        letterSpacing: -0.3,
                       ),
                     ),
                     Text(
                       'Capture suas ideias',
                       style: TextStyle(
-                        fontSize: 11,
-                        color: colors.onSurfaceVariant.withValues(alpha: 0.7),
+                        fontSize: 12,
+                        color: colors.onSurfaceVariant,
                       ),
                     ),
                   ],
                 ),
               ),
-              GestureDetector(
-                onTap: () {
-                  HapticFeedback.selectionClick();
-                  Navigator.push(context, MaterialPageRoute(builder: (_) => const NotesScreen()));
-                },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: colors.primary.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        AppLocalizations.of(context)!.verTodas, 
-                        style: TextStyle(
-                          fontSize: 12, 
-                          color: colors.primary, 
-                          fontWeight: FontWeight.w600,
+              // Notes count badge + View all
+              if (_notesBox != null)
+                ValueListenableBuilder(
+                  valueListenable: _notesBox!.listenable(),
+                  builder: (context, box, _) {
+                    final count = box.length;
+                    return GestureDetector(
+                      onTap: () {
+                        HapticFeedback.lightImpact();
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const NotesScreen(),
+                          ),
+                        );
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: notesColor.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              '$count',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: notesColor,
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            const Icon(
+                              Icons.arrow_forward_ios_rounded,
+                              size: 10,
+                              color: notesColor,
+                            ),
+                          ],
                         ),
                       ),
-                      const SizedBox(width: 4),
-                      Icon(Icons.arrow_forward_ios, size: 10, color: colors.primary),
-                    ],
-                  ),
+                    );
+                  },
                 ),
-              ),
             ],
           ),
           const SizedBox(height: 16),
-          
-          // Campo de nota rápida melhorado
-          Focus(
-            onFocusChange: (hasFocus) {
-              setState(() => _isFocused = hasFocus);
-              if (hasFocus) {
-                _animationController.forward();
-              } else {
-                _animationController.reverse();
-              }
-            },
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              decoration: BoxDecoration(
-                color: _isFocused 
-                    ? colors.surfaceContainerHighest
-                    : colors.surfaceContainerHighest.withValues(alpha: 0.7),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: _isFocused 
-                      ? colors.primary.withValues(alpha: 0.3)
-                      : colors.outline.withValues(alpha: 0.1),
-                  width: _isFocused ? 1.5 : 1,
-                ),
-                boxShadow: _isFocused ? [
-                  BoxShadow(
-                    color: colors.primary.withValues(alpha: 0.1),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ] : null,
+
+          // Quick note input
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            decoration: BoxDecoration(
+              color: colors.onSurface.withOpacity(_isFocused ? 0.06 : 0.04),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: _isFocused
+                    ? notesColor.withOpacity(0.4)
+                    : Colors.transparent,
+                width: 1.5,
               ),
+            ),
+            child: Focus(
+              onFocusChange: (hasFocus) =>
+                  setState(() => _isFocused = hasFocus),
               child: TextField(
                 controller: _quickNoteController,
                 style: TextStyle(fontSize: 14, color: colors.onSurface),
@@ -222,11 +230,14 @@ class _QuickNotesWidgetState extends State<QuickNotesWidget> with SingleTickerPr
                 decoration: InputDecoration(
                   hintText: 'Escreva uma nota rápida...',
                   hintStyle: TextStyle(
-                    fontSize: 13, 
-                    color: colors.onSurfaceVariant.withValues(alpha: 0.5),
+                    fontSize: 13,
+                    color: colors.onSurfaceVariant.withOpacity(0.5),
                   ),
                   filled: false,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 12,
+                  ),
                   border: InputBorder.none,
                   suffixIcon: Padding(
                     padding: const EdgeInsets.all(6),
@@ -236,20 +247,22 @@ class _QuickNotesWidgetState extends State<QuickNotesWidget> with SingleTickerPr
                         padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
                           gradient: const LinearGradient(
-                            colors: [Color(0xFFFF6B6B), Color(0xFFFF8E53)],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
+                            colors: [notesColor, Color(0xFFFF7043)],
                           ),
                           borderRadius: BorderRadius.circular(10),
                           boxShadow: [
                             BoxShadow(
-                              color: const Color(0xFFFF6B6B).withOpacity(0.4),
-                              blurRadius: 8,
+                              color: notesColor.withOpacity(0.3),
+                              blurRadius: 6,
                               offset: const Offset(0, 2),
                             ),
                           ],
                         ),
-                        child: const Icon(Icons.bolt_rounded, color: Colors.white, size: 18),
+                        child: const Icon(
+                          Icons.send_rounded,
+                          color: Colors.white,
+                          size: 16,
+                        ),
                       ),
                     ),
                   ),
@@ -258,17 +271,19 @@ class _QuickNotesWidgetState extends State<QuickNotesWidget> with SingleTickerPr
               ),
             ),
           ),
-          const SizedBox(height: 16),
-          
-          // Lista de notas recentes melhorada
+          const SizedBox(height: 14),
+
+          // Recent notes list
           if (_notesBox != null)
             ValueListenableBuilder(
               valueListenable: _notesBox!.listenable(),
               builder: (context, box, _) {
                 final notes = box.values.toList();
                 notes.sort((a, b) {
-                  final dateA = DateTime.tryParse(a['createdAt'] ?? '') ?? DateTime(2000);
-                  final dateB = DateTime.tryParse(b['createdAt'] ?? '') ?? DateTime(2000);
+                  final dateA =
+                      DateTime.tryParse(a['createdAt'] ?? '') ?? DateTime(2000);
+                  final dateB =
+                      DateTime.tryParse(b['createdAt'] ?? '') ?? DateTime(2000);
                   return dateB.compareTo(dateA);
                 });
 
@@ -276,29 +291,21 @@ class _QuickNotesWidgetState extends State<QuickNotesWidget> with SingleTickerPr
 
                 if (recentNotes.isEmpty) {
                   return Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: colors.surfaceContainerHighest.withValues(alpha: 0.4),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: colors.outline.withValues(alpha: 0.05),
-                        style: BorderStyle.solid,
-                      ),
-                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 20),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(
-                          Icons.lightbulb_outline_rounded, 
-                          color: colors.onSurfaceVariant.withValues(alpha: 0.5), 
-                          size: 24,
+                          Icons.lightbulb_outline_rounded,
+                          color: colors.onSurfaceVariant.withOpacity(0.4),
+                          size: 20,
                         ),
-                        const SizedBox(width: 12),
+                        const SizedBox(width: 10),
                         Text(
-                          AppLocalizations.of(context)!.nenhumaNotaAinda, 
+                          'Nenhuma nota ainda',
                           style: TextStyle(
-                            fontSize: 13, 
-                            color: colors.onSurfaceVariant.withValues(alpha: 0.7),
+                            fontSize: 13,
+                            color: colors.onSurfaceVariant.withOpacity(0.6),
                           ),
                         ),
                       ],
@@ -308,115 +315,112 @@ class _QuickNotesWidgetState extends State<QuickNotesWidget> with SingleTickerPr
 
                 return Column(
                   children: recentNotes.asMap().entries.map((entry) {
-                    final index = entry.key;
                     final note = entry.value;
-                    final createdAt = DateTime.tryParse(note['createdAt'] ?? '');
+                    final createdAt = DateTime.tryParse(
+                      note['createdAt'] ?? '',
+                    );
                     final title = note['title'] ?? 'Sem título';
                     final content = note['content'] ?? '';
                     final isQuick = note['category'] == 'quick';
+                    final isPinned = note['isPinned'] == true;
 
-                    return TweenAnimationBuilder<double>(
-                      tween: Tween(begin: 0.0, end: 1.0),
-                      duration: Duration(milliseconds: 200 + (index * 100)),
-                      curve: Curves.easeOut,
-                      builder: (context, value, child) {
-                        return Transform.translate(
-                          offset: Offset(0, 10 * (1 - value)),
-                          child: Opacity(
-                            opacity: value,
-                            child: child,
+                    return GestureDetector(
+                      onTap: () {
+                        HapticFeedback.lightImpact();
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) =>
+                                NoteEditorScreen(noteId: note['id']),
                           ),
                         );
                       },
-                      child: GestureDetector(
-                        onTap: () {
-                          HapticFeedback.selectionClick();
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (_) => NoteEditorScreen(noteId: note['id'])),
-                          );
-                        },
-                        child: Container(
-                          margin: const EdgeInsets.only(bottom: 10),
-                          padding: const EdgeInsets.all(14),
-                          decoration: BoxDecoration(
-                            color: colors.surfaceContainerHighest.withValues(alpha: 0.6),
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(color: colors.outline.withValues(alpha: 0.08)),
-                          ),
-                          child: Row(
-                            children: [
-                              Container(
-                                width: 4,
-                                height: 40,
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    colors: isQuick 
-                                        ? [const Color(0xFFFFA726), const Color(0xFFFF7043)]
-                                        : [colors.primary, colors.secondary],
-                                    begin: Alignment.topCenter,
-                                    end: Alignment.bottomCenter,
-                                  ),
-                                  borderRadius: BorderRadius.circular(2),
-                                ),
+                      child: Container(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: colors.onSurface.withOpacity(0.03),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          children: [
+                            // Color indicator
+                            Container(
+                              width: 3,
+                              height: 36,
+                              decoration: BoxDecoration(
+                                color: isQuick ? notesColor : colors.primary,
+                                borderRadius: BorderRadius.circular(2),
                               ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      title,
-                                      style: TextStyle(
-                                        fontSize: 14, 
-                                        fontWeight: FontWeight.w600, 
-                                        color: colors.onSurface,
-                                        letterSpacing: -0.2,
+                            ),
+                            const SizedBox(width: 12),
+                            // Content
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      if (isPinned)
+                                        Padding(
+                                          padding: const EdgeInsets.only(
+                                            right: 4,
+                                          ),
+                                          child: Icon(
+                                            Icons.push_pin_rounded,
+                                            size: 12,
+                                            color: notesColor,
+                                          ),
+                                        ),
+                                      Expanded(
+                                        child: Text(
+                                          title,
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w600,
+                                            color: colors.onSurface,
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
                                       ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                    if (content.isNotEmpty && content != title) ...[
-                                      const SizedBox(height: 3),
-                                      Text(
+                                    ],
+                                  ),
+                                  if (content.isNotEmpty && content != title)
+                                    Padding(
+                                      padding: const EdgeInsets.only(top: 2),
+                                      child: Text(
                                         content,
                                         style: TextStyle(
-                                          fontSize: 12, 
-                                          color: colors.onSurfaceVariant.withValues(alpha: 0.8),
-                                          height: 1.3,
+                                          fontSize: 11,
+                                          color: colors.onSurfaceVariant,
                                         ),
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
                                       ),
-                                    ],
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              if (createdAt != null)
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                  decoration: BoxDecoration(
-                                    color: colors.surfaceContainerHighest,
-                                    borderRadius: BorderRadius.circular(6),
-                                  ),
-                                  child: Text(
-                                    _formatDate(createdAt),
-                                    style: TextStyle(
-                                      fontSize: 10, 
-                                      color: colors.onSurfaceVariant.withValues(alpha: 0.7),
-                                      fontWeight: FontWeight.w500,
                                     ),
-                                  ),
-                                ),
-                              const SizedBox(width: 4),
-                              Icon(
-                                Icons.chevron_right_rounded,
-                                size: 18,
-                                color: colors.onSurfaceVariant.withValues(alpha: 0.4),
+                                ],
                               ),
-                            ],
-                          ),
+                            ),
+                            // Time
+                            if (createdAt != null)
+                              Text(
+                                _formatDate(createdAt),
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  color: colors.onSurfaceVariant.withOpacity(
+                                    0.7,
+                                  ),
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            const SizedBox(width: 4),
+                            Icon(
+                              Icons.chevron_right_rounded,
+                              size: 16,
+                              color: colors.onSurfaceVariant.withOpacity(0.4),
+                            ),
+                          ],
                         ),
                       ),
                     );
@@ -434,13 +438,12 @@ class _QuickNotesWidgetState extends State<QuickNotesWidget> with SingleTickerPr
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: colors.surface,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: colors.outline.withValues(alpha: 0.1)),
+        borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: colors.shadow.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
+            color: colors.shadow.withOpacity(0.06),
+            blurRadius: 20,
+            offset: const Offset(0, 6),
           ),
         ],
       ),
@@ -451,7 +454,7 @@ class _QuickNotesWidgetState extends State<QuickNotesWidget> with SingleTickerPr
   String _formatDate(DateTime date) {
     final now = DateTime.now();
     final diff = now.difference(date);
-    
+
     if (diff.inMinutes < 60) return '${diff.inMinutes}min';
     if (diff.inHours < 24) return '${diff.inHours}h';
     if (diff.inDays < 7) return '${diff.inDays}d';

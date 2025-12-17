@@ -70,8 +70,9 @@ class AppInitializer extends StateNotifier<AppInitState> {
 
   Future<void> initialize() async {
     if (state.status == AppInitStatus.loading ||
-        state.status == AppInitStatus.success)
+        state.status == AppInitStatus.success) {
       return;
+    }
 
     state = state.copyWith(status: AppInitStatus.loading);
     final stopwatch = Stopwatch()..start();

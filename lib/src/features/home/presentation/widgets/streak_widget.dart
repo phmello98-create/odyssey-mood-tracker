@@ -1,11 +1,9 @@
-import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:odyssey/src/localization/app_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:odyssey/src/features/gamification/data/gamification_repository.dart';
-import 'modern_home_card.dart';
+import 'package:odyssey/src/constants/app_theme.dart';
 
 class StreakWidget extends ConsumerStatefulWidget {
   const StreakWidget({super.key});
@@ -15,28 +13,20 @@ class StreakWidget extends ConsumerStatefulWidget {
 }
 
 class _StreakWidgetState extends ConsumerState<StreakWidget>
-    with TickerProviderStateMixin {
+    with SingleTickerProviderStateMixin {
   late AnimationController _countController;
-  late AnimationController _flameController;
-  late AnimationController _pulseController;
   int _currentStreak = 0;
   int _longestStreak = 0;
+  int _todayCompleted = 0;
+  int _weekCompleted = 0;
 
   @override
   void initState() {
     super.initState();
     _countController = AnimationController(
-      duration: const Duration(milliseconds: 1200),
+      duration: const Duration(milliseconds: 1000),
       vsync: this,
     );
-    _flameController = AnimationController(
-      duration: const Duration(milliseconds: 1500),
-      vsync: this,
-    )..repeat(reverse: true);
-    _pulseController = AnimationController(
-      duration: const Duration(milliseconds: 2000),
-      vsync: this,
-    )..repeat(reverse: true);
     _loadStats();
   }
 
@@ -48,6 +38,8 @@ class _StreakWidgetState extends ConsumerState<StreakWidget>
       setState(() {
         _currentStreak = stats.currentStreak;
         _longestStreak = stats.longestStreak;
+        _todayCompleted = stats.tasksCompleted;
+        _weekCompleted = stats.pomodoroSessions;
       });
       _countController.forward();
     } catch (e) {
@@ -58,205 +50,174 @@ class _StreakWidgetState extends ConsumerState<StreakWidget>
   @override
   void dispose() {
     _countController.dispose();
-    _flameController.dispose();
-    _pulseController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    final l10n = AppLocalizations.of(context)!;
+    const fireColor = Color(0xFFFF9500);
 
-    // Cores do gradiente de fogo
-    const fireOrange = Color(0xFFFF9500);
-    const fireRed = Color(0xFFFF3B30);
-    const fireYellow = Color(0xFFFFCC00);
-
-    return ModernHomeCard(
-      accentColor: fireOrange,
-      enableGlow: _currentStreak > 0,
-      gradientColors: [
-        fireOrange.withValues(alpha: 0.08),
-        fireRed.withValues(alpha: 0.04),
-      ],
-      onTap: () => HapticFeedback.lightImpact(),
-      child: Row(
-        children: [
-          // Ícone de fogo animado
-          AnimatedBuilder(
-            animation: Listenable.merge([_flameController, _pulseController]),
-            builder: (context, child) {
-              final flameScale = 1.0 + (_flameController.value * 0.1);
-              final pulseOpacity = 0.15 + (_pulseController.value * 0.1);
-
-              return Stack(
-                alignment: Alignment.center,
-                children: [
-                  // Glow pulsante atrás
-                  if (_currentStreak > 0)
-                    Container(
-                      width: 64,
-                      height: 64,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: RadialGradient(
-                          colors: [
-                            fireOrange.withValues(alpha: pulseOpacity),
-                            fireOrange.withValues(alpha: 0),
-                          ],
-                        ),
-                      ),
-                    ),
-                  // Container do ícone
-                  Transform.scale(
-                    scale: _currentStreak > 0 ? flameScale : 1.0,
-                    child: Container(
-                      width: 56,
-                      height: 56,
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [fireOrange, fireRed],
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                        ),
-                        borderRadius: BorderRadius.circular(16),
-                        boxShadow: [
-                          BoxShadow(
-                            color: fireOrange.withValues(alpha: 0.4),
-                            blurRadius: 12,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          // Partículas de fogo simuladas
-                          if (_currentStreak > 0)
-                            ...List.generate(3, (i) {
-                              return Positioned(
-                                top: 8 + (i * 4.0),
-                                child: Transform.translate(
-                                  offset: Offset(
-                                    math.sin(_flameController.value * math.pi +
-                                            i) *
-                                        2,
-                                    -_flameController.value * 4,
-                                  ),
-                                  child: Opacity(
-                                    opacity:
-                                        (1 - _flameController.value) * 0.5,
-                                    child: Container(
-                                      width: 4,
-                                      height: 4,
-                                      decoration: const BoxDecoration(
-                                        color: fireYellow,
-                                        shape: BoxShape.circle,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              );
-                            }),
-                          const Icon(
-                            Icons.local_fire_department_rounded,
-                            color: Colors.white,
-                            size: 28,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              );
-            },
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: colors.shadow.withOpacity(0.06),
+            blurRadius: 20,
+            offset: const Offset(0, 6),
           ),
-          const SizedBox(width: 16),
-
-          // Informações do streak
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.baseline,
-                  textBaseline: TextBaseline.alphabetic,
-                  children: [
-                    // Número animado
-                    AnimatedBuilder(
-                      animation: _countController,
-                      builder: (context, child) {
-                        final progress = Curves.elasticOut
-                            .transform(_countController.value.clamp(0.0, 1.0));
-                        return Text(
-                          '${(_currentStreak * progress).round()}',
-                          style: const TextStyle(
-                            fontSize: 36,
-                            fontWeight: FontWeight.w800,
-                            color: fireOrange,
-                            height: 1,
-                            letterSpacing: -1,
-                          ),
-                        );
-                      },
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      l10n.days,
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                        color: colors.onSurfaceVariant,
-                      ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header com streak principal
+          Row(
+            children: [
+              // Fire icon com glow
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFFFF9500), Color(0xFFFF3B30)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: fireColor.withOpacity(0.3),
+                      blurRadius: 8,
+                      offset: const Offset(0, 3),
                     ),
                   ],
                 ),
-                const SizedBox(height: 4),
-                // Recorde com ícone
-                Row(
+                child: const Icon(
+                  Icons.local_fire_department_rounded,
+                  color: Colors.white,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              // Streak count
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Container(
-                      padding: const EdgeInsets.all(4),
-                      decoration: BoxDecoration(
-                        color: fireYellow.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Icon(
-                        Icons.emoji_events_rounded,
-                        size: 12,
-                        color: fireYellow.withValues(alpha: 0.9),
-                      ),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.baseline,
+                      textBaseline: TextBaseline.alphabetic,
+                      children: [
+                        AnimatedBuilder(
+                          animation: _countController,
+                          builder: (context, child) {
+                            final progress = Curves.easeOut.transform(
+                              _countController.value.clamp(0.0, 1.0),
+                            );
+                            return Text(
+                              '${(_currentStreak * progress).round()}',
+                              style: const TextStyle(
+                                fontSize: 28,
+                                fontWeight: FontWeight.bold,
+                                color: fireColor,
+                                height: 1,
+                              ),
+                            );
+                          },
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          'dias',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: colors.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 6),
                     Text(
-                      l10n.recordStreak(_longestStreak),
+                      'Sequência atual',
                       style: TextStyle(
                         fontSize: 12,
                         color: colors.onSurfaceVariant,
-                        fontWeight: FontWeight.w500,
                       ),
                     ),
                   ],
                 ),
-              ],
-            ),
+              ),
+              // Record badge
+              if (_longestStreak > 0)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFCC00).withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.emoji_events_rounded,
+                        size: 14,
+                        color: Color(0xFFFFCC00),
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        '$_longestStreak',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFFFFCC00),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
           ),
+          const SizedBox(height: 16),
 
-          // Indicadores dos últimos dias
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
+          // Stats pills row
+          Row(
             children: [
-              _buildDayIndicator(l10n.todayShort, true, fireOrange, 0),
-              const SizedBox(height: 6),
-              _buildDayIndicator(
-                  l10n.yesterdayShort, _currentStreak > 0, fireOrange, 1),
-              const SizedBox(height: 6),
-              _buildDayIndicator(
-                  l10n.dayBeforeShort, _currentStreak > 1, fireOrange, 2),
-              const SizedBox(height: 6),
-              _buildDayIndicator(
-                  l10n.threeDaysAgoShort, _currentStreak > 2, fireOrange, 3),
+              // Tarefas pill
+              Expanded(
+                child: _buildStatPill(
+                  icon: Icons.check_circle_outline_rounded,
+                  label: 'Tarefas',
+                  value: '$_todayCompleted',
+                  color: WellnessColors.success,
+                  colors: colors,
+                ),
+              ),
+              const SizedBox(width: 10),
+              // Pomodoros pill
+              Expanded(
+                child: _buildStatPill(
+                  icon: Icons.timer_rounded,
+                  label: 'Pomodoros',
+                  value: '$_weekCompleted',
+                  color: WellnessColors.primary,
+                  colors: colors,
+                ),
+              ),
+              const SizedBox(width: 10),
+              // Melhor streak pill
+              Expanded(
+                child: _buildStatPill(
+                  icon: Icons.emoji_events_rounded,
+                  label: 'Melhor',
+                  value: '$_longestStreak d',
+                  color: const Color(0xFFFF9500),
+                  colors: colors,
+                ),
+              ),
             ],
           ),
         ],
@@ -264,57 +225,47 @@ class _StreakWidgetState extends ConsumerState<StreakWidget>
     );
   }
 
-  Widget _buildDayIndicator(
-      String label, bool isActive, Color color, int index) {
-    final colors = Theme.of(context).colorScheme;
-
-    return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0.0, end: isActive ? 1.0 : 0.0),
-      duration: Duration(milliseconds: 400 + (index * 100)),
-      curve: Curves.easeOutBack,
-      builder: (context, value, child) {
-        return Transform.scale(
-          scale: 0.8 + (value * 0.2),
-          child: Container(
-            width: 28,
-            height: 28,
-            decoration: BoxDecoration(
-              gradient: isActive
-                  ? LinearGradient(
-                      colors: [color, color.withValues(alpha: 0.8)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    )
-                  : null,
-              color: isActive
-                  ? null
-                  : colors.surfaceContainerHighest.withValues(alpha: 0.5),
-              borderRadius: BorderRadius.circular(8),
-              boxShadow: isActive
-                  ? [
-                      BoxShadow(
-                        color: color.withValues(alpha: 0.3 * value),
-                        blurRadius: 6,
-                        offset: const Offset(0, 2),
-                      ),
-                    ]
-                  : null,
-            ),
-            child: Center(
-              child: Text(
-                label,
+  Widget _buildStatPill({
+    required IconData icon,
+    required String label,
+    required String value,
+    required Color color,
+    required ColorScheme colors,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 14, color: color),
+              const Spacer(),
+              Text(
+                value,
                 style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w700,
-                  color: isActive
-                      ? Colors.white
-                      : colors.onSurfaceVariant.withValues(alpha: 0.5),
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: colors.onSurface,
                 ),
               ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
+              color: color,
             ),
           ),
-        );
-      },
+        ],
+      ),
     );
   }
 }
