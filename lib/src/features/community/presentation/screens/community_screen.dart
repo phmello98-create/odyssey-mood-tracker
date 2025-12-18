@@ -6,7 +6,7 @@ import '../../domain/notification.dart';
 import '../providers/community_providers.dart';
 import '../providers/notifications_provider.dart';
 import '../widgets/post_card.dart';
-import '../widgets/community_search_bar.dart';
+import '../widgets/expandable_search_widget.dart';
 import '../widgets/curated_section.dart';
 import '../widgets/community_info_bar.dart';
 import '../widgets/quick_links_widget.dart';
@@ -14,7 +14,6 @@ import '../widgets/radio_bar_player.dart';
 import '../widgets/trending_section.dart';
 import '../widgets/top_users_widget.dart';
 import 'create_post_screen.dart';
-import 'search_screen.dart';
 
 /// Tela principal da comunidade - Estilo Reddit Minimalista
 class CommunityScreen extends ConsumerStatefulWidget {
@@ -42,13 +41,6 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(builder: (_) => const CreatePostScreen()),
-    );
-  }
-
-  void _navigateToSearch() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => const SearchScreen()),
     );
   }
 
@@ -164,10 +156,8 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen> {
                 // Radio Bar Player
                 const SliverToBoxAdapter(child: RadioBarPlayer()),
 
-                // Persistent Search Bar
-                SliverToBoxAdapter(
-                  child: CommunitySearchBar(onTap: _navigateToSearch),
-                ),
+                // Expandable Search Bar
+                const SliverToBoxAdapter(child: ExpandableSearchWidget()),
 
                 // Expandable Notifications Panel
                 SliverToBoxAdapter(

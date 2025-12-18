@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/user_profile.dart';
+import '../../data/mock_community_data.dart';
 import '../providers/community_providers.dart';
 import '../widgets/post_card.dart';
 import '../widgets/user_avatar.dart';
@@ -14,6 +15,11 @@ final searchQueryProvider = StateProvider<String>((ref) => '');
 enum SearchType { posts, users }
 
 final searchTypeProvider = StateProvider<SearchType>((ref) => SearchType.posts);
+
+/// Histórico de pesquisas recentes (mock)
+final recentSearchesProvider = StateProvider<List<String>>(
+  (ref) => ['meditação', 'pomodoro', 'hábitos', 'produtividade'],
+);
 
 /// Tela de busca de posts e usuários
 class SearchScreen extends ConsumerStatefulWidget {
@@ -68,6 +74,24 @@ class _SearchScreenState extends ConsumerState<SearchScreen>
     _focusNode.requestFocus();
   }
 
+  void _onSearchSubmit(String query) {
+    if (query.isNotEmpty) {
+      // Adicionar ao histórico
+      final recents = ref.read(recentSearchesProvider);
+      if (!recents.contains(query.toLowerCase())) {
+        ref.read(recentSearchesProvider.notifier).state = [
+          query.toLowerCase(),
+          ...recents.take(9),
+        ];
+      }
+    }
+  }
+
+  void _searchFor(String query) {
+    _searchController.text = query;
+    ref.read(searchQueryProvider.notifier).state = query;
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
@@ -87,6 +111,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen>
           controller: _searchController,
           focusNode: _focusNode,
           onChanged: _onSearchChanged,
+          onSubmitted: _onSearchSubmit,
           style: TextStyle(fontSize: 16, color: colors.onSurface),
           decoration: InputDecoration(
             hintText: 'Buscar na comunidade...',
@@ -116,8 +141,8 @@ class _SearchScreenState extends ConsumerState<SearchScreen>
       body: TabBarView(
         controller: _tabController,
         children: [
-          _PostSearchResults(query: query),
-          _UserSearchResults(query: query),
+          _PostSearchResults(query: query, onSearchFor: _searchFor),
+          _UserSearchResults(query: query, onSearchFor: _searchFor),
         ],
       ),
     );
@@ -127,15 +152,16 @@ class _SearchScreenState extends ConsumerState<SearchScreen>
 /// Resultados da busca de posts
 class _PostSearchResults extends ConsumerWidget {
   final String query;
+  final Function(String) onSearchFor;
 
-  const _PostSearchResults({required this.query});
+  const _PostSearchResults({required this.query, required this.onSearchFor});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final colors = Theme.of(context).colorScheme;
 
     if (query.isEmpty) {
-      return _buildEmptySearchState(colors);
+      return _buildDiscoveryState(context, ref, colors);
     }
 
     final searchResultsAsync = ref.watch(searchPostsProvider(query));
@@ -184,30 +210,136 @@ class _PostSearchResults extends ConsumerWidget {
     );
   }
 
-  Widget _buildEmptySearchState(ColorScheme colors) {
-    return Center(
+  Widget _buildDiscoveryState(
+    BuildContext context,
+    WidgetRef ref,
+    ColorScheme colors,
+  ) {
+    final recentSearches = ref.watch(recentSearchesProvider);
+    final trendingTags = MockCommunityData.getTrendingTags(limit: 6);
+    final trendingPosts = MockCommunityData.getTrendingPosts(limit: 3);
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(
-            Icons.search_rounded,
-            size: 64,
-            color: colors.onSurfaceVariant.withOpacity(0.3),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'Buscar posts',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-              color: colors.onSurface,
+          // Pesquisas recentes
+          if (recentSearches.isNotEmpty) ...[
+            Row(
+              children: [
+                Icon(
+                  Icons.history_rounded,
+                  size: 18,
+                  color: colors.onSurfaceVariant,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Pesquisas recentes',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: colors.onSurface,
+                  ),
+                ),
+                const Spacer(),
+                TextButton(
+                  onPressed: () {
+                    ref.read(recentSearchesProvider.notifier).state = [];
+                  },
+                  child: Text(
+                    'Limpar',
+                    style: TextStyle(fontSize: 12, color: colors.primary),
+                  ),
+                ),
+              ],
             ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: recentSearches
+                  .map(
+                    (search) => ActionChip(
+                      avatar: Icon(
+                        Icons.north_west_rounded,
+                        size: 14,
+                        color: colors.onSurfaceVariant,
+                      ),
+                      label: Text(search),
+                      onPressed: () {
+                        HapticFeedback.selectionClick();
+                        onSearchFor(search);
+                      },
+                    ),
+                  )
+                  .toList(),
+            ),
+            const SizedBox(height: 24),
+          ],
+
+          // Tags em alta
+          Row(
+            children: [
+              Icon(
+                Icons.local_fire_department_rounded,
+                size: 18,
+                color: Colors.orange,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Tags em alta',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: colors.onSurface,
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 8),
-          Text(
-            'Digite para buscar posts na comunidade',
-            style: TextStyle(fontSize: 14, color: colors.onSurfaceVariant),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: trendingTags
+                .map(
+                  (tag) => ActionChip(
+                    avatar: Text(
+                      '#',
+                      style: TextStyle(
+                        color: colors.primary,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    label: Text(tag),
+                    backgroundColor: colors.primaryContainer.withOpacity(0.3),
+                    onPressed: () {
+                      HapticFeedback.selectionClick();
+                      onSearchFor(tag);
+                    },
+                  ),
+                )
+                .toList(),
           ),
+          const SizedBox(height: 24),
+
+          // Posts populares
+          Row(
+            children: [
+              Icon(Icons.trending_up_rounded, size: 18, color: colors.primary),
+              const SizedBox(width: 8),
+              Text(
+                'Posts populares',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: colors.onSurface,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          ...trendingPosts.map((post) => _PostPreviewCard(post: post)),
         ],
       ),
     );
@@ -243,18 +375,127 @@ class _PostSearchResults extends ConsumerWidget {
   }
 }
 
+/// Card de preview de post compacto
+class _PostPreviewCard extends StatelessWidget {
+  final dynamic post;
+
+  const _PostPreviewCard({required this.post});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 8),
+      child: InkWell(
+        onTap: () {
+          HapticFeedback.lightImpact();
+          // TODO: Navigate to post detail
+        },
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              // Avatar
+              CircleAvatar(
+                radius: 18,
+                backgroundImage: post.userPhotoUrl != null
+                    ? NetworkImage(post.userPhotoUrl!)
+                    : null,
+                child: post.userPhotoUrl == null
+                    ? const Icon(Icons.person, size: 16)
+                    : null,
+              ),
+              const SizedBox(width: 12),
+              // Content
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      post.userName,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: colors.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      post.content,
+                      style: TextStyle(fontSize: 14, color: colors.onSurface),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              // Stats
+              Column(
+                children: [
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.arrow_upward_rounded,
+                        size: 14,
+                        color: colors.primary,
+                      ),
+                      const SizedBox(width: 2),
+                      Text(
+                        '${post.score}',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: colors.primary,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.chat_bubble_outline_rounded,
+                        size: 12,
+                        color: colors.onSurfaceVariant,
+                      ),
+                      const SizedBox(width: 2),
+                      Text(
+                        '${post.commentCount}',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: colors.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// Resultados da busca de usuários
 class _UserSearchResults extends ConsumerWidget {
   final String query;
+  final Function(String) onSearchFor;
 
-  const _UserSearchResults({required this.query});
+  const _UserSearchResults({required this.query, required this.onSearchFor});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final colors = Theme.of(context).colorScheme;
 
     if (query.isEmpty) {
-      return _buildEmptySearchState(colors);
+      return _buildDiscoveryState(context, ref, colors);
     }
 
     final searchResultsAsync = ref.watch(searchUsersProvider(query));
@@ -300,29 +541,36 @@ class _UserSearchResults extends ConsumerWidget {
     );
   }
 
-  Widget _buildEmptySearchState(ColorScheme colors) {
-    return Center(
+  Widget _buildDiscoveryState(
+    BuildContext context,
+    WidgetRef ref,
+    ColorScheme colors,
+  ) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(
-            Icons.person_search_rounded,
-            size: 64,
-            color: colors.onSurfaceVariant.withOpacity(0.3),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'Buscar usuários',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-              color: colors.onSurface,
+          // Dica
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: colors.primaryContainer.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: colors.primary.withOpacity(0.2)),
             ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Digite para buscar usuários na comunidade',
-            style: TextStyle(fontSize: 14, color: colors.onSurfaceVariant),
+            child: Row(
+              children: [
+                Icon(Icons.lightbulb_outline_rounded, color: colors.primary),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Digite o nome de um usuário para encontrar seu perfil',
+                    style: TextStyle(fontSize: 13, color: colors.onSurface),
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -356,6 +604,133 @@ class _UserSearchResults extends ConsumerWidget {
         ],
       ),
     );
+  }
+}
+
+/// Card de preview de usuário compacto
+class _UserPreviewCard extends StatelessWidget {
+  final dynamic user;
+
+  const _UserPreviewCard({required this.user});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 8),
+      child: InkWell(
+        onTap: () {
+          HapticFeedback.lightImpact();
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) =>
+                  PublicProfileScreen(userId: user.id, userName: user.username),
+            ),
+          );
+        },
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              // Avatar com borda de nível
+              Container(
+                padding: const EdgeInsets.all(2),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: LinearGradient(colors: _getLevelColors(user.level)),
+                ),
+                child: CircleAvatar(
+                  radius: 22,
+                  backgroundColor: colors.surface,
+                  backgroundImage: user.avatarUrl != null
+                      ? NetworkImage(user.avatarUrl!)
+                      : null,
+                  child: user.avatarUrl == null
+                      ? Text(
+                          user.username[0].toUpperCase(),
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: colors.primary,
+                          ),
+                        )
+                      : null,
+                ),
+              ),
+              const SizedBox(width: 12),
+              // Info
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text(
+                          user.username,
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: colors.onSurface,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        if (user.flair != null)
+                          Text(
+                            user.flair!,
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 2),
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 1,
+                          ),
+                          decoration: BoxDecoration(
+                            color: colors.primary.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            'Nível ${user.level}',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                              color: colors.primary,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          '${user.karma} karma',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: colors.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              // Arrow
+              Icon(Icons.chevron_right_rounded, color: colors.onSurfaceVariant),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  List<Color> _getLevelColors(int level) {
+    if (level >= 50) return [const Color(0xFFFFD700), const Color(0xFFFFA500)];
+    if (level >= 30) return [const Color(0xFFC0C0C0), const Color(0xFF808080)];
+    if (level >= 10) return [const Color(0xFFCD7F32), const Color(0xFF8B4513)];
+    return [const Color(0xFF6B4EFF), const Color(0xFF9C27B0)];
   }
 }
 
