@@ -5,6 +5,7 @@ import '../../domain/post.dart';
 import '../../domain/topic.dart';
 import '../../domain/karma.dart';
 import '../screens/post_detail_screen.dart';
+import 'user_profile_popup.dart';
 
 /// Card de post rico estilo Reddit
 /// Com votos, karma, badges, imagens, tags
@@ -269,38 +270,69 @@ class _PostCardState extends State<PostCard>
   }
 
   Widget _buildDecoratedAvatar(ColorScheme colors, KarmaTier tier) {
-    return Container(
-      padding: const EdgeInsets.all(2),
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        gradient: LinearGradient(
-          colors: [
-            Color(tier.colorValue),
-            Color(tier.colorValue).withOpacity(0.6),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-      ),
+    return GestureDetector(
+      onTap: () {
+        HapticFeedback.lightImpact();
+        UserProfilePopup.show(
+          context,
+          userId: widget.post.userId,
+          userName: widget.post.userName,
+          userPhotoUrl: widget.post.userPhotoUrl,
+          userLevel: widget.post.userLevel,
+          karma: widget.post.authorKarma,
+          flair: widget.post.authorFlair,
+          onFollow: () {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Seguindo ${widget.post.userName}'),
+                duration: const Duration(seconds: 1),
+              ),
+            );
+          },
+          onViewProfile: () {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Abrindo perfil de ${widget.post.userName}'),
+                duration: const Duration(seconds: 1),
+              ),
+            );
+          },
+        );
+      },
       child: Container(
-        width: 40,
-        height: 40,
+        padding: const EdgeInsets.all(2),
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: colors.surface,
+          gradient: LinearGradient(
+            colors: [
+              Color(tier.colorValue),
+              Color(tier.colorValue).withOpacity(0.6),
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
         ),
-        child: ClipOval(
-          child: widget.post.userPhotoUrl != null
-              ? Image.network(
-                  widget.post.userPhotoUrl!,
-                  fit: BoxFit.cover,
-                  loadingBuilder: (context, child, loadingProgress) {
-                    if (loadingProgress == null) return child;
-                    return _buildAvatarPlaceholder(colors);
-                  },
-                  errorBuilder: (_, __, ___) => _buildAvatarPlaceholder(colors),
-                )
-              : _buildAvatarPlaceholder(colors),
+        child: Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: colors.surface,
+          ),
+          child: ClipOval(
+            child: widget.post.userPhotoUrl != null
+                ? Image.network(
+                    widget.post.userPhotoUrl!,
+                    fit: BoxFit.cover,
+                    loadingBuilder: (context, child, loadingProgress) {
+                      if (loadingProgress == null) return child;
+                      return _buildAvatarPlaceholder(colors);
+                    },
+                    errorBuilder: (_, __, ___) =>
+                        _buildAvatarPlaceholder(colors),
+                  )
+                : _buildAvatarPlaceholder(colors),
+          ),
         ),
       ),
     );
