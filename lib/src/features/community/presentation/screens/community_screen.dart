@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/topic.dart';
 import '../providers/community_providers.dart';
 import '../widgets/post_card.dart';
+import '../widgets/community_search_bar.dart';
+import '../widgets/curated_section.dart';
 import 'create_post_screen.dart';
 import 'search_screen.dart';
 
@@ -56,50 +58,69 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen> {
           controller: _scrollController,
           physics: const AlwaysScrollableScrollPhysics(),
           slivers: [
-            // App Bar minimalista
+            // App Bar minimalista (Polida)
             SliverAppBar(
               floating: true,
               snap: true,
               backgroundColor: colors.surface,
+              surfaceTintColor: colors.surface,
               elevation: 0,
-              title: Text(
-                'Comunidade',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w700,
-                  color: colors.onSurface,
-                ),
+              centerTitle: false,
+              title: Row(
+                children: [
+                  Icon(Icons.forum_rounded, color: colors.primary, size: 24),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Comunidade',
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w800,
+                      color: colors.onSurface,
+                      letterSpacing: -0.5,
+                    ),
+                  ),
+                ],
               ),
               actions: [
-                // Search button
                 IconButton(
                   icon: Icon(
-                    Icons.search_rounded,
+                    Icons.notifications_outlined,
                     color: colors.onSurfaceVariant,
                   ),
-                  onPressed: _navigateToSearch,
+                  onPressed: () {
+                    HapticFeedback.lightImpact();
+                    // TODO: Notifications screen
+                  },
                 ),
-                const SizedBox(width: 4),
+                const SizedBox(width: 8),
               ],
             ),
+
+            // Persistent Search Bar
+            SliverToBoxAdapter(
+              child: CommunitySearchBar(onTap: _navigateToSearch),
+            ),
+
+            // Curated Section (ModOdyssey)
+            const SliverToBoxAdapter(child: CuratedSection()),
 
             // Topic filter chips (horizontal scroll)
             SliverToBoxAdapter(
               child: Container(
-                height: 48,
-                padding: const EdgeInsets.symmetric(vertical: 8),
+                height: 56, // Slightly taller for better touch targets
+                padding: const EdgeInsets.symmetric(vertical: 10),
                 decoration: BoxDecoration(
                   color: colors.surface,
                   border: Border(
                     bottom: BorderSide(
-                      color: colors.outlineVariant.withOpacity(0.3),
+                      color: colors.outlineVariant.withOpacity(0.15),
                       width: 1,
                     ),
                   ),
                 ),
                 child: ListView.builder(
                   scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
                   itemCount: CommunityTopic.values.length + 1,
                   itemBuilder: (context, index) {
                     if (index == 0) {
@@ -108,6 +129,7 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen> {
                       return Padding(
                         padding: const EdgeInsets.only(right: 8),
                         child: FilterChip(
+                          showCheckmark: false,
                           label: const Text('Todos'),
                           selected: isSelected,
                           onSelected: (_) {
@@ -115,34 +137,46 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen> {
                             ref.read(selectedTopicProvider.notifier).state =
                                 null;
                           },
-                          backgroundColor: colors.surfaceContainerHighest,
-                          selectedColor: colors.primary.withOpacity(0.15),
+                          backgroundColor: colors.surfaceContainerHighest
+                              .withOpacity(0.5),
+                          selectedColor: colors.primary.withOpacity(1.0),
                           labelStyle: TextStyle(
                             fontSize: 13,
-                            fontWeight: isSelected
-                                ? FontWeight.w600
-                                : FontWeight.w500,
+                            fontWeight: FontWeight.w600,
                             color: isSelected
-                                ? colors.primary
+                                ? colors.onPrimary
                                 : colors.onSurfaceVariant,
                           ),
-                          side: BorderSide.none,
-                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20),
+                            side: BorderSide(
+                              color: isSelected
+                                  ? Colors.transparent
+                                  : colors.outline.withOpacity(0.1),
+                            ),
+                          ),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 0,
+                          ),
+                          visualDensity: VisualDensity.compact,
                         ),
                       );
                     }
 
                     final topic = CommunityTopic.values[index - 1];
                     final isSelected = selectedTopic == topic;
+                    final topicColor = Color(topic.colorValue);
 
                     return Padding(
                       padding: const EdgeInsets.only(right: 8),
                       child: FilterChip(
+                        showCheckmark: false,
                         label: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Text(topic.emoji),
-                            const SizedBox(width: 4),
+                            const SizedBox(width: 6),
                             Text(topic.label),
                           ],
                         ),
@@ -152,21 +186,30 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen> {
                           ref.read(selectedTopicProvider.notifier).state =
                               isSelected ? null : topic;
                         },
-                        backgroundColor: colors.surfaceContainerHighest,
-                        selectedColor: Color(
-                          topic.colorValue,
-                        ).withOpacity(0.15),
+                        backgroundColor: colors.surfaceContainerHighest
+                            .withOpacity(0.5),
+                        selectedColor: topicColor,
                         labelStyle: TextStyle(
                           fontSize: 13,
-                          fontWeight: isSelected
-                              ? FontWeight.w600
-                              : FontWeight.w500,
+                          fontWeight: FontWeight.w600,
                           color: isSelected
-                              ? Color(topic.colorValue)
+                              ? Colors
+                                    .white // Assuming dark topic colors for contrast, or check luminance
                               : colors.onSurfaceVariant,
                         ),
-                        side: BorderSide.none,
-                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                          side: BorderSide(
+                            color: isSelected
+                                ? Colors.transparent
+                                : colors.outline.withOpacity(0.1),
+                          ),
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 0,
+                        ),
+                        visualDensity: VisualDensity.compact,
                       ),
                     );
                   },
