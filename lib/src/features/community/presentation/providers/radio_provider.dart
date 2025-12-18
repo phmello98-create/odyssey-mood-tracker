@@ -1,7 +1,6 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_soloud/flutter_soloud.dart';
+import 'package:just_audio/just_audio.dart';
 
 // --- State Model ---
 
@@ -26,12 +25,14 @@ class RadioTrack {
 class RadioState {
   final RadioStatus status;
   final RadioTrack? currentTrack;
+  final int currentIndex;
   final double volume;
   final bool isMuted;
 
   const RadioState({
     this.status = RadioStatus.stopped,
     this.currentTrack,
+    this.currentIndex = 0,
     this.volume = 1.0,
     this.isMuted = false,
   });
@@ -39,12 +40,14 @@ class RadioState {
   RadioState copyWith({
     RadioStatus? status,
     RadioTrack? currentTrack,
+    int? currentIndex,
     double? volume,
     bool? isMuted,
   }) {
     return RadioState(
       status: status ?? this.status,
       currentTrack: currentTrack ?? this.currentTrack,
+      currentIndex: currentIndex ?? this.currentIndex,
       volume: volume ?? this.volume,
       isMuted: isMuted ?? this.isMuted,
     );
@@ -57,159 +60,182 @@ class RadioState {
 
 class RadioNotifier extends StateNotifier<RadioState> {
   RadioNotifier() : super(const RadioState()) {
-    _initSoloud();
+    _initPlayer();
   }
 
-  SoundHandle? _currentSoundHandle;
-  AudioSource? _currentSource;
-  bool _isInitialized = false;
+  final AudioPlayer _player = AudioPlayer();
 
   // Real Free Streaming Stations (Royalty-Free)
   // Dica: Esses links podem mudar. Considere carregar de um JSON no Firebase.
-  final List<RadioTrack> _stations = [
+  final List<RadioTrack> stations = [
     // Lofi Hip Hop - Hunter.FM Brasil (estável e gratuita)
-    RadioTrack(
+    const RadioTrack(
       title: 'Lofi Hip Hop',
       artist: 'Hunter.FM',
       coverUrl:
           'https://i.scdn.co/image/ab67616d0000b2735af263b6522c061266b7dd25',
       streamUrl: 'https://live.hunter.fm/lofi_high',
-      themeColor: const Color(0xFF6C63FF),
+      themeColor: Color(0xFF6C63FF),
     ),
     // Chillout Lounge - 1.FM (europeia, links abertos)
-    RadioTrack(
+    const RadioTrack(
       title: 'Chillout Lounge',
       artist: '1.FM Network',
       coverUrl:
           'https://i.scdn.co/image/ab67616d0000b273d2a3d02772522744312ce06e',
       streamUrl: 'http://strm112.1.fm/chilloutlounge_mobile_mp3',
-      themeColor: const Color(0xFF00BFA5),
+      themeColor: Color(0xFF00BFA5),
     ),
     // Deep House / Tech - Costa Del Mar
-    RadioTrack(
+    const RadioTrack(
       title: 'Deep House',
       artist: 'Costa Del Mar',
       coverUrl:
           'https://i.scdn.co/image/ab67616d0000b273e913337604471017359dae3d',
       streamUrl: 'http://sc-costadelmar.1.fm:10156/;',
-      themeColor: const Color(0xFFE91E63),
+      themeColor: Color(0xFFE91E63),
     ),
     // Ambient / Nature - Soma FM (Creative Commons)
-    RadioTrack(
+    const RadioTrack(
       title: 'Drone Zone',
       artist: 'SomaFM',
       coverUrl:
           'https://i.scdn.co/image/ab67616d0000b2736fc4cc0aaf0c6f4d5f8c9a3d',
       streamUrl: 'https://ice1.somafm.com/dronezone-128-mp3',
-      themeColor: const Color(0xFF9C27B0),
+      themeColor: Color(0xFF9C27B0),
     ),
     // Electronic Chill - DBM Radio
-    RadioTrack(
+    const RadioTrack(
       title: 'Electronic Chill',
       artist: 'DBM Radio',
       coverUrl:
           'https://i.scdn.co/image/ab67616d0000b2730f0cfe4a7e9b9b3e6c6d8f9a',
       streamUrl: 'https://chillout.dbm.radio/stream',
-      themeColor: const Color(0xFF795548),
+      themeColor: Color(0xFF795548),
     ),
   ];
 
-  Future<void> _initSoloud() async {
-    try {
-      await SoLoud.instance.init();
-      _isInitialized = true;
-    } catch (e) {
-      debugPrint('Error initializing SoLoud: $e');
-      _isInitialized = false;
-    }
+  void _initPlayer() {
+    // Listen to player state changes
+    _player.playerStateStream.listen((playerState) {
+      debugPrint('🎵 Player state: ${playerState.processingState}');
+
+      switch (playerState.processingState) {
+        case ProcessingState.idle:
+          state = state.copyWith(status: RadioStatus.stopped);
+          break;
+        case ProcessingState.loading:
+        case ProcessingState.buffering:
+          state = state.copyWith(status: RadioStatus.buffering);
+          break;
+        case ProcessingState.ready:
+          if (playerState.playing) {
+            state = state.copyWith(status: RadioStatus.playing);
+          } else {
+            state = state.copyWith(status: RadioStatus.paused);
+          }
+          break;
+        case ProcessingState.completed:
+          // For streaming, this shouldn't happen often
+          state = state.copyWith(status: RadioStatus.stopped);
+          break;
+      }
+    });
+
+    // Listen to errors
+    _player.playbackEventStream.listen(
+      (event) {},
+      onError: (Object e, StackTrace stackTrace) {
+        debugPrint('❌ Playback error: $e');
+        state = state.copyWith(status: RadioStatus.error);
+      },
+    );
   }
 
   Future<void> playStation(int index) async {
-    if (!_isInitialized) await _initSoloud();
-    if (index < 0 || index >= _stations.length) return;
+    if (index < 0 || index >= stations.length) return;
 
-    final track = _stations[index];
+    final track = stations[index];
+    debugPrint('🎵 Playing: ${track.title} - ${track.streamUrl}');
 
-    // Stop previous if any
-    await _stopCurrent();
-
-    state = state.copyWith(status: RadioStatus.buffering, currentTrack: track);
+    state = state.copyWith(
+      status: RadioStatus.buffering,
+      currentTrack: track,
+      currentIndex: index,
+    );
 
     try {
-      // Load URL
-      _currentSource = await SoLoud.instance.loadUrl(track.streamUrl);
-
-      // Play
-      _currentSoundHandle = await SoLoud.instance.play(_currentSource!);
-      SoLoud.instance.setVolume(_currentSoundHandle!, state.volume);
-
-      state = state.copyWith(status: RadioStatus.playing);
+      await _player.setUrl(track.streamUrl);
+      await _player.setVolume(state.volume);
+      await _player.play();
+      debugPrint('🎵 Now playing: ${track.title}');
     } catch (e) {
-      debugPrint('Error playing station: $e');
+      debugPrint('❌ Error playing station: $e');
       state = state.copyWith(status: RadioStatus.error);
-      // Fallback: Try to clean up
-      await _stopCurrent();
     }
   }
 
-  Future<void> _stopCurrent() async {
-    if (_currentSoundHandle != null) {
-      await SoLoud.instance.stop(_currentSoundHandle!);
-      _currentSoundHandle = null;
-    }
-    if (_currentSource != null) {
-      // Dispose source to free memory
-      await SoLoud.instance.disposeSource(_currentSource!);
-      _currentSource = null;
-    }
-  }
+  Future<void> togglePlayPause() async {
+    debugPrint('🎵 togglePlayPause called');
 
-  void togglePlayPause() {
     if (state.currentTrack == null) {
-      playStation(0);
+      debugPrint('🎵 No current track, starting station 0...');
+      await playStation(0);
       return;
     }
 
-    if (!_isInitialized || _currentSoundHandle == null) return;
-
     if (state.isPlaying) {
-      SoLoud.instance.setPause(_currentSoundHandle!, true);
-      state = state.copyWith(status: RadioStatus.paused);
-    } else {
-      SoLoud.instance.setPause(_currentSoundHandle!, false);
-      state = state.copyWith(status: RadioStatus.playing);
+      debugPrint('🎵 Pausing...');
+      await _player.pause();
+    } else if (state.status == RadioStatus.paused) {
+      debugPrint('🎵 Resuming...');
+      await _player.play();
+    } else if (state.status == RadioStatus.error ||
+        state.status == RadioStatus.stopped) {
+      debugPrint('🎵 Restarting...');
+      await playStation(state.currentIndex);
     }
   }
 
-  void nextStation() {
-    if (state.currentTrack == null) return;
-    final currentIndex = _stations.indexOf(state.currentTrack!);
-    final nextIndex = (currentIndex + 1) % _stations.length;
-    playStation(nextIndex);
+  Future<void> stop() async {
+    await _player.stop();
+    state = state.copyWith(status: RadioStatus.stopped);
   }
 
-  void previousStation() {
-    if (state.currentTrack == null) return;
-    final currentIndex = _stations.indexOf(state.currentTrack!);
-    final prevIndex = (currentIndex - 1 + _stations.length) % _stations.length;
-    playStation(prevIndex);
+  Future<void> nextStation() async {
+    final nextIndex = (state.currentIndex + 1) % stations.length;
+    await playStation(nextIndex);
   }
 
-  void setVolume(double value) {
-    final newVolume = value.clamp(0.0, 1.0);
-    state = state.copyWith(volume: newVolume);
-    if (_currentSoundHandle != null) {
-      SoLoud.instance.setVolume(_currentSoundHandle!, newVolume);
+  Future<void> previousStation() async {
+    final prevIndex =
+        (state.currentIndex - 1 + stations.length) % stations.length;
+    await playStation(prevIndex);
+  }
+
+  void setVolume(double volume) {
+    _player.setVolume(volume);
+    state = state.copyWith(volume: volume, isMuted: volume == 0);
+  }
+
+  void toggleMute() {
+    if (state.isMuted) {
+      _player.setVolume(state.volume);
+      state = state.copyWith(isMuted: false);
+    } else {
+      _player.setVolume(0);
+      state = state.copyWith(isMuted: true);
     }
   }
 
   @override
   void dispose() {
-    _stopCurrent(); // Best effort cleanup
+    _player.dispose();
     super.dispose();
   }
 }
 
+// Provider
 final radioProvider = StateNotifierProvider<RadioNotifier, RadioState>((ref) {
   return RadioNotifier();
 });

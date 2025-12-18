@@ -92,27 +92,45 @@ class RadioBarPlayer extends ConsumerWidget {
               // Play/Pause
               Container(
                 decoration: BoxDecoration(
-                  color: colors.primary,
+                  color: radioState.status == RadioStatus.error
+                      ? colors.error
+                      : colors.primary,
                   shape: BoxShape.circle,
                 ),
-                child: IconButton(
-                  onPressed: () {
-                    HapticFeedback.mediumImpact();
-                    ref.read(radioProvider.notifier).togglePlayPause();
-                  },
-                  icon: Icon(
-                    radioState.isPlaying
-                        ? Icons.pause_rounded
-                        : Icons.play_arrow_rounded,
-                    color: colors.onPrimary,
-                    size: 28,
-                  ),
-                  padding: const EdgeInsets.all(4),
-                  constraints: const BoxConstraints(
-                    minWidth: 40,
-                    minHeight: 40,
-                  ),
-                ),
+                child: radioState.status == RadioStatus.buffering
+                    ? Padding(
+                        padding: const EdgeInsets.all(10),
+                        child: SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: colors.onPrimary,
+                          ),
+                        ),
+                      )
+                    : IconButton(
+                        onPressed: () async {
+                          HapticFeedback.mediumImpact();
+                          await ref
+                              .read(radioProvider.notifier)
+                              .togglePlayPause();
+                        },
+                        icon: Icon(
+                          radioState.status == RadioStatus.error
+                              ? Icons.refresh_rounded
+                              : radioState.isPlaying
+                              ? Icons.pause_rounded
+                              : Icons.play_arrow_rounded,
+                          color: colors.onPrimary,
+                          size: 28,
+                        ),
+                        padding: const EdgeInsets.all(4),
+                        constraints: const BoxConstraints(
+                          minWidth: 40,
+                          minHeight: 40,
+                        ),
+                      ),
               ),
 
               // Next
