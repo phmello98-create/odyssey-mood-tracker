@@ -9,6 +9,8 @@ import '../widgets/curated_section.dart';
 import '../widgets/community_info_bar.dart';
 import '../widgets/quick_links_widget.dart';
 import '../widgets/radio_popup_player.dart';
+import '../widgets/trending_section.dart';
+import '../widgets/top_users_widget.dart';
 import '../providers/radio_provider.dart';
 import 'create_post_screen.dart';
 import 'search_screen.dart';
@@ -154,6 +156,12 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen> {
 
                 // Curated Section (ModOdyssey)
                 const SliverToBoxAdapter(child: CuratedSection()),
+
+                // Trending Section (Hot posts + tags)
+                const SliverToBoxAdapter(child: TrendingSection()),
+
+                // Top Users / Leaderboard mini
+                const SliverToBoxAdapter(child: TopUsersWidget()),
 
                 // Quick Links / Indexes
                 const SliverToBoxAdapter(
