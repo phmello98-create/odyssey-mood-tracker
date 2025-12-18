@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/topic.dart';
+
+import '../../domain/notification.dart';
 import '../providers/community_providers.dart';
+import '../providers/notifications_provider.dart';
 import '../widgets/post_card.dart';
 import '../widgets/community_search_bar.dart';
 import '../widgets/curated_section.dart';
@@ -26,6 +29,7 @@ class CommunityScreen extends ConsumerStatefulWidget {
 class _CommunityScreenState extends ConsumerState<CommunityScreen> {
   final ScrollController _scrollController = ScrollController();
   bool _showRadioPopup = false;
+  bool _showNotificationsPanel = false;
   final GlobalKey _radioButtonKey = GlobalKey();
 
   @override
@@ -132,6 +136,67 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen> {
                         );
                       },
                     ),
+                    // Notifications Button with badge
+                    Consumer(
+                      builder: (context, ref, child) {
+                        final notifState = ref.watch(notificationsProvider);
+                        final unreadCount = notifState.unreadCount;
+
+                        return Stack(
+                          clipBehavior: Clip.none,
+                          children: [
+                            IconButton(
+                              icon: Icon(
+                                _showNotificationsPanel
+                                    ? Icons.notifications_rounded
+                                    : (unreadCount > 0
+                                          ? Icons.notifications_active_rounded
+                                          : Icons.notifications_outlined),
+                                color: _showNotificationsPanel
+                                    ? const Color(0xFF9C27B0)
+                                    : (unreadCount > 0
+                                          ? const Color(0xFF9C27B0)
+                                          : colors.onSurfaceVariant),
+                              ),
+                              onPressed: () {
+                                HapticFeedback.lightImpact();
+                                setState(() {
+                                  _showNotificationsPanel =
+                                      !_showNotificationsPanel;
+                                });
+                              },
+                              tooltip: 'Notificações',
+                            ),
+                            // Unread badge
+                            if (unreadCount > 0)
+                              Positioned(
+                                right: 6,
+                                top: 6,
+                                child: Container(
+                                  padding: const EdgeInsets.all(3),
+                                  decoration: const BoxDecoration(
+                                    color: Color(0xFF9C27B0),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  constraints: const BoxConstraints(
+                                    minWidth: 14,
+                                    minHeight: 14,
+                                  ),
+                                  child: Text(
+                                    unreadCount > 9 ? '9+' : '$unreadCount',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        );
+                      },
+                    ),
                     const SizedBox(width: 8),
                   ],
                 ),
@@ -139,6 +204,17 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen> {
                 // Persistent Search Bar
                 SliverToBoxAdapter(
                   child: CommunitySearchBar(onTap: _navigateToSearch),
+                ),
+
+                // Expandable Notifications Panel
+                SliverToBoxAdapter(
+                  child: AnimatedSize(
+                    duration: const Duration(milliseconds: 300),
+                    curve: Curves.easeInOut,
+                    child: _showNotificationsPanel
+                        ? _buildNotificationsPanel(colors)
+                        : const SizedBox.shrink(),
+                  ),
                 ),
 
                 // Community Info Bar (Stats)
@@ -419,6 +495,213 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen> {
         ),
       ),
     );
+  }
+
+  Widget _buildNotificationsPanel(ColorScheme colors) {
+    final notifState = ref.watch(notificationsProvider);
+    final notifications = notifState.notifications.take(5).toList();
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+      decoration: BoxDecoration(
+        color: colors.surfaceContainer,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFF9C27B0).withOpacity(0.3)),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF9C27B0).withOpacity(0.1),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          // Header
+          Container(
+            padding: const EdgeInsets.fromLTRB(16, 12, 8, 8),
+            decoration: BoxDecoration(
+              color: const Color(0xFF9C27B0).withOpacity(0.1),
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(16),
+                topRight: Radius.circular(16),
+              ),
+            ),
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.notifications_rounded,
+                  size: 18,
+                  color: Color(0xFF9C27B0),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Notificações',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: colors.onSurface,
+                  ),
+                ),
+                const Spacer(),
+                if (notifState.unreadCount > 0)
+                  TextButton(
+                    onPressed: () {
+                      ref.read(notificationsProvider.notifier).markAllAsRead();
+                      HapticFeedback.lightImpact();
+                    },
+                    child: const Text(
+                      'Marcar lidas',
+                      style: TextStyle(fontSize: 11),
+                    ),
+                  ),
+                IconButton(
+                  onPressed: () {
+                    setState(() {
+                      _showNotificationsPanel = false;
+                    });
+                  },
+                  icon: const Icon(Icons.close_rounded, size: 18),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  color: colors.onSurfaceVariant,
+                ),
+              ],
+            ),
+          ),
+          // Content
+          if (notifications.isEmpty)
+            Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                children: [
+                  Icon(
+                    Icons.notifications_none_rounded,
+                    size: 40,
+                    color: colors.onSurfaceVariant.withOpacity(0.3),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Nenhuma notificação',
+                    style: TextStyle(color: colors.onSurfaceVariant),
+                  ),
+                ],
+              ),
+            )
+          else
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                children: notifications
+                    .map(
+                      (notif) => InkWell(
+                        onTap: () {
+                          HapticFeedback.lightImpact();
+                          ref
+                              .read(notificationsProvider.notifier)
+                              .markAsRead(notif.id);
+                        },
+                        borderRadius: BorderRadius.circular(8),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 8,
+                            horizontal: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: notif.isRead
+                                ? null
+                                : colors.primaryContainer.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 32,
+                                height: 32,
+                                decoration: BoxDecoration(
+                                  color: Color(
+                                    notif.colorValue,
+                                  ).withOpacity(0.15),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(
+                                  _getNotifIcon(notif.type),
+                                  size: 16,
+                                  color: Color(notif.colorValue),
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      notif.title,
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: notif.isRead
+                                            ? FontWeight.w500
+                                            : FontWeight.bold,
+                                        color: colors.onSurface,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    Text(
+                                      notif.message,
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        color: colors.onSurfaceVariant,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              if (!notif.isRead)
+                                Container(
+                                  width: 8,
+                                  height: 8,
+                                  decoration: BoxDecoration(
+                                    color: colors.primary,
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    )
+                    .toList(),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  IconData _getNotifIcon(CommunityNotificationType type) {
+    switch (type) {
+      case CommunityNotificationType.newFollower:
+        return Icons.person_add_rounded;
+      case CommunityNotificationType.postUpvote:
+        return Icons.arrow_upward_rounded;
+      case CommunityNotificationType.postComment:
+        return Icons.chat_bubble_rounded;
+      case CommunityNotificationType.commentReply:
+        return Icons.reply_rounded;
+      case CommunityNotificationType.mention:
+        return Icons.alternate_email_rounded;
+      case CommunityNotificationType.achievement:
+        return Icons.emoji_events_rounded;
+      case CommunityNotificationType.milestone:
+        return Icons.celebration_rounded;
+      case CommunityNotificationType.announcement:
+        return Icons.campaign_rounded;
+      case CommunityNotificationType.trending:
+        return Icons.local_fire_department_rounded;
+    }
   }
 }
 

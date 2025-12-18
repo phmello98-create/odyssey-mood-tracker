@@ -1,18 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../providers/notifications_provider.dart';
 
 /// Widget de Quick Links com painéis expansíveis
-class QuickLinksWidget extends ConsumerStatefulWidget {
+class QuickLinksWidget extends StatefulWidget {
   const QuickLinksWidget({super.key});
 
   @override
-  ConsumerState<QuickLinksWidget> createState() => _QuickLinksWidgetState();
+  State<QuickLinksWidget> createState() => _QuickLinksWidgetState();
 }
 
-class _QuickLinksWidgetState extends ConsumerState<QuickLinksWidget> {
-  String? _expandedPanel; // 'regras', 'wiki', 'eventos', 'notificacoes', null
+class _QuickLinksWidgetState extends State<QuickLinksWidget> {
+  String? _expandedPanel; // 'regras', 'wiki', 'eventos', null
 
   void _togglePanel(String panelId) {
     HapticFeedback.selectionClick();
@@ -28,7 +26,6 @@ class _QuickLinksWidgetState extends ConsumerState<QuickLinksWidget> {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    final notifState = ref.watch(notificationsProvider);
 
     return Column(
       children: [
@@ -62,17 +59,6 @@ class _QuickLinksWidgetState extends ConsumerState<QuickLinksWidget> {
                 icon: Icons.calendar_month_rounded,
                 color: const Color(0xFFFFD54F),
                 isExpanded: _expandedPanel == 'eventos',
-              ),
-              _buildQuickLink(
-                context,
-                id: 'notificacoes',
-                label: 'Avisos',
-                icon: Icons.notifications_rounded,
-                color: const Color(0xFF9C27B0),
-                isExpanded: _expandedPanel == 'notificacoes',
-                badge: notifState.unreadCount > 0
-                    ? notifState.unreadCount
-                    : null,
               ),
             ],
           ),
@@ -177,8 +163,6 @@ class _QuickLinksWidgetState extends ConsumerState<QuickLinksWidget> {
         return _buildWikiPanel(colors);
       case 'eventos':
         return _buildEventsPanel(colors);
-      case 'notificacoes':
-        return _buildNotificationsPanel(colors);
       default:
         return const SizedBox.shrink();
     }
@@ -393,139 +377,6 @@ class _QuickLinksWidgetState extends ConsumerState<QuickLinksWidget> {
             .toList(),
       ),
     );
-  }
-
-  Widget _buildNotificationsPanel(ColorScheme colors) {
-    final notifState = ref.watch(notificationsProvider);
-    final notifications = notifState.notifications.take(5).toList();
-
-    return _buildPanel(
-      colors: colors,
-      color: const Color(0xFF9C27B0),
-      title: 'Notificações Recentes',
-      trailing: notifState.unreadCount > 0
-          ? TextButton(
-              onPressed: () {
-                ref.read(notificationsProvider.notifier).markAllAsRead();
-                HapticFeedback.lightImpact();
-              },
-              child: const Text('Marcar lidas', style: TextStyle(fontSize: 11)),
-            )
-          : null,
-      child: notifications.isEmpty
-          ? Padding(
-              padding: const EdgeInsets.all(16),
-              child: Text(
-                'Nenhuma notificação',
-                style: TextStyle(color: colors.onSurfaceVariant),
-              ),
-            )
-          : Column(
-              children: notifications
-                  .map(
-                    (notif) => InkWell(
-                      onTap: () {
-                        HapticFeedback.lightImpact();
-                        ref
-                            .read(notificationsProvider.notifier)
-                            .markAsRead(notif.id);
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                        decoration: BoxDecoration(
-                          color: notif.isRead
-                              ? null
-                              : colors.primaryContainer.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 32,
-                              height: 32,
-                              decoration: BoxDecoration(
-                                color: Color(
-                                  notif.colorValue,
-                                ).withOpacity(0.15),
-                                shape: BoxShape.circle,
-                              ),
-                              child: Icon(
-                                _getNotifIcon(notif.type.name),
-                                size: 16,
-                                color: Color(notif.colorValue),
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    notif.title,
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: notif.isRead
-                                          ? FontWeight.w500
-                                          : FontWeight.bold,
-                                      color: colors.onSurface,
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                  Text(
-                                    notif.message,
-                                    style: TextStyle(
-                                      fontSize: 10,
-                                      color: colors.onSurfaceVariant,
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ],
-                              ),
-                            ),
-                            if (!notif.isRead)
-                              Container(
-                                width: 8,
-                                height: 8,
-                                decoration: BoxDecoration(
-                                  color: colors.primary,
-                                  shape: BoxShape.circle,
-                                ),
-                              ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  )
-                  .toList(),
-            ),
-    );
-  }
-
-  IconData _getNotifIcon(String type) {
-    switch (type) {
-      case 'newFollower':
-        return Icons.person_add_rounded;
-      case 'postUpvote':
-        return Icons.arrow_upward_rounded;
-      case 'postComment':
-        return Icons.chat_bubble_rounded;
-      case 'commentReply':
-        return Icons.reply_rounded;
-      case 'mention':
-        return Icons.alternate_email_rounded;
-      case 'achievement':
-        return Icons.emoji_events_rounded;
-      case 'milestone':
-        return Icons.celebration_rounded;
-      case 'announcement':
-        return Icons.campaign_rounded;
-      case 'trending':
-        return Icons.local_fire_department_rounded;
-      default:
-        return Icons.notifications_rounded;
-    }
   }
 
   Widget _buildPanel({
