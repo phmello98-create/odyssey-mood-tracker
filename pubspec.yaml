@@ -46,7 +46,6 @@ dependencies:
   url_launcher: ^6.2.1  # Para abrir links externos
   flutter_inappwebview: ^6.0.0
   flex_color_scheme: ^8.4.0
-  flutter_soloud: ^3.4.6
   googleapis: ^15.0.0
   file_picker: ^10.3.7
   share_plus: ^12.0.1
@@ -96,6 +95,7 @@ dependencies:
   just_audio: ^0.10.5
   just_audio_media_kit: ^2.1.0
   media_kit_libs_linux: ^1.2.1
+  audioplayers: ^6.5.1
 
 dev_dependencies:
   flutter_test:
