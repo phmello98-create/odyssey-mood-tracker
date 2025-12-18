@@ -5478,8 +5478,8 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                                       setModalState(() {});
                                       soundService.tickType = 'soft_tick';
                                       // Preview - para e inicia com await
-                                      await soundService.stopTickSound();
-                                      await soundService.startTickSound(
+                                      soundService.stopTickSound();
+                                      soundService.startTickSound(
                                         type: 'soft_tick',
                                       );
                                     },
@@ -5542,8 +5542,8 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                                       setModalState(() {});
                                       soundService.tickType = 'clock_tick';
                                       // Preview - para e inicia com await
-                                      await soundService.stopTickSound();
-                                      await soundService.startTickSound(
+                                      soundService.stopTickSound();
+                                      soundService.startTickSound(
                                         type: 'clock_tick',
                                       );
                                     },

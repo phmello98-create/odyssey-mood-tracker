@@ -637,6 +637,23 @@ class SoundService {
     await _saveSettings();
   }
 
+  /// Alias para playAmbientSound
+  Future<void> startAmbientSound(String key, {double? volume}) async {
+    await playAmbientSound(key, volume: volume);
+  }
+
+  /// Para todos os sons de timer
+  void stopTimerSounds() {
+    stopTickSound();
+    stopAmbientSound();
+  }
+
+  /// Define volume do tick
+  void setTickVolume(double volume) {
+    _tickVolume = volume.clamp(0.0, 1.0);
+    _saveSettings();
+  }
+
   // ==========================================
   // TICK SOUND (TIMER)
   // ==========================================
@@ -701,6 +718,9 @@ class AmbientSoundInfo {
     required this.source,
     required this.category,
   });
+
+  /// Se é som local (sempre true para audioplayers)
+  bool get isLocal => true;
 }
 
 /// Singleton global
