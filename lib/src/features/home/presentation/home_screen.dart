@@ -544,13 +544,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-                  child: Row(
-                    children: [
-                      Expanded(child: _buildNotesWidget(context)),
-                      const SizedBox(width: 12),
-                      Expanded(child: _buildReadingsWidget(context)),
-                    ],
-                  ),
+                  child: _buildNotesAndReadingsSection(context),
                 ),
               ),
 
@@ -4955,237 +4949,485 @@ extension _HomeScreenStateDataInsights on _HomeScreenState {
     if (!_habitRepoInitialized) return const SizedBox.shrink();
 
     final habitRepo = ref.watch(habitRepositoryProvider);
+    final taskRepo = ref.watch(taskRepositoryProvider);
+    final colors = Theme.of(context).colorScheme;
 
     return ValueListenableBuilder(
       valueListenable: habitRepo.box.listenable(),
-      builder: (context, box, _) {
-        final allHabits = habitRepo.getAllHabits();
-        if (allHabits.isEmpty) return const SizedBox.shrink();
+      builder: (context, habitBox, _) {
+        return ValueListenableBuilder(
+          valueListenable:
+              taskRepo.boxListenable ??
+              ValueNotifier<Box>(
+                habitRepo.box,
+              ), // Fallback to avoid null error if repo not ready
+          builder: (context, taskBox, _) {
+            // Se taskBox for o fallback (habitBox), não tentamos ler tarefas dele
+            final actualTaskBox = taskRepo.boxListenable != null
+                ? taskBox
+                : null;
 
-        // Calcular estatísticas do mês
-        final now = DateTime.now();
-        final daysPassed = now.day;
+            return FutureBuilder<Box<Book>>(
+              future: Hive.openBox<Book>('books'),
+              builder: (context, bookSnapshot) {
+                final allHabits = habitRepo.getAllHabits();
+                if (allHabits.isEmpty) return const SizedBox.shrink();
 
-        int totalCompletions = 0;
-        int totalPossible = 0;
+                final now = DateTime.now();
+                final daysPassed = now.day;
+                final monthName = DateFormat('MMMM', 'pt_BR').format(now);
 
-        for (int day = 1; day <= daysPassed; day++) {
-          final date = DateTime(now.year, now.month, day);
-          final dayHabits = habitRepo.getHabitsForDate(date);
-          totalPossible += dayHabits.length;
-          totalCompletions += dayHabits
-              .where((h) => h.isCompletedOn(date))
-              .length;
-        }
+                // --- 1. Monthly Stats (Habits) ---
+                int totalCompletions = 0;
+                int totalPossible = 0;
 
-        final monthRate = totalPossible > 0
-            ? totalCompletions / totalPossible
-            : 0.0;
+                for (int day = 1; day <= daysPassed; day++) {
+                  final date = DateTime(now.year, now.month, day);
+                  final dayHabits = habitRepo.getHabitsForDate(date);
+                  totalPossible += dayHabits.length;
+                  totalCompletions += dayHabits
+                      .where((h) => h.isCompletedOn(date))
+                      .length;
+                }
 
-        // Encontrar dia mais produtivo
-        String bestDay = '';
-        double bestDayRate = 0;
-        final dayNames = [
-          'Segunda',
-          'Terça',
-          'Quarta',
-          'Quinta',
-          'Sexta',
-          'Sábado',
-          'Domingo',
-        ];
-        Map<int, List<double>> weekdayRates = {};
+                final monthRate = totalPossible > 0
+                    ? totalCompletions / totalPossible
+                    : 0.0;
 
-        for (int day = 1; day <= daysPassed; day++) {
-          final date = DateTime(now.year, now.month, day);
-          final weekday = date.weekday;
-          final dayHabits = habitRepo.getHabitsForDate(date);
-          if (dayHabits.isNotEmpty) {
-            final rate =
-                dayHabits.where((h) => h.isCompletedOn(date)).length /
-                dayHabits.length;
-            weekdayRates.putIfAbsent(weekday, () => []).add(rate);
-          }
-        }
+                // --- 2. Best Day Analysis ---
+                String bestDay = '—';
+                double bestDayRate = -1;
+                final dayNames = [
+                  'Seg',
+                  'Ter',
+                  'Qua',
+                  'Qui',
+                  'Sex',
+                  'Sáb',
+                  'Dom',
+                ];
+                Map<int, List<double>> weekdayRates = {};
 
-        weekdayRates.forEach((weekday, rates) {
-          final avg = rates.reduce((a, b) => a + b) / rates.length;
-          if (avg > bestDayRate) {
-            bestDayRate = avg;
-            bestDay = dayNames[weekday - 1];
-          }
-        });
+                for (int day = 1; day <= daysPassed; day++) {
+                  final date = DateTime(now.year, now.month, day);
+                  final weekday = date.weekday;
+                  final dayHabits = habitRepo.getHabitsForDate(date);
+                  if (dayHabits.isNotEmpty) {
+                    final rate =
+                        dayHabits.where((h) => h.isCompletedOn(date)).length /
+                        dayHabits.length;
+                    weekdayRates.putIfAbsent(weekday, () => []).add(rate);
+                  }
+                }
 
-        return OdysseyCard(
-          padding: const EdgeInsets.all(20),
-          margin: EdgeInsets.zero,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Icon(
-                    Icons.calendar_month_outlined,
-                    color: Theme.of(context).colorScheme.secondary,
-                    size: 20,
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'Resumo de ${DateFormat('MMMM', 'pt_BR').format(now).capitalize()}',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: Theme.of(context).colorScheme.onSurface,
-                      ),
-                      overflow: TextOverflow.ellipsis,
+                weekdayRates.forEach((weekday, rates) {
+                  final avg = rates.reduce((a, b) => a + b) / rates.length;
+                  if (avg > bestDayRate) {
+                    bestDayRate = avg;
+                    bestDay = dayNames[weekday - 1];
+                  }
+                });
+
+                // --- 3. Tasks Stats ---
+                int tasksCompletedMonth = 0;
+                if (actualTaskBox != null) {
+                  for (final key in actualTaskBox.keys) {
+                    final value = actualTaskBox.get(key);
+                    if (value is Map) {
+                      final task = TaskData.fromMap(
+                        key,
+                        Map<String, dynamic>.from(value),
+                      );
+                      if (task.completed &&
+                          task.completedAt != null &&
+                          task.completedAt!.year == now.year &&
+                          task.completedAt!.month == now.month) {
+                        tasksCompletedMonth++;
+                      }
+                    }
+                  }
+                }
+
+                // --- 4. Books Stats ---
+                int booksReadMonth = 0;
+                if (bookSnapshot.hasData) {
+                  final books = bookSnapshot.data!.values;
+                  for (final book in books) {
+                    if (book.status == BookStatus.read) {
+                      // Check if finished this month
+                      final finishedDate =
+                          book.latestFinishDate ?? book.dateModified;
+                      if (finishedDate.year == now.year &&
+                          finishedDate.month == now.month) {
+                        booksReadMonth++;
+                      }
+                    }
+                  }
+                }
+
+                // --- 5. Impulse Phrase ---
+                final phraseIndex =
+                    (now.year * 12 + now.month) % _dailyInsights.length;
+                final impulsePhrase = _dailyInsights[phraseIndex];
+
+                // --- UI Construction ---
+                return Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 4),
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        colors.primaryContainer.withOpacity(0.4),
+                        colors.surface,
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
-              // Progress circular grande com animação MOTOR
-              Row(
-                children: [
-                  // Círculo de progresso com Motor
-                  MotionCircularProgress(
-                    value: monthRate,
-                    size: 80,
-                    strokeWidth: 8,
-                    backgroundColor: Theme.of(
-                      context,
-                    ).colorScheme.surfaceContainerHighest,
-                    valueColor: monthRate >= 0.7
-                        ? const Color(0xFF07E092)
-                        : (monthRate >= 0.4
-                              ? Theme.of(context).colorScheme.primary
-                              : Theme.of(context).colorScheme.tertiary),
-                    motion: AppMotion.progress,
-                    child: MotionCounter(
-                      value: (monthRate * 100).round(),
-                      suffix: '%',
-                      motion: AppMotion.counter,
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w700,
-                        color: Theme.of(context).colorScheme.onSurface,
+                    borderRadius: BorderRadius.circular(32),
+                    border: Border.all(color: colors.outline.withOpacity(0.08)),
+                    boxShadow: [
+                      BoxShadow(
+                        color: colors.shadow.withOpacity(0.05),
+                        blurRadius: 24,
+                        offset: const Offset(0, 8),
                       ),
-                    ),
+                    ],
                   ),
-                  const SizedBox(width: 20),
-                  // Info
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          '$totalCompletions de $totalPossible',
-                          style: TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.w700,
-                            color: Theme.of(context).colorScheme.onSurface,
-                          ),
-                        ),
-                        Text(
-                          'hábitos completados',
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: Theme.of(
-                              context,
-                            ).colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                        if (bestDay.isNotEmpty) ...[
-                          const SizedBox(height: 8),
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Header Row
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Icon(
-                                Icons.star,
-                                color: Color(0xFFFFD700),
-                                size: 14,
-                              ),
-                              const SizedBox(width: 4),
-                              Flexible(
-                                child: Text(
-                                  'Melhor dia: $bestDay',
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                    color: Color(0xFFFFD700),
-                                    fontWeight: FontWeight.w500,
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.insights_rounded,
+                                    size: 16,
+                                    color: colors.primary,
                                   ),
-                                  overflow: TextOverflow.ellipsis,
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    'RESUMO DE ${monthName.toUpperCase()}',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w800,
+                                      letterSpacing: 1.0,
+                                      color: colors.primary,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 6),
+                              RichText(
+                                text: TextSpan(
+                                  children: [
+                                    TextSpan(
+                                      text: '${(monthRate * 100).toInt()}% ',
+                                      style: TextStyle(
+                                        fontSize: 32,
+                                        fontWeight: FontWeight.w800,
+                                        color: colors.onSurface,
+                                        height: 1.0,
+                                      ),
+                                    ),
+                                    TextSpan(
+                                      text: 'de aproveitamento',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w500,
+                                        color: colors.onSurfaceVariant,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                          // Decorative Circular Indicator
+                          SizedBox(
+                            width: 50,
+                            height: 50,
+                            child: CircularProgressIndicator(
+                              value: monthRate,
+                              strokeWidth: 6,
+                              strokeCap: StrokeCap.round,
+                              backgroundColor: colors.surfaceContainerHighest,
+                              color: colors.primary,
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 24),
+
+                      // KPI Grid
+                      Column(
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _buildResultCard(
+                                  context,
+                                  label: 'Hábitos Feitos',
+                                  value: totalCompletions.toString(),
+                                  icon: Icons.check_circle_outline_rounded,
+                                  color: const Color(0xFF4CAF50),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: _buildResultCard(
+                                  context,
+                                  label: 'Melhor Dia',
+                                  value: bestDay,
+                                  icon: Icons.emoji_events_outlined,
+                                  color: const Color(0xFFFFB300),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _buildResultCard(
+                                  context,
+                                  label: 'Tarefas Concluídas',
+                                  value: tasksCompletedMonth.toString(),
+                                  icon: Icons.task_alt_rounded,
+                                  color: const Color(0xFF29B6F6),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: _buildResultCard(
+                                  context,
+                                  label: 'Livros Lidos',
+                                  value: booksReadMonth.toString(),
+                                  icon: Icons.menu_book_rounded,
+                                  color: const Color(0xFFAB47BC),
                                 ),
                               ),
                             ],
                           ),
                         ],
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              // Mini heatmap dos últimos 14 dias
-              Text(
-                'Últimos 14 dias',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
-              ),
-              const SizedBox(height: 8),
-              LayoutBuilder(
-                builder: (context, constraints) {
-                  final dotSize =
-                      (constraints.maxWidth - 13 * 4) /
-                      14; // 14 dots with 4px spacing
-                  final size = dotSize.clamp(12.0, 18.0);
+                      ),
 
-                  return Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: List.generate(14, (index) {
-                      final date = now.subtract(Duration(days: 13 - index));
-                      final dayHabits = habitRepo.getHabitsForDate(date);
-                      final completedCount = dayHabits
-                          .where((h) => h.isCompletedOn(date))
-                          .length;
-                      final rate = dayHabits.isNotEmpty
-                          ? completedCount / dayHabits.length
-                          : 0.0;
+                      const SizedBox(height: 24),
 
-                      Color dotColor;
-                      if (rate >= 1.0) {
-                        dotColor = const Color(0xFF07E092);
-                      } else if (rate >= 0.5) {
-                        dotColor = Theme.of(context).colorScheme.primary;
-                      } else if (rate > 0) {
-                        dotColor = Theme.of(
-                          context,
-                        ).colorScheme.tertiary.withOpacity(0.6);
-                      } else {
-                        dotColor = Theme.of(
-                          context,
-                        ).colorScheme.surfaceContainerHighest;
-                      }
+                      // Last 14 Days Visualization
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Últimos 14 Dias',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: colors.onSurface,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      LayoutBuilder(
+                        builder: (context, constraints) {
+                          // Calculate dynamic width for bars
+                          const spacing = 4.0;
+                          final totalSpacing = spacing * 13;
+                          final availableWidth =
+                              constraints.maxWidth - totalSpacing;
+                          final itemWidth = availableWidth / 14;
 
-                      return Container(
-                        width: size,
-                        height: size,
+                          return SizedBox(
+                            height: 50, // Height for the chart area
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: List.generate(14, (index) {
+                                final date = now.subtract(
+                                  Duration(days: 13 - index),
+                                );
+                                final dayHabits = habitRepo.getHabitsForDate(
+                                  date,
+                                );
+                                final completedCount = dayHabits
+                                    .where((h) => h.isCompletedOn(date))
+                                    .length;
+                                final totalCount = dayHabits.length;
+                                final rate = totalCount > 0
+                                    ? completedCount / totalCount
+                                    : 0.0;
+
+                                final isToday = index == 13;
+                                // Dynamic height based on rate, min height 15%
+                                final heightFactor = rate == 0
+                                    ? 0.15
+                                    : (rate < 0.2 ? 0.2 : rate);
+
+                                return Tooltip(
+                                  message:
+                                      '${DateFormat('dd/MM').format(date)}\n${(rate * 100).toInt()}% ($completedCount/$totalCount)',
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: colors.inverseSurface,
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  textStyle: TextStyle(
+                                    color: colors.onInverseSurface,
+                                    fontSize: 12,
+                                  ),
+                                  triggerMode: TooltipTriggerMode.tap,
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.end,
+                                    children: [
+                                      Container(
+                                        width: itemWidth,
+                                        height: 50 * heightFactor,
+                                        decoration: BoxDecoration(
+                                          color: _getColorForRate(
+                                            rate,
+                                            colors,
+                                          ).withOpacity(isToday ? 1.0 : 0.8),
+                                          borderRadius: BorderRadius.circular(
+                                            4,
+                                          ),
+                                          boxShadow: isToday && rate > 0
+                                              ? [
+                                                  BoxShadow(
+                                                    color: colors.primary
+                                                        .withOpacity(0.4),
+                                                    blurRadius: 8,
+                                                    offset: const Offset(0, 2),
+                                                  ),
+                                                ]
+                                              : null,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              }),
+                            ),
+                          );
+                        },
+                      ),
+
+                      const SizedBox(height: 24),
+
+                      // Impulse Phrase
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: dotColor,
-                          borderRadius: BorderRadius.circular(3),
+                          color: colors.primary.withOpacity(0.08),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: colors.primary.withOpacity(0.1),
+                          ),
                         ),
-                      );
-                    }),
-                  );
-                },
-              ),
-            ],
-          ),
+                        child: Column(
+                          children: [
+                            Icon(
+                              Icons.format_quote_rounded,
+                              color: colors.primary,
+                              size: 24,
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              '"$impulsePhrase"',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontStyle: FontStyle.italic,
+                                fontWeight: FontWeight.w500,
+                                color: colors.onSurface.withOpacity(0.8),
+                                height: 1.4,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'FRASE DO MÊS',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 1.2,
+                                color: colors.primary.withOpacity(0.7),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            );
+          },
         );
       },
     );
+  }
+
+  Widget _buildResultCard(
+    BuildContext context, {
+    required String label,
+    required String value,
+    required IconData icon,
+    required Color color,
+  }) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.3),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: theme.colorScheme.outline.withOpacity(0.05)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, size: 18, color: color),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: theme.colorScheme.onSurface,
+            ),
+          ),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Color _getColorForRate(double rate, ColorScheme colors) {
+    if (rate >= 1.0) return const Color(0xFF00C853);
+    if (rate >= 0.7) return const Color(0xFF69F0AE);
+    if (rate >= 0.4) return colors.primary;
+    if (rate > 0) return colors.primary.withOpacity(0.5);
+    return colors.surfaceContainerHighest;
   }
 
   // ==========================================
@@ -6176,32 +6418,55 @@ extension _HomeScreenStateDataInsights on _HomeScreenState {
   }
 
   // ==========================================
-  // WIDGET DE NOTAS (COMPACTO)
+  // WIDGET DE NOTAS E LEITURAS (PILLS UNIFICADA)
   // ==========================================
-  Widget _buildNotesWidget(BuildContext context) {
+  Widget _buildNotesAndReadingsSection(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.all(6),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: colors.outline.withOpacity(0.06)),
+        boxShadow: [
+          BoxShadow(
+            color: colors.shadow.withOpacity(0.04),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Expanded(child: _buildNotesPill(context)),
+          const SizedBox(width: 8),
+          Container(
+            width: 1,
+            height: 32,
+            color: colors.outlineVariant.withOpacity(0.3),
+          ),
+          const SizedBox(width: 8),
+          Expanded(child: _buildReadingsPill(context)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNotesPill(BuildContext context) {
     return FutureBuilder<Box>(
       future: Hive.openBox('notes'),
       builder: (context, snapshot) {
         int noteCount = 0;
-        String? lastNote;
-
         if (snapshot.hasData) {
-          final box = snapshot.data!;
-          noteCount = box.length;
-          if (noteCount > 0) {
-            final notes = box.values.toList();
-            notes.sort((a, b) {
-              final dateA =
-                  DateTime.tryParse(a['updatedAt'] ?? '') ?? DateTime(2000);
-              final dateB =
-                  DateTime.tryParse(b['updatedAt'] ?? '') ?? DateTime(2000);
-              return dateB.compareTo(dateA);
-            });
-            lastNote = notes.first['title'] ?? 'Sem título';
-          }
+          noteCount = snapshot.data!.length;
         }
 
-        return OdysseyCard(
+        return _buildPillItem(
+          context,
+          label: 'Notas',
+          count: noteCount.toString(),
+          icon: Icons.sticky_note_2_rounded,
+          color: Theme.of(context).colorScheme.tertiary,
           onTap: () {
             HapticFeedback.lightImpact();
             Navigator.push(
@@ -6209,94 +6474,29 @@ extension _HomeScreenStateDataInsights on _HomeScreenState {
               MaterialPageRoute(builder: (_) => const NotesScreen()),
             );
           },
-          padding: const EdgeInsets.all(14),
-          margin: EdgeInsets.zero,
-          gradientColors: [
-            Theme.of(context).colorScheme.tertiary.withOpacity(0.2),
-            Theme.of(context).colorScheme.tertiary.withOpacity(0.05),
-          ],
-          borderColor: Theme.of(context).colorScheme.tertiary.withOpacity(0.2),
-          child: SizedBox(
-            height: 120,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Icon(
-                      Icons.sticky_note_2_outlined,
-                      color: Theme.of(context).colorScheme.tertiary,
-                      size: 20,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Notas',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: Theme.of(
-                          context,
-                        ).colorScheme.onSurface.withOpacity(0.9),
-                      ),
-                    ),
-                  ],
-                ),
-                const Spacer(),
-                Text(
-                  '$noteCount notas',
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w700,
-                    color: Theme.of(context).colorScheme.tertiary,
-                  ),
-                ),
-                if (lastNote != null) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    lastNote,
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ],
-            ),
-          ),
         );
       },
     );
   }
 
-  // ==========================================
-  // WIDGET DE LEITURAS (COMPACTO)
-  // ==========================================
-  Widget _buildReadingsWidget(BuildContext context) {
+  Widget _buildReadingsPill(BuildContext context) {
     return FutureBuilder<Box<Book>>(
       future: _openBooksBox(),
       builder: (context, snapshot) {
         int readingCount = 0;
-        String? currentBook;
-        int pagesRead = 0;
-
         if (snapshot.hasData) {
           final box = snapshot.data!;
-          final books = box.values.where((b) => !b.deleted).toList();
-          readingCount = books
+          readingCount = box.values
               .where((b) => b.status == BookStatus.inProgress)
               .length;
-          final currentBooks = books
-              .where((b) => b.status == BookStatus.inProgress)
-              .toList();
-          if (currentBooks.isNotEmpty) {
-            currentBook = currentBooks.first.title;
-          }
-          pagesRead = books.fold(0, (sum, b) => sum + b.currentPage);
         }
 
-        return OdysseyCard(
+        return _buildPillItem(
+          context,
+          label: 'Lendo',
+          count: readingCount.toString(),
+          icon: Icons.menu_book_rounded,
+          color: Theme.of(context).colorScheme.secondary,
           onTap: () {
             HapticFeedback.lightImpact();
             Navigator.push(
@@ -6304,80 +6504,60 @@ extension _HomeScreenStateDataInsights on _HomeScreenState {
               MaterialPageRoute(builder: (_) => const LibraryScreen()),
             );
           },
-          padding: const EdgeInsets.all(14),
-          margin: EdgeInsets.zero,
-          gradientColors: [
-            Theme.of(context).colorScheme.secondary.withOpacity(0.2),
-            Theme.of(context).colorScheme.secondary.withOpacity(0.05),
-          ],
-          borderColor: Theme.of(context).colorScheme.secondary.withOpacity(0.2),
-          child: SizedBox(
-            height: 120,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Icon(
-                      Icons.menu_book_outlined,
-                      color: Theme.of(context).colorScheme.secondary,
-                      size: 20,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Biblioteca',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: Theme.of(
-                          context,
-                        ).colorScheme.onSurface.withOpacity(0.9),
-                      ),
-                    ),
-                  ],
-                ),
-                const Spacer(),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      '$readingCount',
-                      style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w700,
-                        color: Theme.of(context).colorScheme.secondary,
-                      ),
-                    ),
-                    const SizedBox(width: 4),
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 3),
-                      child: Text(
-                        'lendo',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                if (currentBook != null) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    currentBook,
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ],
-            ),
-          ),
         );
       },
+    );
+  }
+
+  Widget _buildPillItem(
+    BuildContext context, {
+    required String label,
+    required String count,
+    required IconData icon,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    final colors = Theme.of(context).colorScheme;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(18),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(icon, size: 18, color: color),
+                ),
+                const SizedBox(width: 10),
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: colors.onSurface,
+                  ),
+                ),
+              ],
+            ),
+            Text(
+              count,
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: colors.onSurface,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
