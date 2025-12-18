@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/topic.dart';
 import '../providers/community_providers.dart';
+import '../providers/notifications_provider.dart';
 import '../widgets/post_card.dart';
 import '../widgets/community_search_bar.dart';
 import '../widgets/curated_section.dart';
@@ -14,6 +15,7 @@ import '../widgets/top_users_widget.dart';
 import '../providers/radio_provider.dart';
 import 'create_post_screen.dart';
 import 'search_screen.dart';
+import 'notifications_screen.dart';
 
 /// Tela principal da comunidade - Estilo Reddit Minimalista
 class CommunityScreen extends ConsumerStatefulWidget {
@@ -132,14 +134,62 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen> {
                         );
                       },
                     ),
-                    IconButton(
-                      icon: Icon(
-                        Icons.notifications_outlined,
-                        color: colors.onSurfaceVariant,
-                      ),
-                      onPressed: () {
-                        HapticFeedback.lightImpact();
-                        // TODO: Notifications screen
+                    // Notifications Button with badge
+                    Consumer(
+                      builder: (context, ref, child) {
+                        final notifState = ref.watch(notificationsProvider);
+                        final unreadCount = notifState.unreadCount;
+
+                        return Stack(
+                          clipBehavior: Clip.none,
+                          children: [
+                            IconButton(
+                              icon: Icon(
+                                unreadCount > 0
+                                    ? Icons.notifications_rounded
+                                    : Icons.notifications_outlined,
+                                color: unreadCount > 0
+                                    ? colors.primary
+                                    : colors.onSurfaceVariant,
+                              ),
+                              onPressed: () {
+                                HapticFeedback.lightImpact();
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => const NotificationsScreen(),
+                                  ),
+                                );
+                              },
+                            ),
+                            // Unread badge
+                            if (unreadCount > 0)
+                              Positioned(
+                                right: 6,
+                                top: 6,
+                                child: Container(
+                                  padding: const EdgeInsets.all(4),
+                                  decoration: BoxDecoration(
+                                    color: colors.error,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  constraints: const BoxConstraints(
+                                    minWidth: 16,
+                                    minHeight: 16,
+                                  ),
+                                  child: Text(
+                                    unreadCount > 9 ? '9+' : '$unreadCount',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        );
                       },
                     ),
                     const SizedBox(width: 8),
