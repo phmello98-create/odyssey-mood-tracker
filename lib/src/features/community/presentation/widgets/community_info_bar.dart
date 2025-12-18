@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'pulsing_online_indicator.dart';
 
 class CommunityInfoBar extends StatelessWidget {
   const CommunityInfoBar({super.key});
@@ -24,14 +25,8 @@ class CommunityInfoBar extends StatelessWidget {
             width: 1,
             color: colors.outline.withOpacity(0.2),
           ),
-          _buildStat(
-            context,
-            Icons.circle,
-            '432',
-            'Online',
-            iconColor: const Color(0xFF4CAF50),
-            iconSize: 10,
-          ),
+          // Online stat with pulsing indicator
+          _buildOnlineStat(context, '432', 'Online'),
           Container(
             height: 20,
             width: 1,
@@ -45,6 +40,38 @@ class CommunityInfoBar extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildOnlineStat(BuildContext context, String value, String label) {
+    final colors = Theme.of(context).colorScheme;
+    return Row(
+      children: [
+        const PulsingOnlineIndicator(size: 10),
+        const SizedBox(width: 8),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              value,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: colors.onSurface,
+                height: 1.1,
+              ),
+            ),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w500,
+                color: colors.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 

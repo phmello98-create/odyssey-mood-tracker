@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/topic.dart';
-
 import '../../domain/notification.dart';
 import '../providers/community_providers.dart';
 import '../providers/notifications_provider.dart';
@@ -11,10 +10,9 @@ import '../widgets/community_search_bar.dart';
 import '../widgets/curated_section.dart';
 import '../widgets/community_info_bar.dart';
 import '../widgets/quick_links_widget.dart';
-import '../widgets/radio_popup_player.dart';
+import '../widgets/radio_bar_player.dart';
 import '../widgets/trending_section.dart';
 import '../widgets/top_users_widget.dart';
-import '../providers/radio_provider.dart';
 import 'create_post_screen.dart';
 import 'search_screen.dart';
 
@@ -28,9 +26,7 @@ class CommunityScreen extends ConsumerStatefulWidget {
 
 class _CommunityScreenState extends ConsumerState<CommunityScreen> {
   final ScrollController _scrollController = ScrollController();
-  bool _showRadioPopup = false;
   bool _showNotificationsPanel = false;
-  final GlobalKey _radioButtonKey = GlobalKey();
 
   @override
   void dispose() {
@@ -100,42 +96,6 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen> {
                     ],
                   ),
                   actions: [
-                    // Radio Button (Disco Player with Popup)
-                    Consumer(
-                      builder: (context, ref, child) {
-                        final radioState = ref.watch(radioProvider);
-                        return Stack(
-                          clipBehavior: Clip.none,
-                          children: [
-                            IconButton(
-                              key: _radioButtonKey,
-                              icon: Icon(
-                                radioState.isPlaying
-                                    ? Icons.album_rounded
-                                    : Icons.album_outlined,
-                                color: radioState.isPlaying
-                                    ? colors.primary
-                                    : colors.onSurfaceVariant,
-                              ),
-                              onPressed: () {
-                                HapticFeedback.lightImpact();
-                                setState(() {
-                                  _showRadioPopup = !_showRadioPopup;
-                                });
-                              },
-                              tooltip: 'Rádio Odyssey',
-                            ),
-                            // Music playing indicator
-                            if (radioState.isPlaying && !_showRadioPopup)
-                              Positioned(
-                                right: 6,
-                                bottom: 6,
-                                child: _MusicIndicator(),
-                              ),
-                          ],
-                        );
-                      },
-                    ),
                     // Notifications Button with badge
                     Consumer(
                       builder: (context, ref, child) {
@@ -200,6 +160,9 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen> {
                     const SizedBox(width: 8),
                   ],
                 ),
+
+                // Radio Bar Player
+                const SliverToBoxAdapter(child: RadioBarPlayer()),
 
                 // Persistent Search Bar
                 SliverToBoxAdapter(
@@ -380,37 +343,6 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen> {
               ],
             ),
           ),
-
-          // Radio Popup Overlay
-          if (_showRadioPopup)
-            GestureDetector(
-              onTap: () {
-                setState(() {
-                  _showRadioPopup = false;
-                });
-              },
-              child: Container(
-                color: Colors.black.withOpacity(0.3),
-                child: Stack(
-                  children: [
-                    Positioned(
-                      top: 60,
-                      right: 16,
-                      child: GestureDetector(
-                        onTap: () {}, // Prevent dismissal when tapping popup
-                        child: RadioPopupPlayer(
-                          onClose: () {
-                            setState(() {
-                              _showRadioPopup = false;
-                            });
-                          },
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
         ],
       ),
 

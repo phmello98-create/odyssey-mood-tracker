@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/mock_community_data.dart';
+import '../providers/community_providers.dart';
 
 /// Seção de Trending - mostra posts em destaque e tags populares
 class TrendingSection extends ConsumerWidget {
@@ -69,7 +70,7 @@ class TrendingSection extends ConsumerWidget {
             spacing: 8,
             runSpacing: 8,
             children: trendingTags.map((tag) {
-              return _buildTagChip(context, tag, colors);
+              return _buildTagChip(context, tag, colors, ref);
             }).toList(),
           ),
         ),
@@ -198,24 +199,49 @@ class TrendingSection extends ConsumerWidget {
     );
   }
 
-  Widget _buildTagChip(BuildContext context, String tag, ColorScheme colors) {
+  Widget _buildTagChip(
+    BuildContext context,
+    String tag,
+    ColorScheme colors,
+    WidgetRef ref,
+  ) {
+    final currentTag = ref.watch(selectedTagProvider);
+    final isSelected = currentTag?.toLowerCase() == tag.toLowerCase();
+
     return InkWell(
       borderRadius: BorderRadius.circular(20),
       onTap: () {
         HapticFeedback.selectionClick();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Filtrando por #$tag'),
-            duration: const Duration(seconds: 1),
-          ),
-        );
+        if (isSelected) {
+          // Deselect tag
+          ref.read(selectedTagProvider.notifier).state = null;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Filtro removido'),
+              duration: Duration(seconds: 1),
+            ),
+          );
+        } else {
+          // Select tag
+          ref.read(selectedTagProvider.notifier).state = tag;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Filtrando por #$tag'),
+              duration: const Duration(seconds: 1),
+            ),
+          );
+        }
       },
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          color: colors.surfaceContainerHighest,
+          color: isSelected ? colors.primary : colors.surfaceContainerHighest,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: colors.outline.withOpacity(0.2)),
+          border: Border.all(
+            color: isSelected
+                ? colors.primary
+                : colors.outline.withOpacity(0.2),
+          ),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -225,10 +251,16 @@ class TrendingSection extends ConsumerWidget {
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.bold,
-                color: colors.primary,
+                color: isSelected ? colors.onPrimary : colors.primary,
               ),
             ),
-            Text(tag, style: TextStyle(fontSize: 12, color: colors.onSurface)),
+            Text(
+              tag,
+              style: TextStyle(
+                fontSize: 12,
+                color: isSelected ? colors.onPrimary : colors.onSurface,
+              ),
+            ),
           ],
         ),
       ),

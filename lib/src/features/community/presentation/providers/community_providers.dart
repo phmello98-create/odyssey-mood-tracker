@@ -58,10 +58,14 @@ final feedSortOrderProvider = StateProvider<FeedSortOrder>(
   (ref) => FeedSortOrder.recent,
 );
 
+/// Provider para tag selecionada no filtro
+final selectedTagProvider = StateProvider<String?>((ref) => null);
+
 /// Stream provider para o feed de posts (com filtros e fallback para mock data)
 final feedProvider = StreamProvider<List<Post>>((ref) {
   final topic = ref.watch(selectedTopicProvider);
   final postType = ref.watch(selectedPostTypeProvider);
+  final selectedTag = ref.watch(selectedTagProvider);
 
   try {
     final repo = ref.watch(communityRepositoryProvider);
@@ -77,26 +81,45 @@ final feedProvider = StreamProvider<List<Post>>((ref) {
           if (postType != null) {
             filtered = filtered.where((p) => p.type == postType).toList();
           }
+          if (selectedTag != null) {
+            filtered = filtered
+                .where(
+                  (p) => p.tags.any(
+                    (t) => t.toLowerCase() == selectedTag.toLowerCase(),
+                  ),
+                )
+                .toList();
+          }
           return filtered;
         })
         .handleError((error) {
           // Se Firebase falhar, usa mock data
-          return Stream.value(_getMockPosts(topic, postType));
+          return Stream.value(_getMockPosts(topic, postType, selectedTag));
         });
   } catch (e) {
     // Fallback para mock data se Firebase não estiver disponível
-    return Stream.value(_getMockPosts(topic, postType));
+    return Stream.value(_getMockPosts(topic, postType, selectedTag));
   }
 });
 
 /// Helper para obter posts mock filtrados
-List<Post> _getMockPosts(CommunityTopic? topic, PostType? postType) {
+List<Post> _getMockPosts(
+  CommunityTopic? topic,
+  PostType? postType,
+  String? tag,
+) {
   var posts = topic != null
       ? MockCommunityData.getPostsByTopic(topic)
       : MockCommunityData.getPosts();
 
   if (postType != null) {
     posts = posts.where((p) => p.type == postType).toList();
+  }
+
+  if (tag != null) {
+    posts = posts
+        .where((p) => p.tags.any((t) => t.toLowerCase() == tag.toLowerCase()))
+        .toList();
   }
 
   return posts;
