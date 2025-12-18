@@ -6,6 +6,10 @@ import '../providers/community_providers.dart';
 import '../widgets/post_card.dart';
 import '../widgets/community_search_bar.dart';
 import '../widgets/curated_section.dart';
+import '../widgets/community_info_bar.dart';
+import '../widgets/quick_links_widget.dart';
+import '../widgets/radio_popup_player.dart';
+import '../providers/radio_provider.dart';
 import 'create_post_screen.dart';
 import 'search_screen.dart';
 
@@ -19,6 +23,8 @@ class CommunityScreen extends ConsumerStatefulWidget {
 
 class _CommunityScreenState extends ConsumerState<CommunityScreen> {
   final ScrollController _scrollController = ScrollController();
+  bool _showRadioPopup = false;
+  final GlobalKey _radioButtonKey = GlobalKey();
 
   @override
   void dispose() {
@@ -52,200 +58,286 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen> {
 
     return Scaffold(
       backgroundColor: colors.surfaceContainerLowest,
-      body: RefreshIndicator(
-        onRefresh: _onRefresh,
-        child: CustomScrollView(
-          controller: _scrollController,
-          physics: const AlwaysScrollableScrollPhysics(),
-          slivers: [
-            // App Bar minimalista (Polida)
-            SliverAppBar(
-              floating: true,
-              snap: true,
-              backgroundColor: colors.surface,
-              surfaceTintColor: colors.surface,
-              elevation: 0,
-              centerTitle: false,
-              title: Row(
-                children: [
-                  Icon(Icons.forum_rounded, color: colors.primary, size: 24),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Comunidade',
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w800,
-                      color: colors.onSurface,
-                      letterSpacing: -0.5,
-                    ),
-                  ),
-                ],
-              ),
-              actions: [
-                IconButton(
-                  icon: Icon(
-                    Icons.notifications_outlined,
-                    color: colors.onSurfaceVariant,
-                  ),
-                  onPressed: () {
-                    HapticFeedback.lightImpact();
-                    // TODO: Notifications screen
-                  },
-                ),
-                const SizedBox(width: 8),
-              ],
-            ),
-
-            // Persistent Search Bar
-            SliverToBoxAdapter(
-              child: CommunitySearchBar(onTap: _navigateToSearch),
-            ),
-
-            // Curated Section (ModOdyssey)
-            const SliverToBoxAdapter(child: CuratedSection()),
-
-            // Topic filter chips (horizontal scroll)
-            SliverToBoxAdapter(
-              child: Container(
-                height: 56, // Slightly taller for better touch targets
-                padding: const EdgeInsets.symmetric(vertical: 10),
-                decoration: BoxDecoration(
-                  color: colors.surface,
-                  border: Border(
-                    bottom: BorderSide(
-                      color: colors.outlineVariant.withOpacity(0.15),
-                      width: 1,
-                    ),
-                  ),
-                ),
-                child: ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  itemCount: CommunityTopic.values.length + 1,
-                  itemBuilder: (context, index) {
-                    if (index == 0) {
-                      // "Todos" chip
-                      final isSelected = selectedTopic == null;
-                      return Padding(
-                        padding: const EdgeInsets.only(right: 8),
-                        child: FilterChip(
-                          showCheckmark: false,
-                          label: const Text('Todos'),
-                          selected: isSelected,
-                          onSelected: (_) {
-                            HapticFeedback.selectionClick();
-                            ref.read(selectedTopicProvider.notifier).state =
-                                null;
-                          },
-                          backgroundColor: colors.surfaceContainerHighest
-                              .withOpacity(0.5),
-                          selectedColor: colors.primary.withOpacity(1.0),
-                          labelStyle: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: isSelected
-                                ? colors.onPrimary
-                                : colors.onSurfaceVariant,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(20),
-                            side: BorderSide(
-                              color: isSelected
-                                  ? Colors.transparent
-                                  : colors.outline.withOpacity(0.1),
-                            ),
-                          ),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 0,
-                          ),
-                          visualDensity: VisualDensity.compact,
+      body: Stack(
+        children: [
+          RefreshIndicator(
+            onRefresh: _onRefresh,
+            child: CustomScrollView(
+              controller: _scrollController,
+              physics: const AlwaysScrollableScrollPhysics(),
+              slivers: [
+                // App Bar minimalista (Polida)
+                SliverAppBar(
+                  floating: true,
+                  snap: true,
+                  backgroundColor: colors.surface,
+                  surfaceTintColor: colors.surface,
+                  elevation: 0,
+                  centerTitle: false,
+                  title: Row(
+                    children: [
+                      Icon(
+                        Icons.forum_rounded,
+                        color: colors.primary,
+                        size: 24,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Comunidade',
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w800,
+                          color: colors.onSurface,
+                          letterSpacing: -0.5,
                         ),
+                      ),
+                    ],
+                  ),
+                  actions: [
+                    // Radio Button (Disco Player with Popup)
+                    Consumer(
+                      builder: (context, ref, child) {
+                        final radioState = ref.watch(radioProvider);
+                        return Stack(
+                          clipBehavior: Clip.none,
+                          children: [
+                            IconButton(
+                              key: _radioButtonKey,
+                              icon: Icon(
+                                radioState.isPlaying
+                                    ? Icons.album_rounded
+                                    : Icons.album_outlined,
+                                color: radioState.isPlaying
+                                    ? colors.primary
+                                    : colors.onSurfaceVariant,
+                              ),
+                              onPressed: () {
+                                HapticFeedback.lightImpact();
+                                setState(() {
+                                  _showRadioPopup = !_showRadioPopup;
+                                });
+                              },
+                              tooltip: 'Rádio Odyssey',
+                            ),
+                            // Music playing indicator
+                            if (radioState.isPlaying && !_showRadioPopup)
+                              Positioned(
+                                right: 6,
+                                bottom: 6,
+                                child: _MusicIndicator(),
+                              ),
+                          ],
+                        );
+                      },
+                    ),
+                    IconButton(
+                      icon: Icon(
+                        Icons.notifications_outlined,
+                        color: colors.onSurfaceVariant,
+                      ),
+                      onPressed: () {
+                        HapticFeedback.lightImpact();
+                        // TODO: Notifications screen
+                      },
+                    ),
+                    const SizedBox(width: 8),
+                  ],
+                ),
+
+                // Persistent Search Bar
+                SliverToBoxAdapter(
+                  child: CommunitySearchBar(onTap: _navigateToSearch),
+                ),
+
+                // Community Info Bar (Stats)
+                const SliverToBoxAdapter(child: CommunityInfoBar()),
+
+                // Curated Section (ModOdyssey)
+                const SliverToBoxAdapter(child: CuratedSection()),
+
+                // Quick Links / Indexes
+                const SliverToBoxAdapter(
+                  child: Padding(
+                    padding: EdgeInsets.only(bottom: 12),
+                    child: QuickLinksWidget(),
+                  ),
+                ),
+
+                // Topic filter chips (horizontal scroll)
+                SliverToBoxAdapter(
+                  child: Container(
+                    height: 56, // Slightly taller for better touch targets
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    decoration: BoxDecoration(
+                      color: colors.surface,
+                      border: Border(
+                        bottom: BorderSide(
+                          color: colors.outlineVariant.withOpacity(0.15),
+                          width: 1,
+                        ),
+                      ),
+                    ),
+                    child: ListView.builder(
+                      scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      itemCount: CommunityTopic.values.length + 1,
+                      itemBuilder: (context, index) {
+                        if (index == 0) {
+                          // "Todos" chip
+                          final isSelected = selectedTopic == null;
+                          return Padding(
+                            padding: const EdgeInsets.only(right: 8),
+                            child: FilterChip(
+                              showCheckmark: false,
+                              label: const Text('Todos'),
+                              selected: isSelected,
+                              onSelected: (_) {
+                                HapticFeedback.selectionClick();
+                                ref.read(selectedTopicProvider.notifier).state =
+                                    null;
+                              },
+                              backgroundColor: colors.surfaceContainerHighest
+                                  .withOpacity(0.5),
+                              selectedColor: colors.primary.withOpacity(1.0),
+                              labelStyle: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: isSelected
+                                    ? colors.onPrimary
+                                    : colors.onSurfaceVariant,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(20),
+                                side: BorderSide(
+                                  color: isSelected
+                                      ? Colors.transparent
+                                      : colors.outline.withOpacity(0.1),
+                                ),
+                              ),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 0,
+                              ),
+                              visualDensity: VisualDensity.compact,
+                            ),
+                          );
+                        }
+
+                        final topic = CommunityTopic.values[index - 1];
+                        final isSelected = selectedTopic == topic;
+                        final topicColor = Color(topic.colorValue);
+
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 8),
+                          child: FilterChip(
+                            showCheckmark: false,
+                            label: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(topic.emoji),
+                                const SizedBox(width: 6),
+                                Text(topic.label),
+                              ],
+                            ),
+                            selected: isSelected,
+                            onSelected: (_) {
+                              HapticFeedback.selectionClick();
+                              ref.read(selectedTopicProvider.notifier).state =
+                                  isSelected ? null : topic;
+                            },
+                            backgroundColor: colors.surfaceContainerHighest
+                                .withOpacity(0.5),
+                            selectedColor: topicColor,
+                            labelStyle: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: isSelected
+                                  ? Colors
+                                        .white // Assuming dark topic colors for contrast, or check luminance
+                                  : colors.onSurfaceVariant,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(20),
+                              side: BorderSide(
+                                color: isSelected
+                                    ? Colors.transparent
+                                    : colors.outline.withOpacity(0.1),
+                              ),
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 0,
+                            ),
+                            visualDensity: VisualDensity.compact,
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+
+                // Feed de Posts
+                feedAsync.when(
+                  data: (posts) {
+                    if (posts.isEmpty) {
+                      return SliverFillRemaining(
+                        hasScrollBody: false,
+                        child: _buildEmptyState(colors),
                       );
                     }
 
-                    final topic = CommunityTopic.values[index - 1];
-                    final isSelected = selectedTopic == topic;
-                    final topicColor = Color(topic.colorValue);
-
-                    return Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: FilterChip(
-                        showCheckmark: false,
-                        label: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(topic.emoji),
-                            const SizedBox(width: 6),
-                            Text(topic.label),
-                          ],
-                        ),
-                        selected: isSelected,
-                        onSelected: (_) {
-                          HapticFeedback.selectionClick();
-                          ref.read(selectedTopicProvider.notifier).state =
-                              isSelected ? null : topic;
-                        },
-                        backgroundColor: colors.surfaceContainerHighest
-                            .withOpacity(0.5),
-                        selectedColor: topicColor,
-                        labelStyle: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: isSelected
-                              ? Colors
-                                    .white // Assuming dark topic colors for contrast, or check luminance
-                              : colors.onSurfaceVariant,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(20),
-                          side: BorderSide(
-                            color: isSelected
-                                ? Colors.transparent
-                                : colors.outline.withOpacity(0.1),
-                          ),
-                        ),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 0,
-                        ),
-                        visualDensity: VisualDensity.compact,
-                      ),
+                    return SliverList(
+                      delegate: SliverChildBuilderDelegate((context, index) {
+                        if (index >= posts.length) return null;
+                        return PostCard(post: posts[index]);
+                      }, childCount: posts.length),
                     );
                   },
+                  loading: () => const SliverFillRemaining(
+                    child: Center(child: CircularProgressIndicator()),
+                  ),
+                  error: (error, stack) => SliverFillRemaining(
+                    child: _buildErrorState(colors, error.toString()),
+                  ),
+                ),
+
+                // Espaço no final para player + FAB
+                const SliverToBoxAdapter(child: SizedBox(height: 120)),
+              ],
+            ),
+          ),
+
+          // Radio Popup Overlay
+          if (_showRadioPopup)
+            GestureDetector(
+              onTap: () {
+                setState(() {
+                  _showRadioPopup = false;
+                });
+              },
+              child: Container(
+                color: Colors.black.withOpacity(0.3),
+                child: Stack(
+                  children: [
+                    Positioned(
+                      top: 60,
+                      right: 16,
+                      child: GestureDetector(
+                        onTap: () {}, // Prevent dismissal when tapping popup
+                        child: RadioPopupPlayer(
+                          onClose: () {
+                            setState(() {
+                              _showRadioPopup = false;
+                            });
+                          },
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
-
-            // Feed de Posts
-            feedAsync.when(
-              data: (posts) {
-                if (posts.isEmpty) {
-                  return SliverFillRemaining(
-                    hasScrollBody: false,
-                    child: _buildEmptyState(colors),
-                  );
-                }
-
-                return SliverList(
-                  delegate: SliverChildBuilderDelegate((context, index) {
-                    if (index >= posts.length) return null;
-                    return PostCard(post: posts[index]);
-                  }, childCount: posts.length),
-                );
-              },
-              loading: () => const SliverFillRemaining(
-                child: Center(child: CircularProgressIndicator()),
-              ),
-              error: (error, stack) => SliverFillRemaining(
-                child: _buildErrorState(colors, error.toString()),
-              ),
-            ),
-
-            // Espaço no final
-            const SliverToBoxAdapter(child: SizedBox(height: 80)),
-          ],
-        ),
+        ],
       ),
 
       // FAB para criar post
@@ -328,6 +420,50 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen> {
           ],
         ),
       ),
+    );
+  }
+}
+
+// Music Playing Indicator Animation
+class _MusicIndicator extends StatefulWidget {
+  @override
+  State<_MusicIndicator> createState() => _MusicIndicatorState();
+}
+
+class _MusicIndicatorState extends State<_MusicIndicator>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return Container(
+          width: 12,
+          height: 12,
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.primary,
+            shape: BoxShape.circle,
+          ),
+          child: Icon(Icons.music_note_rounded, color: Colors.white, size: 8),
+        );
+      },
     );
   }
 }

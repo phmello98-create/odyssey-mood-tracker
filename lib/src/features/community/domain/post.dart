@@ -84,6 +84,9 @@ class Post {
   /// É galeria?
   bool get isGallery => imageUrls.length > 1;
 
+  /// É fixado?
+  bool get isPinned => metadata?['isPinned'] == true;
+
   Post copyWith({
     String? id,
     String? userId,

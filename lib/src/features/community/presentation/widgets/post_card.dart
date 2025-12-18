@@ -8,7 +8,7 @@ import '../screens/post_detail_screen.dart';
 
 /// Card de post rico estilo Reddit
 /// Com votos, karma, badges, imagens, tags
-class PostCard extends StatelessWidget {
+class PostCard extends StatefulWidget {
   final Post post;
   final VoidCallback? onTap;
   final bool showUserAvatar;
@@ -21,25 +21,82 @@ class PostCard extends StatelessWidget {
   });
 
   @override
+  State<PostCard> createState() => _PostCardState();
+}
+
+class _PostCardState extends State<PostCard>
+    with SingleTickerProviderStateMixin {
+  late bool _isUpvoted;
+  late bool _isDownvoted;
+  late int _score;
+
+  @override
+  void initState() {
+    super.initState();
+    // Simulate checking if user voted (mock)
+    _isUpvoted = false;
+    _isDownvoted = false;
+    _score = widget.post.score;
+  }
+
+  void _handleUpvote() {
+    HapticFeedback.mediumImpact();
+    setState(() {
+      if (_isUpvoted) {
+        _isUpvoted = false;
+        _score -= 1;
+      } else {
+        if (_isDownvoted) {
+          _isDownvoted = false;
+          _score += 1;
+        }
+        _isUpvoted = true;
+        _score += 1;
+      }
+    });
+  }
+
+  void _handleDownvote() {
+    HapticFeedback.lightImpact();
+    setState(() {
+      if (_isDownvoted) {
+        _isDownvoted = false;
+        _score += 1;
+      } else {
+        if (_isUpvoted) {
+          _isUpvoted = false;
+          _score -= 1;
+        }
+        _isDownvoted = true;
+        _score -= 1;
+      }
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return GestureDetector(
-      onTap: onTap ?? () => _navigateToDetail(context),
+      onTap: widget.onTap ?? () => _navigateToDetail(context),
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
           color: isDark ? colors.surfaceContainerHighest : colors.surface,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: colors.outlineVariant.withOpacity(0.3),
-            width: 1,
+            color: widget.post.isPinned
+                ? colors.primary.withOpacity(0.5) // Pinned highlight
+                : colors.outlineVariant.withOpacity(0.3),
+            width: widget.post.isPinned ? 1.5 : 1,
           ),
           boxShadow: [
             BoxShadow(
-              color: colors.shadow.withOpacity(0.05),
-              blurRadius: 8,
+              color: widget.post.isPinned
+                  ? colors.primary.withOpacity(0.08)
+                  : colors.shadow.withOpacity(0.05),
+              blurRadius: widget.post.isPinned ? 12 : 8,
               offset: const Offset(0, 2),
             ),
           ],
@@ -57,10 +114,10 @@ class PostCard extends StatelessWidget {
             ),
 
             // Images (if any)
-            if (post.hasImages) _buildImagePreview(context),
+            if (widget.post.hasImages) _buildImagePreview(context),
 
             // Tags
-            if (post.tags.isNotEmpty) _buildTags(context, colors),
+            if (widget.post.tags.isNotEmpty) _buildTags(context, colors),
 
             // Footer: Votes + Comments + Views
             _buildFooter(context, colors),
@@ -73,13 +130,15 @@ class PostCard extends StatelessWidget {
   void _navigateToDetail(BuildContext context) {
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => PostDetailScreen(post: post)),
+      MaterialPageRoute(builder: (_) => PostDetailScreen(post: widget.post)),
     );
   }
 
   Widget _buildHeader(BuildContext context, ColorScheme colors) {
     // Pega o primeiro tópico
-    final topicName = post.categories.isNotEmpty ? post.categories.first : null;
+    final topicName = widget.post.categories.isNotEmpty
+        ? widget.post.categories.first
+        : null;
     final topic = topicName != null
         ? CommunityTopic.values.firstWhere(
             (t) => t.name == topicName,
@@ -88,14 +147,14 @@ class PostCard extends StatelessWidget {
         : CommunityTopic.general;
 
     // Karma tier do autor
-    final karmaTier = KarmaTierExtension.fromKarma(post.authorKarma);
+    final karmaTier = KarmaTierExtension.fromKarma(widget.post.authorKarma);
 
     return Padding(
       padding: const EdgeInsets.all(12),
       child: Row(
         children: [
           // Avatar decorativo
-          if (showUserAvatar) ...[
+          if (widget.showUserAvatar) ...[
             _buildDecoratedAvatar(colors, karmaTier),
             const SizedBox(width: 10),
           ],
@@ -110,7 +169,7 @@ class PostCard extends StatelessWidget {
                   children: [
                     Flexible(
                       child: Text(
-                        post.userName,
+                        widget.post.userName,
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
@@ -120,8 +179,8 @@ class PostCard extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(width: 6),
-                    // Flair
-                    if (post.authorFlair != null)
+                    // Flair or Pinned Badge
+                    if (widget.post.authorFlair != null || widget.post.isPinned)
                       Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 6,
@@ -135,12 +194,14 @@ class PostCard extends StatelessWidget {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Text(
-                              karmaTier.emoji,
+                              widget.post.isPinned ? '📌' : karmaTier.emoji,
                               style: const TextStyle(fontSize: 10),
                             ),
                             const SizedBox(width: 3),
                             Text(
-                              post.authorFlair!,
+                              widget.post.isPinned
+                                  ? 'Fixado'
+                                  : (widget.post.authorFlair ?? ''),
                               style: TextStyle(
                                 fontSize: 10,
                                 fontWeight: FontWeight.w600,
@@ -188,7 +249,7 @@ class PostCard extends StatelessWidget {
                     const SizedBox(width: 8),
                     // Tempo
                     Text(
-                      timeago.format(post.createdAt, locale: 'pt_BR'),
+                      timeago.format(widget.post.createdAt, locale: 'pt_BR'),
                       style: TextStyle(
                         fontSize: 11,
                         color: colors.onSurfaceVariant.withOpacity(0.6),
@@ -201,7 +262,7 @@ class PostCard extends StatelessWidget {
           ),
 
           // Post type badge
-          if (post.type != PostType.text) _buildTypeBadge(colors),
+          if (widget.post.type != PostType.text) _buildTypeBadge(colors),
         ],
       ),
     );
@@ -229,9 +290,9 @@ class PostCard extends StatelessWidget {
           color: colors.surface,
         ),
         child: ClipOval(
-          child: post.userPhotoUrl != null
+          child: widget.post.userPhotoUrl != null
               ? Image.network(
-                  post.userPhotoUrl!,
+                  widget.post.userPhotoUrl!,
                   fit: BoxFit.cover,
                   loadingBuilder: (context, child, loadingProgress) {
                     if (loadingProgress == null) return child;
@@ -250,7 +311,9 @@ class PostCard extends StatelessWidget {
       color: colors.primaryContainer,
       child: Center(
         child: Text(
-          post.userName.isNotEmpty ? post.userName[0].toUpperCase() : '?',
+          widget.post.userName.isNotEmpty
+              ? widget.post.userName[0].toUpperCase()
+              : '?',
           style: TextStyle(
             color: colors.onPrimaryContainer,
             fontWeight: FontWeight.bold,
@@ -265,7 +328,7 @@ class PostCard extends StatelessWidget {
     String label;
     Color badgeColor;
 
-    switch (post.type) {
+    switch (widget.post.type) {
       case PostType.achievement:
         label = '🏆';
         badgeColor = const Color(0xFFFFD700);
@@ -299,7 +362,7 @@ class PostCard extends StatelessWidget {
 
   Widget _buildContent(BuildContext context, ColorScheme colors) {
     return Text(
-      post.content,
+      widget.post.content,
       style: TextStyle(fontSize: 14, height: 1.5, color: colors.onSurface),
       maxLines: 5,
       overflow: TextOverflow.ellipsis,
@@ -320,7 +383,7 @@ class PostCard extends StatelessWidget {
           fit: StackFit.expand,
           children: [
             Image.network(
-              post.imageUrls.first,
+              widget.post.imageUrls.first,
               fit: BoxFit.cover,
               loadingBuilder: (context, child, loadingProgress) {
                 if (loadingProgress == null) return child;
@@ -335,7 +398,7 @@ class PostCard extends StatelessWidget {
               ),
             ),
             // Gallery indicator
-            if (post.isGallery)
+            if (widget.post.isGallery)
               Positioned(
                 right: 8,
                 top: 8,
@@ -358,7 +421,7 @@ class PostCard extends StatelessWidget {
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        '+${post.imageUrls.length - 1}',
+                        '+${widget.post.imageUrls.length - 1}',
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 12,
@@ -381,12 +444,13 @@ class PostCard extends StatelessWidget {
       child: Wrap(
         spacing: 6,
         runSpacing: 4,
-        children: post.tags.take(4).map((tag) {
+        children: widget.post.tags.take(4).map((tag) {
           return Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
               color: colors.primary.withOpacity(0.08),
               borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: colors.primary.withOpacity(0.2)),
             ),
             child: Text(
               '#$tag',
@@ -417,7 +481,7 @@ class PostCard extends StatelessWidget {
             context,
             colors,
             Icons.chat_bubble_outline_rounded,
-            post.commentCount.toString(),
+            widget.post.commentCount.toString(),
             'comentários',
           ),
 
@@ -428,7 +492,7 @@ class PostCard extends StatelessWidget {
             context,
             colors,
             Icons.visibility_outlined,
-            _formatNumber(post.viewCount),
+            _formatNumber(widget.post.viewCount),
             'views',
           ),
 
@@ -465,17 +529,16 @@ class PostCard extends StatelessWidget {
         children: [
           // Upvote
           InkWell(
-            onTap: () {
-              HapticFeedback.lightImpact();
-              // TODO: Upvote logic
-            },
+            onTap: _handleUpvote,
             borderRadius: BorderRadius.circular(20),
             child: Padding(
               padding: const EdgeInsets.all(6),
               child: Icon(
-                Icons.arrow_upward_rounded,
+                _isUpvoted
+                    ? Icons.arrow_upward_rounded
+                    : Icons.arrow_upward_outlined,
                 size: 18,
-                color: colors.primary,
+                color: _isUpvoted ? Colors.orange : colors.onSurfaceVariant,
               ),
             ),
           ),
@@ -483,33 +546,39 @@ class PostCard extends StatelessWidget {
           // Score
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 4),
-            child: Text(
-              _formatNumber(post.score),
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.bold,
-                color: post.score > 0
-                    ? colors.primary
-                    : post.score < 0
-                    ? colors.error
-                    : colors.onSurfaceVariant,
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 300),
+              transitionBuilder: (Widget child, Animation<double> animation) {
+                return ScaleTransition(scale: animation, child: child);
+              },
+              child: Text(
+                _formatNumber(_score),
+                key: ValueKey<int>(_score),
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                  color: _isUpvoted
+                      ? Colors.orange
+                      : (_isDownvoted ? Colors.blue : colors.onSurface),
+                ),
               ),
             ),
           ),
 
           // Downvote
           InkWell(
-            onTap: () {
-              HapticFeedback.lightImpact();
-              // TODO: Downvote logic
-            },
+            onTap: _handleDownvote,
             borderRadius: BorderRadius.circular(20),
             child: Padding(
               padding: const EdgeInsets.all(6),
               child: Icon(
-                Icons.arrow_downward_rounded,
+                _isDownvoted
+                    ? Icons.arrow_downward_rounded
+                    : Icons.arrow_downward_outlined,
                 size: 18,
-                color: colors.onSurfaceVariant.withOpacity(0.5),
+                color: _isDownvoted
+                    ? Colors.blue
+                    : colors.onSurfaceVariant.withOpacity(0.5),
               ),
             ),
           ),
