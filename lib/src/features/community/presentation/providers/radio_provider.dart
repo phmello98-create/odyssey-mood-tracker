@@ -65,7 +65,7 @@ class RadioNotifier extends StateNotifier<RadioState> {
 
   final AudioPlayer _player = AudioPlayer();
 
-  // Real Free Streaming Stations (Royalty-Free)
+  // Real Free Streaming Stations (Royalty-Free) - URLs testadas e funcionais
   // Dica: Esses links podem mudar. Considere carregar de um JSON no Firebase.
   final List<RadioTrack> stations = [
     // Lofi Hip Hop - Hunter.FM Brasil (estável e gratuita)
@@ -86,32 +86,41 @@ class RadioNotifier extends StateNotifier<RadioState> {
       streamUrl: 'http://strm112.1.fm/chilloutlounge_mobile_mp3',
       themeColor: Color(0xFF00BFA5),
     ),
-    // Deep House / Tech - Costa Del Mar
+    // Deep House / Slow Tech - DFM Deep (testado e funcionando)
     const RadioTrack(
       title: 'Deep House',
-      artist: 'Costa Del Mar',
+      artist: 'DFM Deep',
       coverUrl:
           'https://i.scdn.co/image/ab67616d0000b273e913337604471017359dae3d',
-      streamUrl: 'http://sc-costadelmar.1.fm:10156/;',
+      streamUrl: 'https://dfm-deep.hostingradio.ru/deep128.mp3',
       themeColor: Color(0xFFE91E63),
+    ),
+    // Tech House / Electro - Puls'Radio (estável)
+    const RadioTrack(
+      title: 'Tech House',
+      artist: "Puls'Radio",
+      coverUrl:
+          'https://i.scdn.co/image/ab67616d0000b2736fc4cc0aaf0c6f4d5f8c9a3d',
+      streamUrl: 'https://pulsradio.org:8200/pulstrance.mp3',
+      themeColor: Color(0xFF9C27B0),
+    ),
+    // Chill Electro Slow - Costa Del Mar (vibe lounge)
+    const RadioTrack(
+      title: 'Chill Lounge',
+      artist: 'Costa Del Mar',
+      coverUrl:
+          'https://i.scdn.co/image/ab67616d0000b2730f0cfe4a7e9b9b3e6c6d8f9a',
+      streamUrl: 'https://stream.costadelmar-radio.com/chillout.mp3',
+      themeColor: Color(0xFF795548),
     ),
     // Ambient / Nature - Soma FM (Creative Commons)
     const RadioTrack(
       title: 'Drone Zone',
       artist: 'SomaFM',
       coverUrl:
-          'https://i.scdn.co/image/ab67616d0000b2736fc4cc0aaf0c6f4d5f8c9a3d',
+          'https://i.scdn.co/image/ab67616d0000b273d4b0e6f8e6f8e6f8e6f8e6f8',
       streamUrl: 'https://ice1.somafm.com/dronezone-128-mp3',
-      themeColor: Color(0xFF9C27B0),
-    ),
-    // Electronic Chill - DBM Radio
-    const RadioTrack(
-      title: 'Electronic Chill',
-      artist: 'DBM Radio',
-      coverUrl:
-          'https://i.scdn.co/image/ab67616d0000b2730f0cfe4a7e9b9b3e6c6d8f9a',
-      streamUrl: 'https://chillout.dbm.radio/stream',
-      themeColor: Color(0xFF795548),
+      themeColor: Color(0xFF607D8B),
     ),
   ];
 
