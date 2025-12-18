@@ -21,10 +21,14 @@ import 'package:odyssey/src/features/subscription/services/admob_service.dart';
 import 'package:odyssey/src/features/subscription/services/purchase_service.dart';
 import 'package:odyssey/src/features/welcome/services/welcome_service.dart';
 import 'package:toastification/toastification.dart';
+import 'package:just_audio_media_kit/just_audio_media_kit.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
+  // Inicializar MediaKit para Linux/outras plataformas (suporte a streaming de áudio)
+  JustAudioMediaKit.ensureInitialized();
+
   // Inicializar Firebase PRIMEIRO (antes de qualquer outro serviço que dependa dele)
   // Nota: Firebase pode não estar disponível em todas as plataformas (ex: Linux)
   try {
@@ -36,41 +40,46 @@ void main() async {
     // Firebase não suportado nesta plataforma (ex: Linux) - continuar sem Firebase
     debugPrint('⚠️ Firebase não disponível nesta plataforma: $e');
   }
-  
+
   // Inicializar SharedPreferences antes do runApp
   final sharedPreferences = await SharedPreferences.getInstance();
-  
+
   // Inicializar SoundService SND (sons de UI/UX)
   await soundService.init();
   debugPrint('🔊 SoundService SND inicializado');
-  
+
   // Configurar listeners de notificação ANTES do runApp
   // Isso é necessário para que as ações funcionem mesmo com o app em background
   await AwesomeNotifications().setListeners(
     onActionReceivedMethod: NotificationService.onActionReceivedMethod,
-    onNotificationCreatedMethod: NotificationService.onNotificationCreatedMethod,
-    onNotificationDisplayedMethod: NotificationService.onNotificationDisplayedMethod,
-    onDismissActionReceivedMethod: NotificationService.onDismissActionReceivedMethod,
+    onNotificationCreatedMethod:
+        NotificationService.onNotificationCreatedMethod,
+    onNotificationDisplayedMethod:
+        NotificationService.onNotificationDisplayedMethod,
+    onDismissActionReceivedMethod:
+        NotificationService.onDismissActionReceivedMethod,
   );
 
   // Inicializar novo serviço de notificações modernas
   await ModernNotificationService.instance.initialize();
-  
+
   // Inicializar AdMob
   await AdMobService().initialize();
-  
+
   // Inicializar In-App Purchases
   await PurchaseService().initialize();
-  
+
   // NOTA: ShowcaseService será inicializado no AppInitializer após o Hive
-  
+
   runApp(
     ProviderScope(
       overrides: [
         // Fornecer SharedPreferences para o sistema de auth
         sharedPreferencesProvider.overrideWithValue(sharedPreferences),
         // Fornecer WelcomeService
-        welcomeServiceProvider.overrideWithValue(WelcomeService(sharedPreferences)),
+        welcomeServiceProvider.overrideWithValue(
+          WelcomeService(sharedPreferences),
+        ),
       ],
       child: const OdysseyApp(),
     ),
@@ -91,10 +100,10 @@ class _OdysseyAppState extends ConsumerState<OdysseyApp> {
     // Inicializar o serviço de lifecycle
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(appLifecycleServiceProvider);
-      
+
       // Configurar o ref no handler de notificações
       NotificationActionHandler.setRef(ref);
-      
+
       // Verificar se há ações pendentes de notificação
       NotificationActionHandler.checkPendingAction();
     });
@@ -105,7 +114,7 @@ class _OdysseyAppState extends ConsumerState<OdysseyApp> {
     final themeMode = ref.watch(themeModeProvider);
     final currentTheme = ref.watch(currentThemeProvider);
     final localeState = ref.watch(localeStateProvider);
-    
+
     return ToastificationWrapper(
       child: MaterialApp(
         // Usar o navigatorKey global para deep linking de notificações
