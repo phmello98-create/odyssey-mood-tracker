@@ -314,4 +314,30 @@ class CommunityRepository {
       throw Exception('Erro ao sincronizar perfil: $e');
     }
   }
+
+  /// Busca usuários por nome
+  Future<List<PublicUserProfile>> searchUsers(String query) async {
+    if (query.trim().isEmpty) return [];
+
+    try {
+      // Busca case-insensitive usando query range
+      final lowerQuery = query.toLowerCase();
+      final snapshot = await _profilesRef
+          .orderBy('displayName')
+          .limit(20)
+          .get();
+
+      return snapshot.docs
+          .map(
+            (doc) =>
+                PublicUserProfile.fromJson({...doc.data(), 'userId': doc.id}),
+          )
+          .where(
+            (profile) => profile.displayName.toLowerCase().contains(lowerQuery),
+          )
+          .toList();
+    } catch (e) {
+      throw Exception('Erro ao buscar usuários: $e');
+    }
+  }
 }

@@ -40,7 +40,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
       duration: const Duration(milliseconds: 1500),
       vsync: this,
     )..forward();
-    
+
     _pulseController = AnimationController(
       duration: const Duration(milliseconds: 2000),
       vsync: this,
@@ -68,7 +68,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     try {
       final authController = ref.read(authControllerProvider.notifier);
       final result = await authController.signInWithGoogle();
-      
+
       result.when(
         success: (user, message) {
           if (mounted) {
@@ -93,34 +93,34 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
 
   Future<void> _handleGuestMode() async {
     HapticFeedback.lightImpact();
-    
+
     // Verificar se existem dados locais antes de continuar
     final hasLocalData = await _checkLocalDataExists();
-    
+
     if (hasLocalData && mounted) {
       // Mostrar diálogo de escolha
       final shouldRestore = await _showRestoreDataDialog();
-      
+
       if (!mounted) return;
-      
+
       if (shouldRestore == null) {
         // Usuário cancelou
         return;
       }
-      
+
       if (!shouldRestore) {
         // Usuário quer começar do zero - limpar dados locais
         await _clearLocalData();
       }
       // Se shouldRestore == true, mantém os dados locais
     }
-    
+
     setState(() => _loadingMethod = 'guest');
 
     try {
       final authController = ref.read(authControllerProvider.notifier);
       final result = await authController.signInAsGuest();
-      
+
       result.when(
         success: (user, message) {
           if (mounted) {
@@ -161,7 +161,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
         _checkHiveBoxHasData('books'),
         _checkHiveBoxHasData('diary_entries'),
       ]);
-      
+
       final hasData = checks.any((hasData) => hasData);
       debugPrint('[LoginScreen] Dados locais encontrados: $hasData');
       return hasData;
@@ -178,15 +178,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
         final box = Hive.box(boxName);
         return box.isNotEmpty;
       }
-      
+
       // Tentar abrir a box
       final box = await Hive.openBox(boxName);
       final hasData = box.isNotEmpty;
-      
+
       if (hasData) {
         debugPrint('[LoginScreen] Box $boxName tem ${box.length} itens');
       }
-      
+
       return hasData;
     } catch (e) {
       // Box não existe ou erro ao abrir - sem dados
@@ -197,7 +197,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   /// Limpa todos os dados locais (mesma lógica do account_deletion_service)
   Future<void> _clearLocalData() async {
     debugPrint('[LoginScreen] Iniciando limpeza de dados locais...');
-    
+
     try {
       // Lista completa de boxes de dados do usuário
       final boxNames = [
@@ -226,7 +226,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
         // Onboarding (resetar para nova experiência)
         'onboarding_progress',
       ];
-      
+
       for (final name in boxNames) {
         try {
           // Fechar a box se estiver aberta
@@ -242,7 +242,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
           debugPrint('[LoginScreen] Erro ao deletar box $name: $e');
         }
       }
-      
+
       // Limpar também algumas preferências específicas
       final prefs = await SharedPreferences.getInstance();
       final keysToRemove = [
@@ -254,11 +254,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
         'totalXp',
         'currentLevel',
       ];
-      
+
       for (final key in keysToRemove) {
         await prefs.remove(key);
       }
-      
+
       debugPrint('[LoginScreen] ✓ Limpeza de dados concluída!');
     } catch (e) {
       debugPrint('[LoginScreen] Erro geral ao limpar dados: $e');
@@ -267,8 +267,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
 
   /// Mostra diálogo perguntando se quer restaurar dados
   Future<bool?> _showRestoreDataDialog() async {
-    final isPortuguese = ref.read(localeStateProvider).currentLocale.languageCode == 'pt';
-    
+    final isPortuguese =
+        ref.read(localeStateProvider).currentLocale.languageCode == 'pt';
+
     return showModalBottomSheet<bool>(
       context: context,
       backgroundColor: Colors.transparent,
@@ -289,10 +290,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
       _navigateToHome();
       return;
     }
-    
+
     // Verifica se precisa migrar dados locais para a nuvem
     final needsMigration = await ref.read(needsMigrationProvider.future);
-    
+
     if (needsMigration && mounted) {
       // Navega para tela de migração
       Navigator.of(context).pushReplacement(
@@ -316,12 +317,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     // Verifica se deve mostrar o onboarding de boas-vindas
     final welcomeService = ref.read(welcomeServiceProvider);
     final welcomeType = welcomeService.determineWelcomeType();
-    
+
     // Se é primeira vez, mostra o Welcome Screen
     if (welcomeType == WelcomeType.firstTime) {
       final user = ref.read(currentUserProvider);
       final userName = user?.displayName ?? 'Usuário';
-      
+
       Navigator.of(context).pushReplacement(
         PageRouteBuilder(
           pageBuilder: (_, __, ___) => WelcomeScreen(userName: userName),
@@ -336,7 +337,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
       );
       return;
     }
-    
+
     // Caso contrário, vai para home (o welcome back sheet será mostrado lá)
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
@@ -414,23 +415,33 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
           // Main content
           SafeArea(
             bottom: false,
-            child: Column(
-              children: [
-                // Top bar
-                _buildTopBar(),
+            child: SingleChildScrollView(
+              physics: const ClampingScrollPhysics(),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  minHeight: size.height - MediaQuery.of(context).padding.top,
+                ),
+                child: IntrinsicHeight(
+                  child: Column(
+                    children: [
+                      // Top bar
+                      _buildTopBar(),
 
-                const Spacer(flex: 2),
+                      const Spacer(flex: 2),
 
-                // Logo and branding
-                _buildBranding(),
+                      // Logo and branding
+                      _buildBranding(),
 
-                const Spacer(flex: 1),
+                      const Spacer(flex: 1),
 
-                // Login buttons
-                _buildLoginSection(isLoading),
+                      // Login buttons
+                      _buildLoginSection(isLoading),
 
-                SizedBox(height: bottomPadding + 24),
-              ],
+                      SizedBox(height: bottomPadding + 24),
+                    ],
+                  ),
+                ),
+              ),
             ),
           ),
         ],
@@ -471,7 +482,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                 center: Alignment.bottomCenter,
                 radius: 1.2,
                 colors: [
-                  _primaryGradient[1].withValues(alpha: 0.15 + (_pulseController.value * 0.1)),
+                  _primaryGradient[1].withValues(
+                    alpha: 0.15 + (_pulseController.value * 0.1),
+                  ),
                   Colors.transparent,
                 ],
               ),
@@ -484,20 +497,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
 
   Widget _buildTopBar() {
     return SlideTransition(
-      position: Tween<Offset>(
-        begin: const Offset(0, -1),
-        end: Offset.zero,
-      ).animate(CurvedAnimation(
-        parent: _animController,
-        curve: const Interval(0.0, 0.4, curve: Curves.easeOutCubic),
-      )),
+      position: Tween<Offset>(begin: const Offset(0, -1), end: Offset.zero)
+          .animate(
+            CurvedAnimation(
+              parent: _animController,
+              curve: const Interval(0.0, 0.4, curve: Curves.easeOutCubic),
+            ),
+          ),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.end,
-          children: [
-            _buildLanguageSelector(),
-          ],
+          children: [_buildLanguageSelector()],
         ),
       ),
     );
@@ -537,9 +548,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
               ),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(2),
-                child: _isPortuguese
-                    ? _buildBrazilFlag()
-                    : _buildUSFlag(),
+                child: _isPortuguese ? _buildBrazilFlag() : _buildUSFlag(),
               ),
             ),
             const SizedBox(width: 8),
@@ -598,11 +607,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
       ),
       child: Align(
         alignment: Alignment.topLeft,
-        child: Container(
-          width: 10,
-          height: 8,
-          color: const Color(0xFF3C3B6E),
-        ),
+        child: Container(width: 10, height: 8, color: const Color(0xFF3C3B6E)),
       ),
     );
   }
@@ -614,13 +619,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
         curve: const Interval(0.2, 0.7, curve: Curves.easeOut),
       ),
       child: SlideTransition(
-        position: Tween<Offset>(
-          begin: const Offset(0, 0.3),
-          end: Offset.zero,
-        ).animate(CurvedAnimation(
-          parent: _animController,
-          curve: const Interval(0.2, 0.7, curve: Curves.easeOutCubic),
-        )),
+        position: Tween<Offset>(begin: const Offset(0, 0.3), end: Offset.zero)
+            .animate(
+              CurvedAnimation(
+                parent: _animController,
+                curve: const Interval(0.2, 0.7, curve: Curves.easeOutCubic),
+              ),
+            ),
         child: Column(
           children: [
             // Logo com glow
@@ -655,14 +660,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
               ),
             ),
             const SizedBox(height: 28),
-            
+
             // App name com gradiente
             ShaderMask(
               shaderCallback: (bounds) => LinearGradient(
-                colors: [
-                  Colors.white,
-                  Colors.white.withValues(alpha: 0.8),
-                ],
+                colors: [Colors.white, Colors.white.withValues(alpha: 0.8)],
               ).createShader(bounds),
               child: const Text(
                 'ODYSSEY',
@@ -675,7 +677,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
               ),
             ),
             const SizedBox(height: 12),
-            
+
             // Tagline
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -684,7 +686,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Text(
-                _t('Sua jornada de foco começa aqui', 'Your focus journey starts here'),
+                _t(
+                  'Sua jornada de foco começa aqui',
+                  'Your focus journey starts here',
+                ),
                 style: TextStyle(
                   fontSize: 14,
                   color: Colors.white.withValues(alpha: 0.7),
@@ -706,13 +711,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
         curve: const Interval(0.4, 1.0, curve: Curves.easeOut),
       ),
       child: SlideTransition(
-        position: Tween<Offset>(
-          begin: const Offset(0, 0.4),
-          end: Offset.zero,
-        ).animate(CurvedAnimation(
-          parent: _animController,
-          curve: const Interval(0.4, 1.0, curve: Curves.easeOutCubic),
-        )),
+        position: Tween<Offset>(begin: const Offset(0, 0.4), end: Offset.zero)
+            .animate(
+              CurvedAnimation(
+                parent: _animController,
+                curve: const Interval(0.4, 1.0, curve: Curves.easeOutCubic),
+              ),
+            ),
         child: Container(
           margin: const EdgeInsets.symmetric(horizontal: 24),
           decoration: BoxDecoration(
@@ -743,13 +748,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                   children: [
                     // Google button
                     _buildGoogleButton(isLoading),
-                    
+
                     const SizedBox(height: 12),
 
                     // Divider
                     Row(
                       children: [
-                        Expanded(child: Divider(color: Colors.white.withValues(alpha: 0.15))),
+                        Expanded(
+                          child: Divider(
+                            color: Colors.white.withValues(alpha: 0.15),
+                          ),
+                        ),
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 16),
                           child: Text(
@@ -760,7 +769,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                             ),
                           ),
                         ),
-                        Expanded(child: Divider(color: Colors.white.withValues(alpha: 0.15))),
+                        Expanded(
+                          child: Divider(
+                            color: Colors.white.withValues(alpha: 0.15),
+                          ),
+                        ),
                       ],
                     ),
 
@@ -796,7 +809,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
 
   Widget _buildGoogleButton(bool isLoading) {
     final isLoadingGoogle = _loadingMethod == 'google';
-    
+
     return GestureDetector(
       onTap: isLoading ? null : _handleGoogleSignIn,
       child: AnimatedContainer(
@@ -856,7 +869,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
 
   Widget _buildGuestButton(bool isLoading) {
     final isLoadingGuest = _loadingMethod == 'guest';
-    
+
     return GestureDetector(
       onTap: isLoading ? null : _handleGuestMode,
       child: AnimatedContainer(
@@ -938,10 +951,7 @@ class _RestoreDataSheet extends StatelessWidget {
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            Color(0xFF1A1A2E),
-            Color(0xFF16213E),
-          ],
+          colors: [Color(0xFF1A1A2E), Color(0xFF16213E)],
         ),
         borderRadius: BorderRadius.circular(24),
         border: Border.all(
@@ -968,7 +978,7 @@ class _RestoreDataSheet extends StatelessWidget {
               borderRadius: BorderRadius.circular(2),
             ),
           ),
-          
+
           Padding(
             padding: const EdgeInsets.all(24),
             child: Column(
@@ -979,10 +989,7 @@ class _RestoreDataSheet extends StatelessWidget {
                   height: 80,
                   decoration: BoxDecoration(
                     gradient: const LinearGradient(
-                      colors: [
-                        Color(0xFF6366F1),
-                        Color(0xFF8B5CF6),
-                      ],
+                      colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
                     ),
                     shape: BoxShape.circle,
                     boxShadow: [
@@ -1001,23 +1008,21 @@ class _RestoreDataSheet extends StatelessWidget {
                     ),
                   ),
                 ),
-                
+
                 const SizedBox(height: 24),
-                
+
                 // Título
                 Text(
-                  isPortuguese 
-                      ? 'Dados Encontrados!' 
-                      : 'Data Found!',
+                  isPortuguese ? 'Dados Encontrados!' : 'Data Found!',
                   style: const TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
                   ),
                 ),
-                
+
                 const SizedBox(height: 12),
-                
+
                 // Descrição
                 Text(
                   isPortuguese
@@ -1030,9 +1035,9 @@ class _RestoreDataSheet extends StatelessWidget {
                     height: 1.5,
                   ),
                 ),
-                
+
                 const SizedBox(height: 32),
-                
+
                 // Opção 1: Restaurar dados
                 _buildOptionCard(
                   icon: Icons.cloud_download_rounded,
@@ -1043,9 +1048,9 @@ class _RestoreDataSheet extends StatelessWidget {
                   color: const Color(0xFF10B981),
                   onTap: onRestore,
                 ),
-                
+
                 const SizedBox(height: 12),
-                
+
                 // Opção 2: Começar do zero
                 _buildOptionCard(
                   icon: Icons.restart_alt_rounded,
@@ -1056,9 +1061,9 @@ class _RestoreDataSheet extends StatelessWidget {
                   color: const Color(0xFFF59E0B),
                   onTap: onStartFresh,
                 ),
-                
+
                 const SizedBox(height: 16),
-                
+
                 // Cancelar
                 TextButton(
                   onPressed: onCancel,
@@ -1098,9 +1103,7 @@ class _RestoreDataSheet extends StatelessWidget {
           decoration: BoxDecoration(
             color: color.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: color.withValues(alpha: 0.3),
-            ),
+            border: Border.all(color: color.withValues(alpha: 0.3)),
           ),
           child: Row(
             children: [
@@ -1111,11 +1114,7 @@ class _RestoreDataSheet extends StatelessWidget {
                   color: color.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(
-                  icon,
-                  color: color,
-                  size: 24,
-                ),
+                child: Icon(icon, color: color, size: 24),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -1142,11 +1141,7 @@ class _RestoreDataSheet extends StatelessWidget {
                   ],
                 ),
               ),
-              Icon(
-                Icons.arrow_forward_ios_rounded,
-                color: color,
-                size: 18,
-              ),
+              Icon(Icons.arrow_forward_ios_rounded, color: color, size: 18),
             ],
           ),
         ),

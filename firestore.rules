@@ -16,16 +16,96 @@ service cloud.firestore {
   match /databases/{database}/documents {
     
     // ===========================================
-    // REGRAS GLOBAIS
+    // FUNÇÕES AUXILIARES
     // ===========================================
     
-    // Por padrão, negar todo acesso
-    match /{document=**} {
-      allow read, write: if false;
+    // Verifica se o usuário está autenticado
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Verifica se o usuário é o dono do documento
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // Valida string com tamanho mínimo e máximo
+    function isValidString(text, minLength, maxLength) {
+      return text is string 
+        && text.size() >= minLength 
+        && text.size() <= maxLength;
+    }
+    
+    // Verifica se os dados são válidos para um mood record
+    function isValidMoodRecord(data) {
+      return data.keys().hasAll(['label', 'score', 'date']) &&
+             data.score is int &&
+             data.score >= 1 &&
+             data.score <= 5;
+    }
+    
+    // Verifica se os dados são válidos para um habit
+    function isValidHabit(data) {
+      return data.keys().hasAll(['id', 'name', 'iconCode']) &&
+             data.name is string &&
+             data.name.size() > 0;
     }
     
     // ===========================================
-    // COLEÇÃO DE USUÁRIOS
+    // COMUNIDADE - POSTS
+    // ===========================================
+    
+    match /community_posts/{postId} {
+      // Qualquer um pode ler posts
+      allow read: if true;
+      
+      // Apenas usuários autenticados podem criar posts
+      allow create: if isAuthenticated()
+        && request.resource.data.userId == request.auth.uid
+        && isValidString(request.resource.data.content, 1, 500)
+        && request.resource.data.type in ['text', 'mood']
+        && request.resource.data.likesCount == 0
+        && request.resource.data.commentsCount == 0
+        && request.resource.data.createdAt == request.time;
+      
+      // Apenas o autor pode atualizar/deletar seu post
+      allow update, delete: if isOwner(resource.data.userId);
+    }
+    
+    // ===========================================
+    // COMUNIDADE - COMENTÁRIOS
+    // ===========================================
+    
+    match /post_comments/{commentId} {
+      // Qualquer um pode ler comentários
+      allow read: if true;
+      
+      // Apenas usuários autenticados podem comentar
+      allow create: if isAuthenticated()
+        && request.resource.data.userId == request.auth.uid
+        && isValidString(request.resource.data.content, 1, 300)
+        && request.resource.data.createdAt == request.time;
+      
+      // Apenas o autor pode deletar seu comentário
+      allow delete: if isOwner(resource.data.userId);
+    }
+    
+    // ===========================================
+    // COMUNIDADE - PERFIS PÚBLICOS
+    // ===========================================
+    
+    match /users_public/{userId} {
+      // Qualquer um pode ler perfis públicos
+      allow read: if true;
+      
+      // Apenas o próprio usuário pode criar/atualizar seu perfil
+      allow create, update: if isOwner(userId)
+        && request.resource.data.userId == userId
+        && isValidString(request.resource.data.displayName, 1, 50);
+    }
+    
+    // ===========================================
+    // COLEÇÃO DE USUÁRIOS (DADOS PRIVADOS)
     // ===========================================
     
     match /users/{userId} {
@@ -61,32 +141,12 @@ service cloud.firestore {
     }
     
     // ===========================================
-    // FUNÇÕES AUXILIARES
+    // REGRAS GLOBAIS (FALLBACK)
     // ===========================================
     
-    // Verifica se o usuário está autenticado
-    function isAuthenticated() {
-      return request.auth != null;
-    }
-    
-    // Verifica se o usuário é o dono do documento
-    function isOwner(userId) {
-      return isAuthenticated() && request.auth.uid == userId;
-    }
-    
-    // Verifica se os dados são válidos para um mood record
-    function isValidMoodRecord(data) {
-      return data.keys().hasAll(['label', 'score', 'date']) &&
-             data.score is int &&
-             data.score >= 1 &&
-             data.score <= 5;
-    }
-    
-    // Verifica se os dados são válidos para um habit
-    function isValidHabit(data) {
-      return data.keys().hasAll(['id', 'name', 'iconCode']) &&
-             data.name is string &&
-             data.name.size() > 0;
+    // Por padrão, negar todo acesso
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }

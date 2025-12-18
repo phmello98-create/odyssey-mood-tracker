@@ -5,6 +5,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:odyssey/src/providers/timer_provider.dart';
 import 'package:flutter/services.dart';
+import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:hive_flutter/hive_flutter.dart';
@@ -163,8 +164,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   // Calendário expandido (semana/mês)
   bool _isCalendarExpanded = false;
 
-  // Chart selection (0: Habits, 1: Focus, 2: Mood)
-  int _selectedChartIndex = 0;
+  // New variables for chart interactivity
+  int _focusTouchedIndex = -1; // For Focus Pie Chart interaction
+  int _moodTouchedIndex = -1; // For Mood Pie Chart interaction
+  int _chartViewType = 0; // 0: Trend, 1: Pie, 2: Radar
+
+  // NOTE: _selectedDate and _habitRepoInitialized are at lines 153-154
+  int _selectedChartIndex = 0; // 0: Habits, 1: Focus, 2: Mood
+  bool _isQuoteVisible =
+      true; // Restoring this as it was flagged as unused but removal caused more errors? Or maybe not, but chart view logic depends on _selectedChartIndex.
 
   // Show/Hide completed items
   bool _showCompletedHabits = false;
@@ -3164,73 +3172,95 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header e Seletor
+          // HEADER ROW: Title + View Toggle
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Flexible(
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      _selectedChartIndex == 0
-                          ? Icons.bar_chart_rounded
-                          : (_selectedChartIndex == 1
-                                ? Icons.timer_rounded
-                                : Icons.mood_rounded),
-                      color: colors.primary,
-                      size: 20,
-                    ),
-                    const SizedBox(width: 8),
-                    Flexible(
-                      child: Text(
-                        _selectedChartIndex == 0
-                            ? 'Hábitos'
-                            : (_selectedChartIndex == 1 ? 'Foco' : 'Humor'),
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: colors.onSurface,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
+              Text(
+                'Resumo Semanal',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: colors.onSurface,
                 ),
               ),
-              // Segmented Control
+              // View Type Toggle (Right Aligned)
               Container(
                 padding: const EdgeInsets.all(4),
                 decoration: BoxDecoration(
-                  color: colors.surfaceContainerHighest.withOpacity(0.5),
+                  color: colors.surfaceContainerHighest.withOpacity(0.4),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    _buildChartToggleBtn(
+                    _buildViewTypeToggle(
                       context,
                       0,
-                      Icons.check_circle_outline,
-                    ),
-                    _buildChartToggleBtn(context, 1, Icons.timer_outlined),
-                    _buildChartToggleBtn(context, 2, Icons.mood_outlined),
+                      Icons.show_chart_rounded,
+                    ), // Trend
+                    const SizedBox(width: 4),
+                    _buildViewTypeToggle(
+                      context,
+                      1,
+                      Icons.pie_chart_rounded,
+                    ), // Pie
+                    const SizedBox(width: 4),
+                    _buildViewTypeToggle(
+                      context,
+                      2,
+                      Icons.radar_rounded,
+                    ), // Radar
                   ],
                 ),
               ),
             ],
           ),
+
+          const SizedBox(height: 16),
+
+          // CATEGORY SELECTOR (Centered)
+          Center(
+            child: Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: colors.surfaceContainerHighest.withOpacity(0.4),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _buildChartToggleBtn(
+                    context,
+                    0,
+                    Icons.check_circle_outline,
+                    'Hábitos',
+                  ),
+                  _buildChartToggleBtn(
+                    context,
+                    1,
+                    Icons.timer_outlined,
+                    'Foco',
+                  ),
+                  _buildChartToggleBtn(
+                    context,
+                    2,
+                    Icons.mood_outlined,
+                    'Humor',
+                  ),
+                ],
+              ),
+            ),
+          ),
+
           const SizedBox(height: 24),
 
-          // Gráfico selecionado
+          // SELECTED CHART AREA
           SizedBox(
-            height: 140, // Aumentado um pouco para acomodar legendas
+            height: 200,
             child: AnimatedSwitcher(
               duration: const Duration(milliseconds: 300),
-              child: _selectedChartIndex == 0
-                  ? _buildHabitsBarChart(context)
-                  : (_selectedChartIndex == 1
-                        ? _buildFocusLineChart(context)
-                        : _buildMoodTrendChart(context)),
+              child: _buildSelectedChart(context),
             ),
           ),
         ],
@@ -3238,7 +3268,79 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     );
   }
 
-  Widget _buildChartToggleBtn(BuildContext context, int index, IconData icon) {
+  Widget _buildSelectedChart(BuildContext context) {
+    // Habits
+    if (_selectedChartIndex == 0) {
+      switch (_chartViewType) {
+        case 0:
+          return _buildHabitsBarChart(context);
+        case 1:
+          return _buildHabitsPieChart(context);
+        case 2:
+          return _buildHabitsRadarChart(context);
+        default:
+          return _buildHabitsBarChart(context);
+      }
+    }
+    // Focus
+    if (_selectedChartIndex == 1) {
+      switch (_chartViewType) {
+        case 0:
+          return _buildFocusLineChart(context);
+        case 1:
+          return _buildFocusPieChart(context);
+        case 2:
+          return _buildFocusScatterChart(
+            context,
+          ); // Using Scatter as 3rd option
+        default:
+          return _buildFocusLineChart(context);
+      }
+    }
+    // Mood
+    switch (_chartViewType) {
+      case 0:
+        return _buildMoodTrendChart(context);
+      case 1:
+        return _buildMoodPieChart(context);
+      case 2:
+        return _buildMoodRadarChart(context);
+      default:
+        return _buildMoodTrendChart(context);
+    }
+  }
+
+  Widget _buildViewTypeToggle(BuildContext context, int index, IconData icon) {
+    final isSelected = _chartViewType == index;
+    final colors = Theme.of(context).colorScheme;
+
+    return GestureDetector(
+      onTap: () {
+        HapticFeedback.selectionClick();
+        setState(() => _chartViewType = index);
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: isSelected ? colors.primary : Colors.transparent,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Icon(
+          icon,
+          size: 20,
+          color: isSelected ? colors.onPrimary : colors.onSurfaceVariant,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildChartToggleBtn(
+    BuildContext context,
+    int index,
+    IconData icon,
+    String label,
+  ) {
     final isSelected = _selectedChartIndex == index;
     final colors = Theme.of(context).colorScheme;
 
@@ -3249,23 +3351,38 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
           color: isSelected ? colors.surface : Colors.transparent,
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(10),
           boxShadow: isSelected
               ? [
                   BoxShadow(
-                    color: colors.shadow.withOpacity(0.1),
+                    color: colors.shadow.withOpacity(0.05),
                     blurRadius: 4,
+                    offset: const Offset(0, 2),
                   ),
                 ]
               : null,
         ),
-        child: Icon(
-          icon,
-          size: 18,
-          color: isSelected ? colors.primary : colors.onSurfaceVariant,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              size: 18,
+              color: isSelected ? colors.primary : colors.onSurfaceVariant,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                color: isSelected ? colors.primary : colors.onSurfaceVariant,
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -3273,98 +3390,613 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   Widget _buildHabitsBarChart(BuildContext context) {
     final habitRepo = ref.watch(habitRepositoryProvider);
+    final colors = Theme.of(context).colorScheme;
 
     return ValueListenableBuilder(
       valueListenable: habitRepo.box.listenable(),
       builder: (context, box, _) {
         final weekRates = habitRepo.getWeekCompletionRates();
         final dayNames = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
-        final now = DateTime.now();
-        final todayIndex = now.weekday - 1;
 
-        return LayoutBuilder(
-          builder: (context, constraints) {
-            final barWidth = (constraints.maxWidth / 7 - 6).clamp(16.0, 24.0);
+        return BarChart(
+          BarChartData(
+            gridData: const FlGridData(show: false),
+            titlesData: FlTitlesData(
+              show: true,
+              rightTitles: const AxisTitles(
+                sideTitles: SideTitles(showTitles: false),
+              ),
+              topTitles: const AxisTitles(
+                sideTitles: SideTitles(showTitles: false),
+              ),
+              leftTitles: const AxisTitles(
+                sideTitles: SideTitles(showTitles: false),
+              ),
+              bottomTitles: AxisTitles(
+                sideTitles: SideTitles(
+                  showTitles: true,
+                  getTitlesWidget: (double value, TitleMeta meta) {
+                    final index = value.toInt();
+                    if (index < 0 || index >= dayNames.length)
+                      return const SizedBox.shrink();
 
-            return Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: List.generate(7, (index) {
-                final rate = weekRates[index] ?? 0.0;
-                final isToday = index == todayIndex;
-                final maxBarHeight =
-                    constraints.maxHeight -
-                    30; // Altura disponível menos labels
-                final barHeight = (maxBarHeight * rate).clamp(
-                  4.0,
-                  maxBarHeight,
-                );
-
-                Color barColor;
-                if (rate >= 1.0) {
-                  barColor = const Color(0xFF07E092);
-                } else if (rate >= 0.5) {
-                  barColor = Theme.of(context).colorScheme.primary;
-                } else if (rate > 0) {
-                  barColor = Theme.of(context).colorScheme.tertiary;
-                } else {
-                  barColor = Theme.of(
-                    context,
-                  ).colorScheme.surfaceContainerHighest;
-                }
-
-                return Column(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      '${(rate * 100).round()}%',
-                      style: TextStyle(
-                        fontSize: 9,
-                        fontWeight: FontWeight.w600,
-                        color: rate > 0 ? barColor : Colors.white24,
+                    final isToday = index == (DateTime.now().weekday - 1);
+                    return SideTitleWidget(
+                      meta: meta,
+                      space: 8,
+                      child: Text(
+                        dayNames[index],
+                        style: TextStyle(
+                          color: isToday
+                              ? colors.primary
+                              : colors.onSurfaceVariant,
+                          fontWeight: isToday
+                              ? FontWeight.bold
+                              : FontWeight.normal,
+                          fontSize: 10,
+                        ),
                       ),
+                    );
+                  },
+                ),
+              ),
+            ),
+            borderData: FlBorderData(show: false),
+            barGroups: List.generate(7, (index) {
+              final rate = weekRates[index] ?? 0.0;
+              final isToday = index == (DateTime.now().weekday - 1);
+
+              return BarChartGroupData(
+                x: index,
+                barRods: [
+                  BarChartRodData(
+                    toY: rate.clamp(0.05, 1.0), // Min height for visibility
+                    color: isToday
+                        ? colors.primary
+                        : (rate >= 1.0
+                              ? const Color(0xFF07E092)
+                              : colors.primary.withOpacity(
+                                  rate > 0 ? 0.7 : 0.3,
+                                )),
+                    width: 16,
+                    borderRadius: BorderRadius.circular(4),
+                    backDrawRodData: BackgroundBarChartRodData(
+                      show: true,
+                      toY: 1.0,
+                      color: colors.surfaceContainerHighest.withOpacity(0.3),
                     ),
-                    const SizedBox(height: 4),
-                    AnimatedContainer(
-                      duration: const Duration(milliseconds: 400),
-                      curve: Curves.easeOutCubic,
-                      width: barWidth,
-                      height: barHeight,
-                      decoration: BoxDecoration(
-                        color: barColor,
-                        borderRadius: BorderRadius.circular(6),
-                        boxShadow: [
-                          BoxShadow(
-                            color: isToday
-                                ? barColor.withOpacity(0.4)
-                                : Colors.transparent,
-                            blurRadius: isToday ? 8 : 0,
-                            spreadRadius: isToday ? 1 : 0,
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      dayNames[index],
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: isToday ? FontWeight.w700 : FontWeight.w400,
-                        color: isToday
-                            ? Theme.of(context).colorScheme.primary
-                            : Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ],
-                );
-              }),
-            );
-          },
+                  ),
+                ],
+              );
+            }),
+            maxY: 1.0,
+          ),
         );
       },
     );
   }
+
+  Widget _buildFocusPieChart(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final timeRepo = ref.watch(timeTrackingRepositoryProvider);
+
+    return ValueListenableBuilder(
+      valueListenable: timeRepo.box.listenable(),
+      builder: (context, box, _) {
+        final startOfWeek = _selectedDate.subtract(
+          Duration(days: _selectedDate.weekday - 1),
+        );
+        final endOfWeek = startOfWeek.add(const Duration(days: 7));
+
+        final allRecords = timeRepo.fetchAllTimeTrackingRecords();
+        final weeklyRecords = allRecords.where((r) {
+          return r.startTime.isAfter(
+                startOfWeek.subtract(const Duration(seconds: 1)),
+              ) &&
+              r.startTime.isBefore(endOfWeek);
+        }).toList();
+
+        final durationByActivity = <String, double>{};
+        double totalMinutes = 0;
+
+        for (var record in weeklyRecords) {
+          final minutes = record.durationInSeconds / 60;
+          if (minutes > 0) {
+            durationByActivity.update(
+              record.activityName,
+              (value) => value + minutes,
+              ifAbsent: () => minutes,
+            );
+            totalMinutes += minutes;
+          }
+        }
+
+        if (totalMinutes == 0) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.timer_off_outlined,
+                  color: colors.onSurfaceVariant,
+                  size: 24,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Sem foco esta semana',
+                  style: TextStyle(
+                    color: colors.onSurfaceVariant,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+
+        final sortedEntries = durationByActivity.entries.toList()
+          ..sort((a, b) => b.value.compareTo(a.value));
+
+        return Row(
+          children: [
+            Expanded(
+              flex: 3,
+              child: PieChart(
+                PieChartData(
+                  pieTouchData: PieTouchData(
+                    touchCallback: (FlTouchEvent event, pieTouchResponse) {
+                      setState(() {
+                        if (!event.isInterestedForInteractions ||
+                            pieTouchResponse == null ||
+                            pieTouchResponse.touchedSection == null) {
+                          _focusTouchedIndex = -1;
+                          return;
+                        }
+                        _focusTouchedIndex = pieTouchResponse
+                            .touchedSection!
+                            .touchedSectionIndex;
+                      });
+                    },
+                  ),
+                  borderData: FlBorderData(show: false),
+                  sectionsSpace: 0,
+                  centerSpaceRadius: 40,
+                  sections: List.generate(sortedEntries.length, (i) {
+                    final isTouched = i == _focusTouchedIndex;
+                    final fontSize = isTouched ? 16.0 : 12.0;
+                    final radius = isTouched ? 50.0 : 40.0;
+                    final entry = sortedEntries[i];
+                    final percentage = (entry.value / totalMinutes) * 100;
+
+                    // Generate a color based on index or existing activity color
+                    // Uses a predefined palette or generates one
+                    final sectionColor =
+                        Colors.primaries[i % Colors.primaries.length];
+
+                    return PieChartSectionData(
+                      color: sectionColor,
+                      value: entry.value,
+                      title: isTouched
+                          ? '${percentage.toStringAsFixed(1)}%'
+                          : '',
+                      radius: radius,
+                      titleStyle: TextStyle(
+                        fontSize: fontSize,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    );
+                  }),
+                ),
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              flex: 2,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (_focusTouchedIndex != -1 &&
+                      _focusTouchedIndex < sortedEntries.length) ...[
+                    // Show details for touched section
+                    _buildPieDetail(
+                      sortedEntries[_focusTouchedIndex].key,
+                      '${sortedEntries[_focusTouchedIndex].value.toStringAsFixed(0)} min',
+                      Colors.primaries[_focusTouchedIndex %
+                          Colors.primaries.length],
+                      isLarge: true,
+                    ),
+                  ] else ...[
+                    // Show summary or top activities
+                    Text(
+                      'Total: ${(totalMinutes / 60).toStringAsFixed(1)}h',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: colors.onSurface,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    ...sortedEntries.take(3).map((e) {
+                      final index = sortedEntries.indexOf(e);
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 4),
+                        child: _buildPieDetail(
+                          e.key,
+                          '${(e.value / totalMinutes * 100).round()}%',
+                          Colors.primaries[index % Colors.primaries.length],
+                        ),
+                      );
+                    }),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildPieDetail(
+    String title,
+    String value,
+    Color color, {
+    bool isLarge = false,
+  }) {
+    return Row(
+      children: [
+        Container(
+          width: isLarge ? 12 : 8,
+          height: isLarge ? 12 : 8,
+          decoration: BoxDecoration(shape: BoxShape.circle, color: color),
+        ),
+        const SizedBox(width: 6),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: isLarge ? 14 : 11,
+                  fontWeight: isLarge ? FontWeight.bold : FontWeight.w500,
+                  color: Theme.of(context).colorScheme.onSurface,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              if (isLarge)
+                Text(
+                  value,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
+            ],
+          ),
+        ),
+        if (!isLarge)
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.bold,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildMoodPieChart(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final moodRepo = ref.watch(moodRecordRepositoryProvider);
+
+    return ValueListenableBuilder(
+      valueListenable: moodRepo.box.listenable(),
+      builder: (context, box, _) {
+        final startOfWeek = _selectedDate.subtract(
+          Duration(days: _selectedDate.weekday - 1),
+        );
+        final endOfWeek = startOfWeek.add(const Duration(days: 7));
+
+        final allRecords = moodRepo.fetchMoodRecords().values;
+        final weeklyRecords = allRecords.where((r) {
+          return r.date.isAfter(
+                startOfWeek.subtract(const Duration(seconds: 1)),
+              ) &&
+              r.date.isBefore(endOfWeek);
+        }).toList();
+
+        final countByLabel = <String, int>{};
+        final colorByLabel = <String, Color>{};
+        int totalRecords = weeklyRecords.length;
+
+        for (var record in weeklyRecords) {
+          final label = record.label;
+          countByLabel.update(label, (val) => val + 1, ifAbsent: () => 1);
+          if (!colorByLabel.containsKey(label)) {
+            colorByLabel[label] = Color(record.color);
+          }
+        }
+
+        if (totalRecords == 0) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.mood_bad_outlined,
+                  color: colors.onSurfaceVariant,
+                  size: 24,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Sem registros de humor',
+                  style: TextStyle(
+                    color: colors.onSurfaceVariant,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+
+        final sortedEntries = countByLabel.entries.toList()
+          ..sort((a, b) => b.value.compareTo(a.value));
+
+        return Row(
+          children: [
+            Expanded(
+              flex: 3,
+              child: PieChart(
+                PieChartData(
+                  pieTouchData: PieTouchData(
+                    touchCallback: (FlTouchEvent event, pieTouchResponse) {
+                      setState(() {
+                        if (!event.isInterestedForInteractions ||
+                            pieTouchResponse == null ||
+                            pieTouchResponse.touchedSection == null) {
+                          _moodTouchedIndex = -1;
+                          return;
+                        }
+                        _moodTouchedIndex = pieTouchResponse
+                            .touchedSection!
+                            .touchedSectionIndex;
+                      });
+                    },
+                  ),
+                  borderData: FlBorderData(show: false),
+                  sectionsSpace: 0,
+                  centerSpaceRadius: 40,
+                  sections: List.generate(sortedEntries.length, (i) {
+                    final isTouched = i == _moodTouchedIndex;
+                    final fontSize = isTouched ? 16.0 : 12.0;
+                    final radius = isTouched ? 50.0 : 40.0;
+                    final entry = sortedEntries[i];
+                    final percentage = (entry.value / totalRecords) * 100;
+                    final color = colorByLabel[entry.key] ?? Colors.grey;
+
+                    return PieChartSectionData(
+                      color: color,
+                      value: entry.value.toDouble(),
+                      title: isTouched
+                          ? '${percentage.toStringAsFixed(0)}%'
+                          : '',
+                      radius: radius,
+                      titleStyle: TextStyle(
+                        fontSize: fontSize,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    );
+                  }),
+                ),
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              flex: 2,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (_moodTouchedIndex != -1 &&
+                      _moodTouchedIndex < sortedEntries.length) ...[
+                    // Show details for touched section
+                    _buildPieDetail(
+                      sortedEntries[_moodTouchedIndex].key,
+                      '${sortedEntries[_moodTouchedIndex].value} reg.',
+                      colorByLabel[sortedEntries[_moodTouchedIndex].key] ??
+                          Colors.grey,
+                      isLarge: true,
+                    ),
+                  ] else ...[
+                    // General Info
+                    Text(
+                      'Total: $totalRecords',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: colors.onSurface,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    ...sortedEntries.take(3).map((e) {
+                      // final index = sortedEntries.indexOf(e);
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 4),
+                        child: _buildPieDetail(
+                          e.key,
+                          '${(e.value / totalRecords * 100).round()}%',
+                          colorByLabel[e.key] ?? Colors.grey,
+                        ),
+                      );
+                    }),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // ==========================================
+  // HABITS CHARTS (Values: 1: Pie, 2: Radar)
+  // ==========================================
+
+  Widget _buildHabitsPieChart(BuildContext context) {
+    final habitRepo = ref.watch(habitRepositoryProvider);
+    final colors = Theme.of(context).colorScheme;
+
+    return ValueListenableBuilder(
+      valueListenable: habitRepo.box.listenable(),
+      builder: (context, box, _) {
+        final weekRates = habitRepo.getWeekCompletionRates();
+
+        double totalCompletedPercent = 0;
+        int daysWithData = 0;
+
+        for (int i = 0; i < 7; i++) {
+          if (weekRates.containsKey(i)) {
+            totalCompletedPercent += weekRates[i]!;
+            daysWithData++;
+          }
+        }
+
+        double averageCompletion = daysWithData > 0
+            ? (totalCompletedPercent / 7)
+            : 0.0;
+        double remaining = 1.0 - averageCompletion;
+
+        return Row(
+          children: [
+            Expanded(
+              flex: 3,
+              child: PieChart(
+                PieChartData(
+                  borderData: FlBorderData(show: false),
+                  sectionsSpace: 0,
+                  centerSpaceRadius: 40,
+                  sections: [
+                    PieChartSectionData(
+                      color: const Color(0xFF07E092),
+                      value: averageCompletion * 100,
+                      title: '${(averageCompletion * 100).toStringAsFixed(0)}%',
+                      radius: 50,
+                      titleStyle: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                    PieChartSectionData(
+                      color: colors.surfaceContainerHighest,
+                      value: remaining * 100,
+                      title: '',
+                      radius: 40,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              flex: 2,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildPieDetail(
+                    'Concluído',
+                    '${(averageCompletion * 100).toStringAsFixed(0)}%',
+                    const Color(0xFF07E092),
+                  ),
+                  const SizedBox(height: 8),
+                  _buildPieDetail(
+                    'Pendente',
+                    '${(remaining * 100).toStringAsFixed(0)}%',
+                    colors.surfaceContainerHighest,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildHabitsRadarChart(BuildContext context) {
+    final habitRepo = ref.watch(habitRepositoryProvider);
+    final colors = Theme.of(context).colorScheme;
+
+    return ValueListenableBuilder(
+      valueListenable: habitRepo.box.listenable(),
+      builder: (context, box, _) {
+        final weekRates = habitRepo.getWeekCompletionRates();
+        final dayNames = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
+
+        final dataEntries = <RadarEntry>[];
+        for (int i = 0; i < 7; i++) {
+          dataEntries.add(RadarEntry(value: (weekRates[i] ?? 0.0) * 100));
+        }
+
+        if (dataEntries.every((e) => e.value == 0)) {
+          return Center(
+            child: Text(
+              'Sem dados esta semana',
+              style: TextStyle(color: colors.onSurfaceVariant, fontSize: 12),
+            ),
+          );
+        }
+
+        return RadarChart(
+          RadarChartData(
+            radarShape: RadarShape.polygon,
+            radarBackgroundColor: Colors.transparent,
+            borderData: FlBorderData(show: false),
+            tickCount: 4,
+            ticksTextStyle: TextStyle(
+              color: colors.onSurfaceVariant,
+              fontSize: 8,
+            ),
+            tickBorderData: BorderSide(
+              color: colors.outlineVariant.withOpacity(0.3),
+            ),
+            gridBorderData: BorderSide(
+              color: colors.outlineVariant.withOpacity(0.3),
+              width: 1,
+            ),
+            titleTextStyle: TextStyle(
+              color: colors.onSurfaceVariant,
+              fontSize: 10,
+            ),
+            getTitle: (index, angle) => RadarChartTitle(text: dayNames[index]),
+            dataSets: [
+              RadarDataSet(
+                fillColor: colors.primary.withOpacity(0.2),
+                borderColor: colors.primary,
+                borderWidth: 2,
+                entryRadius: 3,
+                dataEntries: dataEntries,
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  // ==========================================
+  // FOCUS CHARTS (Values: 0: Line, 2: Scatter)
+  // ==========================================
 
   Widget _buildFocusLineChart(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
@@ -3373,11 +4005,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     return ValueListenableBuilder(
       valueListenable: timeRepo.box.listenable(),
       builder: (context, box, _) {
-        // Calcular dados da semana
-        final now = DateTime.now();
         final startOfWeek = _selectedDate.subtract(
           Duration(days: _selectedDate.weekday - 1),
         );
+        final endOfWeek = startOfWeek.add(const Duration(days: 7));
         final dailyMinutes = List.filled(7, 0.0);
 
         final allRecords = timeRepo.fetchAllTimeTrackingRecords();
@@ -3385,79 +4016,244 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           if (record.startTime.isAfter(
                 startOfWeek.subtract(const Duration(seconds: 1)),
               ) &&
-              record.startTime.isBefore(
-                startOfWeek.add(const Duration(days: 7)),
-              )) {
-            final dayIndex = record.startTime.weekday - 1; // 0=Seg, 6=Dom
+              record.startTime.isBefore(endOfWeek)) {
+            final dayIndex = record.startTime.weekday - 1;
             if (dayIndex >= 0 && dayIndex < 7) {
               dailyMinutes[dayIndex] += record.durationInSeconds / 60;
             }
           }
         }
 
-        // Normalizar dados (0.0 a 1.0)
-        final maxMinutes = dailyMinutes.reduce((a, b) => a > b ? a : b);
-        final normalizedData = dailyMinutes
-            .map((m) => maxMinutes > 0 ? m / maxMinutes : 0.0)
-            .toList();
+        final maxVal = dailyMinutes.reduce(max);
+        final maxY = maxVal > 0 ? maxVal * 1.2 : 60.0;
         final dayNames = ['S', 'T', 'Q', 'Q', 'S', 'S', 'D'];
-        final todayIndex = now.weekday - 1;
 
-        if (maxMinutes == 0) {
+        if (maxVal == 0) {
           return Center(
             child: Text(
-              'Sem dados de foco esta semana',
+              'Sem sessões de foco',
               style: TextStyle(color: colors.onSurfaceVariant, fontSize: 12),
             ),
           );
         }
 
-        return LayoutBuilder(
-          builder: (context, constraints) {
-            return Column(
-              children: [
-                Expanded(
-                  child: CustomPaint(
-                    size: Size(constraints.maxWidth, constraints.maxHeight),
-                    painter: _LineChartPainter(
-                      data: normalizedData,
-                      lineColor: const Color(0xFF5E60CE), // Roxo foco
-                      fillColor: const Color(0xFF5E60CE).withOpacity(0.2),
-                      lineWidth: 3,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: List.generate(7, (index) {
-                    final isToday = index == todayIndex;
-                    return SizedBox(
-                      width: 20,
-                      child: Center(
-                        child: Text(
-                          dayNames[index],
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: isToday
-                                ? FontWeight.bold
-                                : FontWeight.normal,
-                            color: isToday
-                                ? colors.primary
-                                : colors.onSurfaceVariant,
-                          ),
+        return LineChart(
+          LineChartData(
+            gridData: FlGridData(show: false),
+            titlesData: FlTitlesData(
+              show: true,
+              rightTitles: const AxisTitles(
+                sideTitles: SideTitles(showTitles: false),
+              ),
+              topTitles: const AxisTitles(
+                sideTitles: SideTitles(showTitles: false),
+              ),
+              bottomTitles: AxisTitles(
+                sideTitles: SideTitles(
+                  showTitles: true,
+                  interval: 1,
+                  getTitlesWidget: (value, meta) {
+                    final index = value.toInt();
+                    if (index < 0 || index >= dayNames.length)
+                      return const SizedBox.shrink();
+                    return SideTitleWidget(
+                      meta: meta,
+                      child: Text(
+                        dayNames[index],
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: colors.onSurfaceVariant,
                         ),
                       ),
                     );
-                  }),
+                  },
                 ),
-              ],
-            );
-          },
+              ),
+              leftTitles: const AxisTitles(
+                sideTitles: SideTitles(showTitles: false),
+              ),
+            ),
+            borderData: FlBorderData(show: false),
+            minX: 0,
+            maxX: 6,
+            minY: 0,
+            maxY: maxY,
+            lineBarsData: [
+              LineChartBarData(
+                spots: List.generate(
+                  7,
+                  (i) => FlSpot(i.toDouble(), dailyMinutes[i]),
+                ),
+                isCurved: true,
+                color: const Color(0xFF5E60CE),
+                barWidth: 3,
+                isStrokeCapRound: true,
+                dotData: const FlDotData(show: false),
+                belowBarData: BarAreaData(
+                  show: true,
+                  color: const Color(0xFF5E60CE).withOpacity(0.15),
+                ),
+              ),
+            ],
+            lineTouchData: LineTouchData(
+              touchTooltipData: LineTouchTooltipData(
+                getTooltipColor: (_) => colors.surfaceContainerHighest,
+                getTooltipItems: (touchedSpots) {
+                  return touchedSpots
+                      .map(
+                        (spot) => LineTooltipItem(
+                          '${spot.y.toInt()} min',
+                          TextStyle(
+                            color: colors.onSurface,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      )
+                      .toList();
+                },
+              ),
+            ),
+          ),
         );
       },
     );
   }
+
+  Widget _buildFocusScatterChart(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final timeRepo = ref.watch(timeTrackingRepositoryProvider);
+
+    return ValueListenableBuilder(
+      valueListenable: timeRepo.box.listenable(),
+      builder: (context, box, _) {
+        final startOfWeek = _selectedDate.subtract(
+          Duration(days: _selectedDate.weekday - 1),
+        );
+        final endOfWeek = startOfWeek.add(const Duration(days: 7));
+
+        final allRecords = timeRepo.fetchAllTimeTrackingRecords();
+        final weeklyRecords = allRecords
+            .where(
+              (r) =>
+                  r.startTime.isAfter(
+                    startOfWeek.subtract(const Duration(seconds: 1)),
+                  ) &&
+                  r.startTime.isBefore(endOfWeek),
+            )
+            .toList();
+
+        if (weeklyRecords.isEmpty) {
+          return Center(
+            child: Text(
+              'Sem sessões de foco',
+              style: TextStyle(color: colors.onSurfaceVariant, fontSize: 12),
+            ),
+          );
+        }
+
+        final activityMap = <String, int>{};
+        int activityIndex = 0;
+        for (var r in weeklyRecords) {
+          if (!activityMap.containsKey(r.activityName))
+            activityMap[r.activityName] = activityIndex++;
+        }
+
+        final spots = weeklyRecords.map((r) {
+          return ScatterSpot(
+            activityMap[r.activityName]!.toDouble(),
+            r.durationInSeconds / 60,
+            dotPainter: FlDotCirclePainter(
+              radius: 6,
+              color:
+                  Colors.primaries[activityMap[r.activityName]! %
+                      Colors.primaries.length],
+              strokeWidth: 1,
+              strokeColor: Colors.white,
+            ),
+          );
+        }).toList();
+
+        final maxY = spots.map((s) => s.y).reduce(max) * 1.2;
+
+        return ScatterChart(
+          ScatterChartData(
+            scatterSpots: spots,
+            minX: -0.5,
+            maxX: (activityMap.length - 0.5).clamp(0.5, double.infinity),
+            minY: 0,
+            maxY: maxY > 0 ? maxY : 60,
+            borderData: FlBorderData(show: false),
+            gridData: FlGridData(
+              show: true,
+              drawHorizontalLine: true,
+              drawVerticalLine: false,
+              getDrawingHorizontalLine: (_) => FlLine(
+                color: colors.outlineVariant.withOpacity(0.2),
+                strokeWidth: 1,
+              ),
+            ),
+            titlesData: FlTitlesData(
+              show: true,
+              rightTitles: const AxisTitles(
+                sideTitles: SideTitles(showTitles: false),
+              ),
+              topTitles: const AxisTitles(
+                sideTitles: SideTitles(showTitles: false),
+              ),
+              bottomTitles: AxisTitles(
+                sideTitles: SideTitles(
+                  showTitles: true,
+                  interval: 1,
+                  getTitlesWidget: (value, meta) {
+                    final name = activityMap.keys.elementAtOrNull(
+                      value.toInt(),
+                    );
+                    if (name == null) return const SizedBox.shrink();
+                    return SideTitleWidget(
+                      meta: meta,
+                      child: Text(
+                        name.length > 4 ? '${name.substring(0, 4)}.' : name,
+                        style: TextStyle(
+                          fontSize: 8,
+                          color: colors.onSurfaceVariant,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              leftTitles: const AxisTitles(
+                sideTitles: SideTitles(showTitles: false),
+              ),
+            ),
+            scatterTouchData: ScatterTouchData(
+              enabled: true,
+              touchTooltipData: ScatterTouchTooltipData(
+                getTooltipColor: (_) => colors.surfaceContainerHighest,
+                getTooltipItems: (touchedSpot) {
+                  final name =
+                      activityMap.keys.elementAtOrNull(touchedSpot.x.toInt()) ??
+                      '?';
+                  return ScatterTooltipItem(
+                    '$name\n${touchedSpot.y.toInt()} min',
+                    textStyle: TextStyle(
+                      color: colors.onSurface,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  );
+                },
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // ==========================================
+  // MOOD CHARTS
+  // ==========================================
 
   Widget _buildMoodTrendChart(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
@@ -3466,11 +4262,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     return ValueListenableBuilder(
       valueListenable: moodRepo.box.listenable(),
       builder: (context, box, _) {
-        // Calcular dados da semana
-        final now = DateTime.now();
         final startOfWeek = _selectedDate.subtract(
           Duration(days: _selectedDate.weekday - 1),
         );
+        final endOfWeek = startOfWeek.add(const Duration(days: 7));
+
         final dailyScores = List.filled(7, 0.0);
         final dailyCounts = List.filled(7, 0);
 
@@ -3479,7 +4275,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           if (record.date.isAfter(
                 startOfWeek.subtract(const Duration(seconds: 1)),
               ) &&
-              record.date.isBefore(startOfWeek.add(const Duration(days: 7)))) {
+              record.date.isBefore(endOfWeek)) {
             final dayIndex = record.date.weekday - 1;
             if (dayIndex >= 0 && dayIndex < 7) {
               dailyScores[dayIndex] += record.score;
@@ -3488,344 +4284,667 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           }
         }
 
-        // Média e Normalizar (Score 1 a 5)
-        final normalizedData = List<double>.generate(7, (i) {
-          if (dailyCounts[i] == 0) return 0.0;
-          final avg = dailyScores[i] / dailyCounts[i];
-          return avg / 5.0; // Normalizar para 0.0 - 1.0 (assumindo max score 5)
-        });
+        final spots = <FlSpot>[];
+        for (int i = 0; i < 7; i++) {
+          if (dailyCounts[i] > 0)
+            spots.add(FlSpot(i.toDouble(), dailyScores[i] / dailyCounts[i]));
+        }
 
-        final dayNames = ['S', 'T', 'Q', 'Q', 'S', 'S', 'D'];
-        final todayIndex = now.weekday - 1;
-        final hasData = dailyCounts.any((c) => c > 0);
-
-        if (!hasData) {
+        if (spots.isEmpty) {
           return Center(
             child: Text(
-              'Sem registros de humor esta semana',
+              'Sem registros de humor',
               style: TextStyle(color: colors.onSurfaceVariant, fontSize: 12),
             ),
           );
         }
 
-        return LayoutBuilder(
-          builder: (context, constraints) {
-            return Column(
-              children: [
-                Expanded(
-                  child: CustomPaint(
-                    size: Size(constraints.maxWidth, constraints.maxHeight),
-                    painter: _LineChartPainter(
-                      data: normalizedData,
-                      lineColor: const Color(0xFFFFB703), // Amarelo humor
-                      fillColor: const Color(0xFFFFB703).withOpacity(0.2),
-                      lineWidth: 3,
-                      isCurved: true,
-                      showPoints: true,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: List.generate(7, (index) {
-                    final isToday = index == todayIndex;
-                    return SizedBox(
-                      width: 20,
-                      child: Center(
-                        child: Text(
-                          dayNames[index],
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: isToday
-                                ? FontWeight.bold
-                                : FontWeight.normal,
-                            color: isToday
-                                ? colors.primary
-                                : colors.onSurfaceVariant,
-                          ),
+        return LineChart(
+          LineChartData(
+            gridData: FlGridData(show: false),
+            titlesData: FlTitlesData(
+              show: true,
+              rightTitles: const AxisTitles(
+                sideTitles: SideTitles(showTitles: false),
+              ),
+              topTitles: const AxisTitles(
+                sideTitles: SideTitles(showTitles: false),
+              ),
+              bottomTitles: AxisTitles(
+                sideTitles: SideTitles(
+                  showTitles: true,
+                  interval: 1,
+                  getTitlesWidget: (value, meta) {
+                    final dayNames = ['S', 'T', 'Q', 'Q', 'S', 'S', 'D'];
+                    final idx = value.toInt();
+                    if (idx < 0 || idx >= 7) return const SizedBox.shrink();
+                    return SideTitleWidget(
+                      meta: meta,
+                      child: Text(
+                        dayNames[idx],
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: colors.onSurfaceVariant,
                         ),
                       ),
                     );
-                  }),
+                  },
                 ),
-              ],
-            );
-          },
+              ),
+              leftTitles: const AxisTitles(
+                sideTitles: SideTitles(showTitles: false),
+              ),
+            ),
+            borderData: FlBorderData(show: false),
+            minX: 0,
+            maxX: 6,
+            minY: 1,
+            maxY: 5,
+            lineBarsData: [
+              LineChartBarData(
+                spots: spots,
+                isCurved: true,
+                color: const Color(0xFFFFB703),
+                barWidth: 3,
+                isStrokeCapRound: true,
+                dotData: const FlDotData(show: true),
+                belowBarData: BarAreaData(
+                  show: true,
+                  color: const Color(0xFFFFB703).withOpacity(0.15),
+                ),
+              ),
+            ],
+          ),
         );
       },
     );
   }
-}
 
-class _LineChartPainter extends CustomPainter {
-  final List<double> data;
-  final Color lineColor;
-  final Color fillColor;
-  final double lineWidth;
-  final bool isCurved;
-  final bool showPoints;
+  Widget _buildMoodRadarChart(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final moodRepo = ref.watch(moodRecordRepositoryProvider);
 
-  _LineChartPainter({
-    required this.data,
-    required this.lineColor,
-    required this.fillColor,
-    this.lineWidth = 2,
-    this.isCurved = true,
-    this.showPoints = false,
-  });
+    return ValueListenableBuilder(
+      valueListenable: moodRepo.box.listenable(),
+      builder: (context, box, _) {
+        final startOfWeek = _selectedDate.subtract(
+          Duration(days: _selectedDate.weekday - 1),
+        );
+        final endOfWeek = startOfWeek.add(const Duration(days: 7));
+        final dayNames = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
 
-  @override
-  void paint(Canvas canvas, Size size) {
-    if (data.isEmpty) return;
+        final allRecords = moodRepo.fetchMoodRecords().values.where(
+          (r) =>
+              r.date.isAfter(
+                startOfWeek.subtract(const Duration(seconds: 1)),
+              ) &&
+              r.date.isBefore(endOfWeek),
+        );
 
-    final paint = Paint()
-      ..color = lineColor
-      ..strokeWidth = lineWidth
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round;
+        final dailyScores = List.filled(7, 0.0);
+        final dailyCounts = List.filled(7, 0);
 
-    final fillPaint = Paint()
-      ..color = fillColor
-      ..style = PaintingStyle.fill;
-
-    final path = Path();
-    final fillPath = Path();
-
-    final width = size.width;
-    final height = size.height;
-    final segmentWidth = width / (data.length - 1);
-
-    // Iniciar caminho
-    final firstVal = data[0];
-    path.moveTo(0, height * (1 - firstVal));
-    fillPath.moveTo(0, height);
-    fillPath.lineTo(0, height * (1 - firstVal));
-
-    for (int i = 0; i < data.length - 1; i++) {
-      final x1 = i * segmentWidth;
-      final y1 = height * (1 - data[i]);
-      final x2 = (i + 1) * segmentWidth;
-      final y2 = height * (1 - data[i + 1]);
-
-      if (isCurved) {
-        final controlX1 = x1 + segmentWidth / 2;
-        final controlY1 = y1;
-        final controlX2 = x1 + segmentWidth / 2;
-        final controlY2 = y2;
-        path.cubicTo(controlX1, controlY1, controlX2, controlY2, x2, y2);
-        fillPath.cubicTo(controlX1, controlY1, controlX2, controlY2, x2, y2);
-      } else {
-        path.lineTo(x2, y2);
-        fillPath.lineTo(x2, y2);
-      }
-    }
-
-    fillPath.lineTo(width, height);
-    fillPath.close();
-
-    // Desenhar fill and stroke
-    canvas.drawPath(fillPath, fillPaint);
-    canvas.drawPath(path, paint);
-
-    // Pontos
-    if (showPoints) {
-      final dotPaint = Paint()
-        ..color = lineColor
-        ..style = PaintingStyle.fill;
-      final whitePaint = Paint()
-        ..color = Colors.white
-        ..style = PaintingStyle.fill;
-
-      for (int i = 0; i < data.length; i++) {
-        if (data[i] > 0) {
-          final x = i * segmentWidth;
-          final y = height * (1 - data[i]);
-          canvas.drawCircle(Offset(x, y), 6, whitePaint);
-          canvas.drawCircle(Offset(x, y), 4, dotPaint);
+        for (var record in allRecords) {
+          final idx = record.date.weekday - 1;
+          if (idx >= 0 && idx < 7) {
+            dailyScores[idx] += record.score;
+            dailyCounts[idx]++;
+          }
         }
-      }
-    }
+
+        final dataEntries = <RadarEntry>[];
+        for (int i = 0; i < 7; i++) {
+          final avg = dailyCounts[i] > 0
+              ? (dailyScores[i] / dailyCounts[i])
+              : 0.0;
+          dataEntries.add(RadarEntry(value: avg));
+        }
+
+        if (dataEntries.every((e) => e.value == 0)) {
+          return Center(
+            child: Text(
+              'Sem dados de humor',
+              style: TextStyle(color: colors.onSurfaceVariant, fontSize: 12),
+            ),
+          );
+        }
+
+        return RadarChart(
+          RadarChartData(
+            radarShape: RadarShape.polygon,
+            radarBackgroundColor: Colors.transparent,
+            borderData: FlBorderData(show: false),
+            tickCount: 5,
+            ticksTextStyle: TextStyle(
+              color: colors.onSurfaceVariant,
+              fontSize: 8,
+            ),
+            tickBorderData: BorderSide(
+              color: colors.outlineVariant.withOpacity(0.3),
+            ),
+            gridBorderData: BorderSide(
+              color: colors.outlineVariant.withOpacity(0.3),
+              width: 1,
+            ),
+            titleTextStyle: TextStyle(
+              color: colors.onSurfaceVariant,
+              fontSize: 10,
+            ),
+            getTitle: (index, angle) => RadarChartTitle(text: dayNames[index]),
+            dataSets: [
+              RadarDataSet(
+                fillColor: const Color(0xFFFFB703).withOpacity(0.2),
+                borderColor: const Color(0xFFFFB703),
+                borderWidth: 2,
+                entryRadius: 3,
+                dataEntries: dataEntries,
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
-  @override
-  bool shouldRepaint(covariant _LineChartPainter oldDelegate) {
-    return oldDelegate.data != data || oldDelegate.lineColor != lineColor;
+  void refresh() {
+    if (mounted) setState(() {});
   }
 }
 
 // Continuation of _HomeScreenState methods
 extension _HomeScreenStateDataInsights on _HomeScreenState {
   // ==========================================
-  // INSIGHTS BASEADOS EM DADOS
+  // INSIGHTS BASEADOS EM DADOS - REDESIGNED 🔥
   // ==========================================
   Widget _buildDataInsights(BuildContext context) {
     if (!_habitRepoInitialized) return const SizedBox.shrink();
 
     final habitRepo = ref.watch(habitRepositoryProvider);
+    final moodRepo = ref.watch(moodRecordRepositoryProvider);
+    final taskRepo = ref.watch(taskRepositoryProvider);
+    final timeRepo = ref.watch(timeTrackingRepositoryProvider);
+    final notesRepo = ref.watch(notesRepositoryProvider);
 
     return ValueListenableBuilder(
       valueListenable: habitRepo.box.listenable(),
-      builder: (context, box, _) {
-        final allHabits = habitRepo.getAllHabits();
-        if (allHabits.isEmpty) return const SizedBox.shrink();
+      builder: (context, habitBox, _) {
+        final taskListenable = taskRepo.boxListenable;
+        if (taskListenable == null) return const SizedBox.shrink();
 
-        // Encontrar o hábito com melhor streak
-        Habit? bestHabit;
-        int bestStreak = 0;
-        for (final h in allHabits) {
-          final s = h.calculateCurrentStreak();
-          if (s > bestStreak) {
-            bestStreak = s;
-            bestHabit = h;
-          }
-        }
+        return ValueListenableBuilder(
+          valueListenable: taskListenable,
+          builder: (context, taskBox, _) {
+            final allHabits = habitRepo.getAllHabits();
+            if (allHabits.isEmpty) return const SizedBox.shrink();
 
-        // Calcular consistência (dias com pelo menos 1 hábito completado nos últimos 7 dias)
-        int consistentDays = 0;
-        final now = DateTime.now();
-        for (int i = 0; i < 7; i++) {
-          final date = now.subtract(Duration(days: i));
-          final dayHabits = habitRepo.getHabitsForDate(date);
-          if (dayHabits.any((h) => h.isCompletedOn(date))) {
-            consistentDays++;
-          }
-        }
+            final colors = Theme.of(context).colorScheme;
+            final now = DateTime.now();
 
-        // Gerar insights dinâmicos
-        List<Map<String, dynamic>> insights = [];
+            // CALCULAR ESTATÍSTICAS GERAIS DO APP
 
-        if (bestStreak >= 7) {
-          insights.add({
-            'icon': Icons.emoji_events,
-            'color': const Color(0xFFFFD700),
-            'text':
-                '🏆 Incrível! ${bestHabit?.name} está em uma sequência de $bestStreak dias!',
-          });
-        } else if (bestStreak >= 3) {
-          insights.add({
-            'icon': Icons.local_fire_department,
-            'color': const Color(0xFFFF6B6B),
-            'text':
-                '🔥 ${bestHabit?.name} está em alta com $bestStreak dias seguidos!',
-          });
-        }
+            // 1. Hábitos
+            Habit? bestHabit;
+            int bestStreak = 0;
+            for (final h in allHabits) {
+              final s = h.calculateCurrentStreak();
+              if (s > bestStreak) {
+                bestStreak = s;
+                bestHabit = h;
+              }
+            }
 
-        if (consistentDays >= 6) {
-          insights.add({
-            'icon': Icons.star,
-            'color': const Color(0xFF07E092),
-            'text':
-                '⭐ Você foi consistente em $consistentDays dos últimos 7 dias. Excelente!',
-          });
-        } else if (consistentDays >= 4) {
-          insights.add({
-            'icon': Icons.trending_up,
-            'color': UltravioletColors.primary,
-            'text':
-                '📈 Boa consistência! Ativo em $consistentDays dias esta semana.',
-          });
-        } else if (consistentDays < 3) {
-          insights.add({
-            'icon': Icons.lightbulb,
-            'color': UltravioletColors.tertiary,
-            'text':
-                '💡 Dica: Comece com apenas 1 hábito por dia para criar momentum.',
-          });
-        }
+            int consistentDays = 0;
+            for (int i = 0; i < 7; i++) {
+              final date = now.subtract(Duration(days: i));
+              final dayHabits = habitRepo.getHabitsForDate(date);
+              if (dayHabits.any((h) => h.isCompletedOn(date))) {
+                consistentDays++;
+              }
+            }
 
-        // Insight sobre horário (se tiver hábitos matinais)
-        final morningHabits = allHabits.where((h) {
-          if (h.scheduledTime == null) return false;
-          final parts = h.scheduledTime!.split(':');
-          if (parts.length != 2) return false;
-          final hour = int.tryParse(parts[0]) ?? 12;
-          return hour < 10;
-        }).length;
+            final morningHabits = allHabits.where((h) {
+              if (h.scheduledTime == null) return false;
+              final parts = h.scheduledTime!.split(':');
+              if (parts.length != 2) return false;
+              final hour = int.tryParse(parts[0]) ?? 12;
+              return hour < 10;
+            }).length;
 
-        if (morningHabits > 0) {
-          insights.add({
-            'icon': Icons.wb_sunny,
-            'color': const Color(0xFFFFA556),
-            'text':
-                '🌅 Você tem $morningHabits hábito(s) matinal(is). Ótimo para produtividade!',
-          });
-        }
+            // 2. Mood Records
+            final allMoods = moodRepo.fetchMoodRecords().values.where((m) {
+              final diff = now.difference(m.date).inDays;
+              return diff <= 7;
+            }).toList();
 
-        if (insights.isEmpty) {
-          insights.add({
-            'icon': Icons.rocket_launch,
-            'color': UltravioletColors.primary,
-            'text':
-                '🚀 Continue assim! Cada pequeno passo conta na sua jornada.',
-          });
-        }
+            final avgMoodScore = allMoods.isNotEmpty
+                ? allMoods.fold(0.0, (sum, m) => sum + m.score) /
+                      allMoods.length
+                : 0.0;
 
-        return OdysseyCard(
-          padding: const EdgeInsets.all(20),
-          margin: EdgeInsets.zero,
-          gradientColors: [
-            Theme.of(context).colorScheme.secondary.withOpacity(0.1),
-            Theme.of(context).colorScheme.primary.withOpacity(0.05),
-          ],
-          borderColor: Theme.of(context).colorScheme.primary.withOpacity(0.15),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Icon(
-                    Icons.psychology_outlined,
-                    color: Theme.of(context).colorScheme.primary,
-                    size: 20,
+            // 3. Tasks
+            final allTasks = taskBox.values.cast<TaskData>().toList();
+            final completedTasks = allTasks.where((t) => t.completed).length;
+            final taskCompletionRate = allTasks.isNotEmpty
+                ? completedTasks / allTasks.length
+                : 0.0;
+
+            // 4. Time Tracking
+            final timeRecords = timeRepo.fetchAllTimeTrackingRecords();
+            final weekRecords = timeRecords.where((r) {
+              return now.difference(r.startTime).inDays <= 7;
+            }).toList();
+            final totalMinutes = weekRecords.fold(
+              0.0,
+              (sum, r) => sum + (r.durationInSeconds / 60),
+            );
+
+            // 5. Notes
+            final allNotes = notesRepo.getAllNotes();
+            final recentNotes = allNotes.where((n) {
+              final updated = DateTime.tryParse(n['updatedAt'] ?? '');
+              if (updated == null) return false;
+              return now.difference(updated).inDays <= 7;
+            }).length;
+
+            // GERAR INSIGHTS DINÂMICOS
+            List<Map<String, dynamic>> insights = [];
+
+            // Insight sobre streak
+            if (bestStreak >= 7) {
+              insights.add({
+                'icon': Icons.emoji_events_rounded,
+                'gradient': [const Color(0xFFFFD700), const Color(0xFFFFA500)],
+                'text':
+                    '🏆 Incrível! ${bestHabit?.name} está em uma sequência de $bestStreak dias!',
+                'badge': '$bestStreak dias',
+              });
+            } else if (bestStreak >= 3) {
+              insights.add({
+                'icon': Icons.local_fire_department_rounded,
+                'gradient': [const Color(0xFFFF6B6B), const Color(0xFFFF8E53)],
+                'text':
+                    '🔥 ${bestHabit?.name} está em alta com $bestStreak dias seguidos!',
+                'badge': '$bestStreak dias',
+              });
+            }
+
+            // Insight sobre consistência
+            if (consistentDays >= 6) {
+              insights.add({
+                'icon': Icons.star_rounded,
+                'gradient': [const Color(0xFF07E092), const Color(0xFF00B4D8)],
+                'text':
+                    '⭐ Você foi consistente em $consistentDays dos últimos 7 dias. Excelente!',
+                'badge': '${(consistentDays / 7 * 100).round()}%',
+              });
+            } else if (consistentDays >= 4) {
+              insights.add({
+                'icon': Icons.trending_up_rounded,
+                'gradient': [const Color(0xFF5E60CE), const Color(0xFF7209B7)],
+                'text':
+                    '📈 Boa consistência! Ativo em $consistentDays dias esta semana.',
+                'badge': '$consistentDays/7',
+              });
+            }
+
+            // Insight sobre humor
+            if (allMoods.isNotEmpty) {
+              String moodEmoji = '😊';
+              String moodText = 'Bem';
+              if (avgMoodScore >= 4.5) {
+                moodEmoji = '😄';
+                moodText = 'Excelente';
+              } else if (avgMoodScore >= 3.5) {
+                moodEmoji = '😊';
+                moodText = 'Bem';
+              } else if (avgMoodScore >= 2.5) {
+                moodEmoji = '😐';
+                moodText = 'Ok';
+              } else {
+                moodEmoji = '😔';
+                moodText = 'Desafiador';
+              }
+
+              insights.add({
+                'icon': Icons.mood_rounded,
+                'gradient': [const Color(0xFFFFB703), const Color(0xFFFB8500)],
+                'text':
+                    '$moodEmoji Seu humor médio esta semana está $moodText (${avgMoodScore.toStringAsFixed(1)}/5).',
+                'badge': '${allMoods.length} registros',
+              });
+            }
+
+            // Insight sobre tarefas
+            if (allTasks.length >= 5) {
+              insights.add({
+                'icon': Icons.check_circle_rounded,
+                'gradient': [const Color(0xFF07E092), const Color(0xFF00B4D8)],
+                'text':
+                    '✅ Taxa de conclusão de tarefas: ${(taskCompletionRate * 100).round()}% ($completedTasks de ${allTasks.length}).',
+                'badge': '${(taskCompletionRate * 100).round()}%',
+              });
+            }
+
+            // Insight sobre foco
+            if (totalMinutes >= 60) {
+              final hours = (totalMinutes / 60).toStringAsFixed(1);
+              insights.add({
+                'icon': Icons.timer_rounded,
+                'gradient': [const Color(0xFF5E60CE), const Color(0xFF7209B7)],
+                'text':
+                    '⏱️ Você focou por ${hours}h esta semana. Mantendo o ritmo!',
+                'badge': '${hours}h',
+              });
+            }
+
+            // Insight sobre notas
+            if (recentNotes > 0) {
+              insights.add({
+                'icon': Icons.lightbulb_rounded,
+                'gradient': [const Color(0xFFFFB703), const Color(0xFFFB8500)],
+                'text':
+                    '💡 $recentNotes nota${recentNotes > 1 ? 's' : ''} criada${recentNotes > 1 ? 's' : ''} esta semana. Capturando ideias!',
+                'badge': '$recentNotes nota${recentNotes > 1 ? 's' : ''}',
+              });
+            }
+
+            // Insight sobre horário matinal
+            if (morningHabits > 0) {
+              insights.add({
+                'icon': Icons.wb_sunny_rounded,
+                'gradient': [const Color(0xFFFFA556), const Color(0xFFFF6B6B)],
+                'text':
+                    '🌅 Você tem $morningHabits hábito(s) matinal(is). Ótimo para produtividade!',
+                'badge': '$morningHabits matinais',
+              });
+            }
+
+            // Fallback
+            if (insights.isEmpty) {
+              insights.add({
+                'icon': Icons.rocket_launch_rounded,
+                'gradient': [const Color(0xFF5E60CE), const Color(0xFF7209B7)],
+                'text':
+                    '🚀 Continue assim! Cada pequeno passo conta na sua jornada.',
+                'badge': 'Vamos lá!',
+              });
+            }
+
+            // Pegar os 3 insights mais relevantes
+            final topInsights = insights.take(3).toList();
+
+            return Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    colors.primaryContainer.withOpacity(0.3),
+                    colors.secondaryContainer.withOpacity(0.2),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(32),
+                border: Border.all(
+                  color: colors.primary.withOpacity(0.2),
+                  width: 1.5,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: colors.primary.withOpacity(0.1),
+                    blurRadius: 24,
+                    offset: const Offset(0, 8),
                   ),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Insights',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: Theme.of(context).colorScheme.onSurface,
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Header com gradiente
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [colors.primary, colors.secondary],
+                          ),
+                          borderRadius: BorderRadius.circular(14),
+                          boxShadow: [
+                            BoxShadow(
+                              color: colors.primary.withOpacity(0.3),
+                              blurRadius: 12,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Icon(
+                          Icons.psychology_rounded,
+                          color: Colors.white,
+                          size: 22,
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Insights Inteligentes',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: colors.onSurface,
+                                letterSpacing: -0.5,
+                              ),
+                            ),
+                            Text(
+                              'Análise do seu progresso',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: colors.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Insights cards
+                  ...topInsights.map((insight) {
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: colors.surface.withOpacity(0.8),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: colors.outline.withOpacity(0.1),
+                            width: 1,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: (insight['gradient'] as List<Color>).first
+                                  .withOpacity(0.1),
+                              blurRadius: 8,
+                              offset: const Offset(0, 3),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          children: [
+                            // Ícone com gradiente
+                            Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: insight['gradient'] as List<Color>,
+                                ),
+                                borderRadius: BorderRadius.circular(12),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: (insight['gradient'] as List<Color>)
+                                        .first
+                                        .withOpacity(0.3),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 3),
+                                  ),
+                                ],
+                              ),
+                              child: Icon(
+                                insight['icon'] as IconData,
+                                color: Colors.white,
+                                size: 20,
+                              ),
+                            ),
+                            const SizedBox(width: 14),
+                            // Texto
+                            Expanded(
+                              child: Text(
+                                insight['text'] as String,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: colors.onSurface.withOpacity(0.9),
+                                  height: 1.4,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            // Badge
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 6,
+                              ),
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [
+                                    (insight['gradient'] as List<Color>).first
+                                        .withOpacity(0.2),
+                                    (insight['gradient'] as List<Color>).last
+                                        .withOpacity(0.1),
+                                  ],
+                                ),
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(
+                                  color: (insight['gradient'] as List<Color>)
+                                      .first
+                                      .withOpacity(0.3),
+                                  width: 1,
+                                ),
+                              ),
+                              child: Text(
+                                insight['badge'] as String,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  color: (insight['gradient'] as List<Color>)
+                                      .first,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }).toList(),
+
+                  // Resumo geral do app
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: colors.surface.withOpacity(0.5),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: colors.outline.withOpacity(0.1),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: [
+                        _buildMiniStat(
+                          icon: Icons.repeat_rounded,
+                          value: '${allHabits.length}',
+                          label: 'Hábitos',
+                          color: const Color(0xFF5E60CE),
+                        ),
+                        Container(
+                          width: 1,
+                          height: 30,
+                          color: colors.outline.withOpacity(0.2),
+                        ),
+                        _buildMiniStat(
+                          icon: Icons.check_circle_rounded,
+                          value: '${allTasks.length}',
+                          label: 'Tarefas',
+                          color: const Color(0xFF07E092),
+                        ),
+                        Container(
+                          width: 1,
+                          height: 30,
+                          color: colors.outline.withOpacity(0.2),
+                        ),
+                        _buildMiniStat(
+                          icon: Icons.mood_rounded,
+                          value: '${allMoods.length}',
+                          label: 'Moods',
+                          color: const Color(0xFFFFB703),
+                        ),
+                        Container(
+                          width: 1,
+                          height: 30,
+                          color: colors.outline.withOpacity(0.2),
+                        ),
+                        _buildMiniStat(
+                          icon: Icons.note_rounded,
+                          value: '${allNotes.length}',
+                          label: 'Notas',
+                          color: const Color(0xFFFF6B6B),
+                        ),
+                      ],
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
-              ...insights
-                  .take(2)
-                  .map(
-                    (insight) => Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Icon(
-                            insight['icon'] as IconData,
-                            color: insight['color'] as Color,
-                            size: 16,
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Text(
-                              insight['text'] as String,
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: Theme.of(
-                                  context,
-                                ).colorScheme.onSurface.withOpacity(0.85),
-                                height: 1.4,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  )
-                  .toList(),
-            ],
-          ),
+            );
+          },
         );
       },
+    );
+  }
+
+  Widget _buildMiniStat({
+    required IconData icon,
+    required String value,
+    required String label,
+    required Color color,
+  }) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, color: color, size: 18),
+        const SizedBox(height: 4),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w800,
+            color: color,
+          ),
+        ),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 10,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
+        ),
+      ],
     );
   }
 
@@ -4234,7 +5353,7 @@ extension _HomeScreenStateDataInsights on _HomeScreenState {
 
     await taskRepo.addTask(newTask);
     _quickTaskController.clear();
-    setState(() {}); // Refresh UI
+    refresh(); // Refresh UI
   }
 
   // ==========================================
@@ -4256,7 +5375,7 @@ extension _HomeScreenStateDataInsights on _HomeScreenState {
           final repo = ref.read(habitRepositoryProvider);
           await repo.addHabit(habit);
           if (mounted) {
-            setState(() {});
+            refresh();
             FeedbackService.showSuccessWithXP(
               context,
               'Hábito "$text" criado!',
