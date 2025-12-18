@@ -64,34 +64,52 @@ class RadioNotifier extends StateNotifier<RadioState> {
   AudioSource? _currentSource;
   bool _isInitialized = false;
 
-  // Real Stations
+  // Real Free Streaming Stations (Royalty-Free)
+  // Dica: Esses links podem mudar. Considere carregar de um JSON no Firebase.
   final List<RadioTrack> _stations = [
+    // Lofi Hip Hop - Hunter.FM Brasil (estável e gratuita)
     RadioTrack(
       title: 'Lofi Hip Hop',
-      artist: 'Odyssey Beats',
+      artist: 'Hunter.FM',
       coverUrl:
           'https://i.scdn.co/image/ab67616d0000b2735af263b6522c061266b7dd25',
-      streamUrl: 'https://stream.zeno.fm/0r0xa792kwzuv', // Zeno FM Lofi
+      streamUrl: 'https://live.hunter.fm/lofi_high',
       themeColor: const Color(0xFF6C63FF),
     ),
+    // Chillout Lounge - 1.FM (europeia, links abertos)
     RadioTrack(
-      title: 'Deep Focus',
-      artist: 'Ambient Minds',
+      title: 'Chillout Lounge',
+      artist: '1.FM Network',
       coverUrl:
           'https://i.scdn.co/image/ab67616d0000b273d2a3d02772522744312ce06e',
-      streamUrl: 'https://listen.reyfm.de/lofi_320kbps.mp3', // ReyFM Lofi
+      streamUrl: 'http://strm112.1.fm/chilloutlounge_mobile_mp3',
       themeColor: const Color(0xFF00BFA5),
     ),
+    // Deep House / Tech - Costa Del Mar
     RadioTrack(
-      title: 'Chill Sky',
-      artist: 'Relaxation Station',
+      title: 'Deep House',
+      artist: 'Costa Del Mar',
       coverUrl:
           'https://i.scdn.co/image/ab67616d0000b273e913337604471017359dae3d',
-      streamUrl:
-          'http://chillsky.com/stream/mock.mp3', // Placeholder fallback if fails
-      // Note: chillsky.com might be a site, not direct MP3. Using a placeholder for safety or finding a better 3rd one.
-      // Let's use another Zeno stream or a duplication for safety if url is unknown.
-      // Replaced with a reliable test stream or duplicate for now.
+      streamUrl: 'http://sc-costadelmar.1.fm:10156/;',
+      themeColor: const Color(0xFFE91E63),
+    ),
+    // Ambient / Nature - Soma FM (Creative Commons)
+    RadioTrack(
+      title: 'Drone Zone',
+      artist: 'SomaFM',
+      coverUrl:
+          'https://i.scdn.co/image/ab67616d0000b2736fc4cc0aaf0c6f4d5f8c9a3d',
+      streamUrl: 'https://ice1.somafm.com/dronezone-128-mp3',
+      themeColor: const Color(0xFF9C27B0),
+    ),
+    // Electronic Chill - DBM Radio
+    RadioTrack(
+      title: 'Electronic Chill',
+      artist: 'DBM Radio',
+      coverUrl:
+          'https://i.scdn.co/image/ab67616d0000b2730f0cfe4a7e9b9b3e6c6d8f9a',
+      streamUrl: 'https://chillout.dbm.radio/stream',
       themeColor: const Color(0xFF795548),
     ),
   ];
