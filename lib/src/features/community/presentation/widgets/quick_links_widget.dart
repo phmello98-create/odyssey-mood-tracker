@@ -307,9 +307,24 @@ class _QuickLinksWidgetState extends State<QuickLinksWidget> {
 
   Widget _buildEventsPanel(ColorScheme colors) {
     final events = [
-      {'date': '20 Dez', 'title': 'Desafio de Meditação', 'status': 'Em breve'},
-      {'date': '25 Dez', 'title': 'Maratona de Foco', 'status': 'Inscreva-se'},
-      {'date': '01 Jan', 'title': 'Reset de Ano Novo', 'status': 'Em breve'},
+      {
+        'date': '20 Dez',
+        'title': 'Desafio de Meditação',
+        'status': 'Em breve',
+        'desc': '7 dias de meditação guiada',
+      },
+      {
+        'date': '25 Dez',
+        'title': 'Maratona de Foco',
+        'status': 'Inscreva-se',
+        'desc': '24h de produtividade coletiva',
+      },
+      {
+        'date': '01 Jan',
+        'title': 'Reset de Ano Novo',
+        'status': 'Em breve',
+        'desc': 'Planejamento 2025',
+      },
     ];
 
     return _buildPanel(
@@ -318,63 +333,146 @@ class _QuickLinksWidgetState extends State<QuickLinksWidget> {
       title: 'Próximos Eventos',
       child: Column(
         children: events
-            .map(
-              (event) => Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFFD54F).withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        event['date']!,
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.orange.shade800,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        event['title']!,
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: colors.onSurface,
-                        ),
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: colors.primaryContainer,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        event['status']!,
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w600,
-                          color: colors.primary,
-                        ),
-                      ),
-                    ),
-                  ],
+            .map((event) => _buildEventItem(context, event, colors))
+            .toList(),
+      ),
+    );
+  }
+
+  Widget _buildEventItem(
+    BuildContext context,
+    Map<String, String> event,
+    ColorScheme colors,
+  ) {
+    final isSubscribable = event['status'] == 'Inscreva-se';
+
+    return InkWell(
+      onTap: isSubscribable
+          ? () {
+              HapticFeedback.mediumImpact();
+              _showEventSubscriptionDialog(context, event, colors);
+            }
+          : null,
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFD54F).withOpacity(0.2),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                event['date']!,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.orange.shade800,
                 ),
               ),
-            )
-            .toList(),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    event['title']!,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: colors.onSurface,
+                    ),
+                  ),
+                  if (event['desc'] != null)
+                    Text(
+                      event['desc']!,
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: colors.onSurfaceVariant,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: isSubscribable
+                    ? colors.primary
+                    : colors.primaryContainer,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                event['status']!,
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                  color: isSubscribable ? colors.onPrimary : colors.primary,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showEventSubscriptionDialog(
+    BuildContext context,
+    Map<String, String> event,
+    ColorScheme colors,
+  ) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Row(
+          children: [
+            const Icon(Icons.event_available_rounded, color: Color(0xFFFFD54F)),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                event['title']!,
+                style: const TextStyle(fontSize: 18),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('📅 Data: ${event['date']}'),
+            const SizedBox(height: 8),
+            Text(event['desc'] ?? ''),
+            const SizedBox(height: 16),
+            Text(
+              'Deseja se inscrever neste evento?',
+              style: TextStyle(color: colors.onSurfaceVariant),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              HapticFeedback.mediumImpact();
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('✅ Inscrito em ${event['title']}!'),
+                  backgroundColor: const Color(0xFF4CAF50),
+                ),
+              );
+            },
+            child: const Text('Inscrever-se'),
+          ),
+        ],
       ),
     );
   }
