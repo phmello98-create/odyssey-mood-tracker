@@ -199,8 +199,6 @@ class _SpinningDiscState extends State<_SpinningDisc>
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-
     return RotationTransition(
       turns: _controller,
       child: Container(
@@ -208,31 +206,65 @@ class _SpinningDiscState extends State<_SpinningDisc>
         height: 40,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          gradient: RadialGradient(
-            colors: [
-              colors.primary,
-              colors.primary.withOpacity(0.8),
-              colors.tertiary,
-            ],
-          ),
+          color: const Color(0xFF1A1A1A), // Cor base do vinil
           boxShadow: widget.isPlaying
               ? [
                   BoxShadow(
-                    color: colors.primary.withOpacity(0.4),
-                    blurRadius: 8,
+                    color: Colors.purple.withOpacity(0.4),
+                    blurRadius: 12,
+                    spreadRadius: 1,
                   ),
                 ]
-              : null,
+              : [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.3),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
         ),
-        child: Center(
-          child: Container(
-            width: 12,
-            height: 12,
-            decoration: BoxDecoration(
-              color: colors.onPrimary,
-              shape: BoxShape.circle,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            // Sulcos do vinil (círculos concêntricos)
+            ...List.generate(3, (i) {
+              return Container(
+                width: 36 - (i * 8),
+                height: 36 - (i * 8),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: Colors.grey.withOpacity(0.15),
+                    width: 1,
+                  ),
+                ),
+              );
+            }),
+            // Label central (colorido)
+            Container(
+              width: 16,
+              height: 16,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: LinearGradient(
+                  colors: widget.isPlaying
+                      ? [Colors.purple, Colors.pink]
+                      : [Colors.grey.shade600, Colors.grey.shade700],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+              ),
             ),
-          ),
+            // Furo central
+            Container(
+              width: 5,
+              height: 5,
+              decoration: const BoxDecoration(
+                color: Color(0xFF1A1A1A),
+                shape: BoxShape.circle,
+              ),
+            ),
+          ],
         ),
       ),
     );

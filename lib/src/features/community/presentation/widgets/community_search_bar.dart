@@ -24,9 +24,19 @@ class CommunitySearchBar extends StatelessWidget {
             height: 48,
             padding: const EdgeInsets.symmetric(horizontal: 16),
             decoration: BoxDecoration(
-              color: colors.surfaceContainerHighest.withOpacity(0.5),
+              color: colors.surface,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: colors.outline.withOpacity(0.1)),
+              border: Border.all(
+                color: colors.outlineVariant.withOpacity(0.5),
+                width: 1,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: colors.shadow.withOpacity(0.05),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
+                ),
+              ],
             ),
             child: Row(
               children: [
@@ -40,7 +50,7 @@ class CommunitySearchBar extends StatelessWidget {
                   'Buscar tópicos, pessoas, artigos...',
                   style: TextStyle(
                     fontSize: 14,
-                    color: colors.onSurfaceVariant.withOpacity(0.8),
+                    color: colors.onSurfaceVariant,
                     fontWeight: FontWeight.w400,
                   ),
                 ),

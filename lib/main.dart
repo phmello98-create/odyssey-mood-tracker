@@ -27,6 +27,16 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Inicializar MediaKit para Linux/outras plataformas (suporte a streaming de áudio)
+  // Configurar para evitar ytdl_hook (youtube-dl) em streams de rádio
+  // IMPORTANTE: Configurar propriedades estáticas ANTES de ensureInitialized()
+  JustAudioMediaKit.protocolWhitelist = const [
+    'http',
+    'https',
+    'file',
+    'rtsp',
+    'rtmp',
+  ];
+  JustAudioMediaKit.bufferSize = 8 * 1024 * 1024; // 8MB buffer para streams
   JustAudioMediaKit.ensureInitialized();
 
   // Inicializar Firebase PRIMEIRO (antes de qualquer outro serviço que dependa dele)

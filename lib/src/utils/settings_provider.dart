@@ -11,11 +11,13 @@ import 'package:odyssey/src/constants/app_themes.dart';
 /// Estado das configurações do app
 class AppSettings {
   final ThemeMode themeMode;
-  final AppThemeType selectedTheme;  // Novo: tema selecionado
+  final AppThemeType selectedTheme; // Novo: tema selecionado
   final bool notificationsEnabled;
   final List<TimeOfDay> reminderTimes;
   final String? avatarPath;
+  final String? bannerPath;
   final String userName;
+  final int selectedTitleIndex; // Índice do título selecionado
   final bool soundEnabled;
   final bool autoBackup;
   final bool newsUseWebViewFallback;
@@ -23,7 +25,7 @@ class AppSettings {
 
   const AppSettings({
     this.themeMode = ThemeMode.dark,
-    this.selectedTheme = AppThemeType.ultraviolet,  // Tema padrão
+    this.selectedTheme = AppThemeType.ultraviolet, // Tema padrão
     this.notificationsEnabled = true,
     this.reminderTimes = const [
       TimeOfDay(hour: 9, minute: 0),
@@ -31,7 +33,9 @@ class AppSettings {
       TimeOfDay(hour: 21, minute: 0),
     ],
     this.avatarPath,
+    this.bannerPath,
     this.userName = 'Meu Perfil',
+    this.selectedTitleIndex = -1, // -1 = usar título baseado em XP
     this.soundEnabled = true,
     this.autoBackup = false,
     this.newsUseWebViewFallback = true,
@@ -44,12 +48,15 @@ class AppSettings {
     bool? notificationsEnabled,
     List<TimeOfDay>? reminderTimes,
     String? avatarPath,
+    String? bannerPath,
     String? userName,
+    int? selectedTitleIndex,
     bool? soundEnabled,
     bool? autoBackup,
     bool? newsUseWebViewFallback,
     bool? splashAnimationEnabled,
     bool clearAvatar = false,
+    bool clearBanner = false,
   }) {
     return AppSettings(
       themeMode: themeMode ?? this.themeMode,
@@ -57,11 +64,15 @@ class AppSettings {
       notificationsEnabled: notificationsEnabled ?? this.notificationsEnabled,
       reminderTimes: reminderTimes ?? this.reminderTimes,
       avatarPath: clearAvatar ? null : (avatarPath ?? this.avatarPath),
+      bannerPath: clearBanner ? null : (bannerPath ?? this.bannerPath),
       userName: userName ?? this.userName,
+      selectedTitleIndex: selectedTitleIndex ?? this.selectedTitleIndex,
       soundEnabled: soundEnabled ?? this.soundEnabled,
       autoBackup: autoBackup ?? this.autoBackup,
-      newsUseWebViewFallback: newsUseWebViewFallback ?? this.newsUseWebViewFallback,
-      splashAnimationEnabled: splashAnimationEnabled ?? this.splashAnimationEnabled,
+      newsUseWebViewFallback:
+          newsUseWebViewFallback ?? this.newsUseWebViewFallback,
+      splashAnimationEnabled:
+          splashAnimationEnabled ?? this.splashAnimationEnabled,
     );
   }
 }
@@ -72,12 +83,16 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
     _loadSettings();
   }
 
+  final ImagePicker _picker = ImagePicker();
+
   static const _themeModeKey = 'theme_mode';
   static const _selectedThemeKey = 'selected_theme';
   static const _notificationsEnabledKey = 'notifications_enabled';
   static const _reminderTimesKey = 'reminder_times';
   static const _avatarPathKey = 'avatar_path';
+  static const _bannerPathKey = 'banner_path';
   static const _userNameKey = 'user_name';
+  static const _selectedTitleIndexKey = 'selected_title_index';
   static const _soundEnabledKey = 'sound_enabled';
   static const _autoBackupKey = 'auto_backup';
   static const _newsUseWebViewFallbackKey = 'news_use_webview_fallback';
@@ -85,25 +100,30 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
 
   Future<void> _loadSettings() async {
     final prefs = await SharedPreferences.getInstance();
-    
+
     // Load theme mode
     final themeModeIndex = prefs.getInt(_themeModeKey) ?? 2; // default dark
     final themeMode = ThemeMode.values[themeModeIndex];
-    
+
     // Load selected theme
     final selectedThemeIndex = prefs.getInt(_selectedThemeKey) ?? 0;
-    final selectedTheme = AppThemeType.values[selectedThemeIndex.clamp(0, AppThemeType.values.length - 1)];
-    
+    final selectedTheme = AppThemeType
+        .values[selectedThemeIndex.clamp(0, AppThemeType.values.length - 1)];
+
     // Load notifications enabled
-    final notificationsEnabled = prefs.getBool(_notificationsEnabledKey) ?? true;
-    
+    final notificationsEnabled =
+        prefs.getBool(_notificationsEnabledKey) ?? true;
+
     // Load reminder times
     final reminderTimesStr = prefs.getStringList(_reminderTimesKey);
     List<TimeOfDay> reminderTimes;
     if (reminderTimesStr != null && reminderTimesStr.isNotEmpty) {
       reminderTimes = reminderTimesStr.map((str) {
         final parts = str.split(':');
-        return TimeOfDay(hour: int.parse(parts[0]), minute: int.parse(parts[1]));
+        return TimeOfDay(
+          hour: int.parse(parts[0]),
+          minute: int.parse(parts[1]),
+        );
       }).toList();
     } else {
       reminderTimes = const [
@@ -112,35 +132,45 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
         TimeOfDay(hour: 21, minute: 0),
       ];
     }
-    
+
     // Load avatar path
     final avatarPath = prefs.getString(_avatarPathKey);
-    
+
+    // Load banner path
+    final bannerPath = prefs.getString(_bannerPathKey);
+
     // Load user name
     final userName = prefs.getString(_userNameKey) ?? 'Meu Perfil';
-    
+
+    // Load selected title index
+    final selectedTitleIndex = prefs.getInt(_selectedTitleIndexKey) ?? -1;
+
     // Load sound enabled
     final soundEnabled = prefs.getBool(_soundEnabledKey) ?? true;
-    
+
     // Load auto backup
     final autoBackup = prefs.getBool(_autoBackupKey) ?? false;
 
     // Load news webview fallback
-    final newsUseWebViewFallback = prefs.getBool(_newsUseWebViewFallbackKey) ?? true;
+    final newsUseWebViewFallback =
+        prefs.getBool(_newsUseWebViewFallbackKey) ?? true;
 
     // Load splash animation enabled
-    final splashAnimationEnabled = prefs.getBool(_splashAnimationEnabledKey) ?? true;
-    
+    final splashAnimationEnabled =
+        prefs.getBool(_splashAnimationEnabledKey) ?? true;
+
     // Sincroniza soundService com configuração salva
     soundService.soundEnabled = soundEnabled;
-    
+
     state = AppSettings(
       themeMode: themeMode,
       selectedTheme: selectedTheme,
       notificationsEnabled: notificationsEnabled,
       reminderTimes: reminderTimes,
       avatarPath: avatarPath,
+      bannerPath: bannerPath,
       userName: userName,
+      selectedTitleIndex: selectedTitleIndex,
       soundEnabled: soundEnabled,
       autoBackup: autoBackup,
       newsUseWebViewFallback: newsUseWebViewFallback,
@@ -157,23 +187,20 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
   Future<void> setSelectedTheme(AppThemeType theme) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt(_selectedThemeKey, theme.index);
-    
+
     // Atualiza o themeMode baseado no tema selecionado
     final themeData = AppThemes.getThemeData(theme);
     final newMode = themeData.isDark ? ThemeMode.dark : ThemeMode.light;
     await prefs.setInt(_themeModeKey, newMode.index);
-    
-    state = state.copyWith(
-      selectedTheme: theme,
-      themeMode: newMode,
-    );
+
+    state = state.copyWith(selectedTheme: theme, themeMode: newMode);
   }
 
   Future<void> setNotificationsEnabled(bool enabled) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_notificationsEnabledKey, enabled);
     state = state.copyWith(notificationsEnabled: enabled);
-    
+
     // Ativar/desativar notificações reais
     if (enabled) {
       for (final time in state.reminderTimes) {
@@ -192,7 +219,7 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
     final timesStr = times.map((t) => '${t.hour}:${t.minute}').toList();
     await prefs.setStringList(_reminderTimesKey, timesStr);
     state = state.copyWith(reminderTimes: times);
-    
+
     // Reagendar notificações se habilitadas
     if (state.notificationsEnabled) {
       await NotificationService.instance.cancelMoodReminder();
@@ -232,13 +259,13 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
       maxHeight: 512,
       imageQuality: 85,
     );
-    
+
     if (image != null) {
       // Salvar imagem localmente
       final directory = await getApplicationDocumentsDirectory();
       final avatarFile = File('${directory.path}/avatar.jpg');
       await File(image.path).copy(avatarFile.path);
-      
+
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_avatarPathKey, avatarFile.path);
       state = state.copyWith(avatarPath: avatarFile.path);
@@ -253,12 +280,12 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
       maxHeight: 512,
       imageQuality: 85,
     );
-    
+
     if (image != null) {
       final directory = await getApplicationDocumentsDirectory();
       final avatarFile = File('${directory.path}/avatar.jpg');
       await File(image.path).copy(avatarFile.path);
-      
+
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_avatarPathKey, avatarFile.path);
       state = state.copyWith(avatarPath: avatarFile.path);
@@ -268,7 +295,7 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
   Future<void> removeAvatar() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_avatarPathKey);
-    
+
     // Deletar arquivo se existir
     if (state.avatarPath != null) {
       final file = File(state.avatarPath!);
@@ -276,7 +303,7 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
         await file.delete();
       }
     }
-    
+
     state = state.copyWith(clearAvatar: true);
   }
 
@@ -310,10 +337,67 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
     await prefs.setBool(_splashAnimationEnabledKey, enabled);
     state = state.copyWith(splashAnimationEnabled: enabled);
   }
+
+  // === Banner Methods ===
+  Future<void> setBannerFromGallery() async {
+    final pickedFile = await _picker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 1200,
+      maxHeight: 600,
+    );
+    if (pickedFile != null) {
+      await _saveBanner(pickedFile.path);
+    }
+  }
+
+  Future<void> setBannerFromCamera() async {
+    final pickedFile = await _picker.pickImage(
+      source: ImageSource.camera,
+      maxWidth: 1200,
+      maxHeight: 600,
+    );
+    if (pickedFile != null) {
+      await _saveBanner(pickedFile.path);
+    }
+  }
+
+  Future<void> _saveBanner(String sourcePath) async {
+    final directory = await getApplicationDocumentsDirectory();
+    final bannerFile = File(sourcePath);
+    final savedPath = '${directory.path}/profile_banner.jpg';
+    await bannerFile.copy(savedPath);
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_bannerPathKey, savedPath);
+    state = state.copyWith(bannerPath: savedPath);
+  }
+
+  Future<void> removeBanner() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_bannerPathKey);
+
+    if (state.bannerPath != null) {
+      final file = File(state.bannerPath!);
+      if (await file.exists()) {
+        await file.delete();
+      }
+    }
+
+    state = state.copyWith(clearBanner: true);
+  }
+
+  // === Title Selection ===
+  Future<void> setSelectedTitleIndex(int index) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_selectedTitleIndexKey, index);
+    state = state.copyWith(selectedTitleIndex: index);
+  }
 }
 
 /// Provider global de configurações
-final settingsProvider = StateNotifierProvider<SettingsNotifier, AppSettings>((ref) {
+final settingsProvider = StateNotifierProvider<SettingsNotifier, AppSettings>((
+  ref,
+) {
   return SettingsNotifier();
 });
 

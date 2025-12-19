@@ -3,18 +3,46 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart';
 import '../providers/radio_provider.dart';
 
-class RadioMiniPlayer extends ConsumerWidget {
+class RadioMiniPlayer extends ConsumerStatefulWidget {
   const RadioMiniPlayer({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<RadioMiniPlayer> createState() => _RadioMiniPlayerState();
+}
+
+class _RadioMiniPlayerState extends ConsumerState<RadioMiniPlayer>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(seconds: 4), // Velocidade de rotação
+      vsync: this,
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final radioState = ref.watch(radioProvider);
     final colors = Theme.of(context).colorScheme;
 
+    // Controlar animação baseado no estado do player
+    if (radioState.isPlaying && !_controller.isAnimating) {
+      _controller.repeat();
+    } else if (!radioState.isPlaying && _controller.isAnimating) {
+      _controller.stop();
+    }
+
     if (radioState.status == RadioStatus.stopped &&
         radioState.currentTrack == null) {
-      // Show a "Start Radio" FAB or minimal button if nothing is playing?
-      // For now, let's show a minimal "Start Radio" pill
       return Align(
         alignment: Alignment.bottomCenter,
         child: Padding(
@@ -42,9 +70,7 @@ class RadioMiniPlayer extends ConsumerWidget {
         margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
-          color: colors.surfaceContainerHighest.withOpacity(
-            0.95,
-          ), // Glassy effect capability if backlog
+          color: colors.surfaceContainerHighest.withOpacity(0.95),
           borderRadius: BorderRadius.circular(24),
           boxShadow: [
             BoxShadow(
@@ -57,8 +83,11 @@ class RadioMiniPlayer extends ConsumerWidget {
         ),
         child: Row(
           children: [
-            // Album Art / Vinyl
-            _buildSpinningDisc(context, track, radioState.isPlaying),
+            // Vinyl Spinning Disc
+            RotationTransition(
+              turns: _controller,
+              child: _buildVinylDisc(track),
+            ),
 
             const SizedBox(width: 12),
 
@@ -141,23 +170,26 @@ class RadioMiniPlayer extends ConsumerWidget {
     );
   }
 
-  Widget _buildSpinningDisc(
-    BuildContext context,
-    RadioTrack track,
-    bool isPlaying,
-  ) {
-    // Note: For a real spinning animation, we'd use an AnimationController.
-    // Since this is a stateless widget demo, we'll just show the art styled as a disc.
+  Widget _buildVinylDisc(RadioTrack track) {
     return Container(
       width: 48,
       height: 48,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: Colors.black, // Vinyl background
+        color: Colors.black, // Cor do vinil
+        gradient: const RadialGradient(
+          colors: [Colors.black, Color(0xFF222222), Colors.black],
+          stops: [0.9, 0.95, 1.0],
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.3),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
         image: DecorationImage(
-          image: NetworkImage(
-            track.coverUrl,
-          ), // In real app, use cached network image
+          image: NetworkImage(track.coverUrl),
           fit: BoxFit.cover,
         ),
         border: Border.all(color: Colors.black, width: 2),
@@ -167,13 +199,13 @@ class RadioMiniPlayer extends ConsumerWidget {
           width: 12,
           height: 12,
           decoration: const BoxDecoration(
-            color: Colors.black,
+            color: Colors.black, // Furo central do vinil
             shape: BoxShape.circle,
           ),
           child: Container(
             margin: const EdgeInsets.all(3),
             decoration: const BoxDecoration(
-              color: Colors.white,
+              color: Colors.white, // Brilho no pino central
               shape: BoxShape.circle,
             ),
           ),

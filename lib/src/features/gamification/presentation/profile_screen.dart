@@ -15,13 +15,14 @@ import 'package:odyssey/src/features/time_tracker/data/synced_time_tracking_repo
 import 'package:odyssey/src/features/time_tracker/domain/time_tracking_record.dart';
 import 'package:odyssey/src/utils/settings_provider.dart';
 import 'package:odyssey/src/localization/app_localizations.dart';
-import 'package:odyssey/src/features/subscription/presentation/ad_banner_widget.dart';
+// import 'package:odyssey/src/features/subscription/presentation/ad_banner_widget.dart'; // Desabilitado no Linux
 import 'package:odyssey/src/features/onboarding/onboarding.dart';
 import 'package:odyssey/src/features/onboarding/services/showcase_service.dart'
     as showcase;
 import '../data/gamification_repository.dart';
 import '../domain/user_stats.dart';
 import '../domain/user_skills.dart';
+import 'widgets/profile_widgets.dart';
 import 'dart:math' as math;
 
 class ProfileScreen extends ConsumerStatefulWidget {
@@ -140,47 +141,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
           child: CustomScrollView(
             physics: const BouncingScrollPhysics(),
             slivers: [
-              // Header minimalista
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
-                  child: Row(
-                    children: [
-                      // Avatar compacto
-                      _buildCompactAvatar(stats, colors),
-                      const SizedBox(width: 14),
-                      // Nome e título
-                      Expanded(child: _buildUserInfo(stats, colors)),
-                      // Ações
-                      _buildHeaderAction(
-                        Icons.bar_chart_rounded,
-                        () => _navigateToScreen(const AnalyticsScreen()),
-                        colors,
-                      ),
-                      const SizedBox(width: 8),
-                      _buildHeaderAction(
-                        Icons.settings_rounded,
-                        () => _navigateToScreen(const SettingsScreen()),
-                        colors,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
+              // Header elegante
+              SliverToBoxAdapter(child: _buildProfileHeader(stats, colors)),
 
-              // XP Card compacto
+              // Stats Carousel horizontal
               SliverToBoxAdapter(
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-                  child: _buildXPCard(stats, colors),
-                ),
-              ),
-
-              // Stats Grid
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-                  child: _buildStatsGrid(stats, colors),
+                  padding: const EdgeInsets.only(top: 8),
+                  child: _buildStatsCarousel(stats),
                 ),
               ),
 
@@ -202,16 +170,521 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                 ),
               ),
 
-              // Banner de anúncio (usuários free)
-              const SliverToBoxAdapter(
-                child: AdBannerWidget(
-                  margin: EdgeInsets.fromLTRB(20, 16, 20, 16),
-                ),
-              ),
-
+              // Banner de anúncio (desabilitado no Linux)
+              // const SliverToBoxAdapter(
+              //   child: AdBannerWidget(
+              //     margin: EdgeInsets.fromLTRB(20, 16, 20, 16),
+              //   ),
+              // ),
               const SliverToBoxAdapter(child: SizedBox(height: 100)),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  /// Header elegante do perfil
+  Widget _buildProfileHeader(UserStats stats, ColorScheme colors) {
+    final settings = ref.watch(settingsProvider);
+    final displayName = settings.userName.isNotEmpty
+        ? settings.userName
+        : _userName;
+
+    // Título: usar o selecionado ou baseado em XP
+    String titleName;
+    String titleEmoji;
+    if (settings.selectedTitleIndex >= 0 &&
+        settings.selectedTitleIndex < UserTitles.titles.length) {
+      final selected = UserTitles.titles[settings.selectedTitleIndex];
+      if (selected.xpRequired <= stats.totalXP) {
+        titleName = selected.name;
+        titleEmoji = selected.emoji;
+      } else {
+        final auto = UserTitles.getTitleForXP(stats.totalXP);
+        titleName = auto.name;
+        titleEmoji = auto.emoji;
+      }
+    } else {
+      final auto = UserTitles.getTitleForXP(stats.totalXP);
+      titleName = auto.name;
+      titleEmoji = auto.emoji;
+    }
+
+    // Calcular XP para níveis
+    final xpForCurrentLevel = UserStats.totalXPForLevel(stats.level);
+    final xpForNextLevel = UserStats.totalXPForLevel(stats.level + 1);
+
+    // Calcular mana (baseado na energia/foco disponível)
+    final mana = (stats.wellnessScore * 1.5).clamp(0, 150).round();
+    final maxMana = 150;
+
+    return ProfileHeader(
+      userName: displayName,
+      avatarPath: settings.avatarPath,
+      bannerPath: settings.bannerPath,
+      title: titleName,
+      titleEmoji: titleEmoji,
+      bio: stats.bio,
+      currentMood: stats.currentMoodEmoji,
+      level: stats.level,
+      currentXP: stats.totalXP,
+      xpForCurrentLevel: xpForCurrentLevel,
+      xpForNextLevel: xpForNextLevel,
+      currentMana: mana,
+      maxMana: maxMana,
+      daysSinceJoined: stats.daysSinceJoined,
+      streak: stats.currentStreak,
+      onEditProfile: () => _showEditProfileDialog(colors),
+      onSettings: () => _navigateToScreen(const SettingsScreen()),
+      onAvatarTap: () => _showEditProfileDialog(colors),
+      onBannerTap: () => _showBannerOptions(colors),
+    );
+  }
+
+  /// Stats carousel horizontal
+  Widget _buildStatsCarousel(UserStats stats) {
+    return StatsCarousel(
+      moodRecords: stats.moodRecordsCount,
+      tasksCompleted: stats.tasksCompleted,
+      pomodoroSessions: stats.pomodoroSessions,
+      timeTrackedMinutes: stats.timeTrackedMinutes,
+      habitsCompleted: stats.habitsCompleted,
+      notesCreated: stats.notesCreated,
+    );
+  }
+
+  /// Dialog para editar o perfil (foto, nome, bio, título)
+  void _showEditProfileDialog(ColorScheme colors) {
+    final settings = ref.read(settingsProvider);
+    final bioController = TextEditingController(text: _stats?.bio ?? '');
+    final nameController = TextEditingController(text: settings.userName);
+
+    // Obter títulos desbloqueados baseado no XP
+    final totalXP = _stats?.totalXP ?? 0;
+    final unlockedTitles = UserTitles.titles
+        .where((t) => t.xpRequired <= totalXP)
+        .toList();
+
+    int selectedTitleIdx = settings.selectedTitleIndex;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: colors.surface,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setModalState) => Padding(
+          padding: EdgeInsets.fromLTRB(
+            24,
+            24,
+            24,
+            MediaQuery.of(context).viewInsets.bottom + 24,
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Handle
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: colors.outlineVariant,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+
+                // Title
+                Text(
+                  '✏️ Editar Perfil',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 24),
+
+                // === FOTO E BANNER ===
+                Row(
+                  children: [
+                    // Avatar
+                    GestureDetector(
+                      onTap: () => _showAvatarOptions(colors),
+                      child: Stack(
+                        children: [
+                          CircleAvatar(
+                            radius: 40,
+                            backgroundImage: settings.avatarPath != null
+                                ? FileImage(File(settings.avatarPath!))
+                                : null,
+                            backgroundColor: colors.primary.withValues(
+                              alpha: 0.2,
+                            ),
+                            child: settings.avatarPath == null
+                                ? Icon(
+                                    Icons.person,
+                                    size: 40,
+                                    color: colors.primary,
+                                  )
+                                : null,
+                          ),
+                          Positioned(
+                            bottom: 0,
+                            right: 0,
+                            child: Container(
+                              padding: const EdgeInsets.all(4),
+                              decoration: BoxDecoration(
+                                color: colors.primary,
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.camera_alt,
+                                size: 14,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    // Banner button
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () => _showBannerOptions(colors),
+                        child: Container(
+                          height: 80,
+                          decoration: BoxDecoration(
+                            color: colors.surfaceContainerHighest,
+                            borderRadius: BorderRadius.circular(12),
+                            image: settings.bannerPath != null
+                                ? DecorationImage(
+                                    image: FileImage(
+                                      File(settings.bannerPath!),
+                                    ),
+                                    fit: BoxFit.cover,
+                                  )
+                                : null,
+                          ),
+                          child: settings.bannerPath == null
+                              ? Center(
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        Icons.panorama,
+                                        color: colors.onSurfaceVariant,
+                                      ),
+                                      Text(
+                                        'Adicionar Banner',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          color: colors.onSurfaceVariant,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                )
+                              : Align(
+                                  alignment: Alignment.bottomRight,
+                                  child: Container(
+                                    margin: const EdgeInsets.all(8),
+                                    padding: const EdgeInsets.all(4),
+                                    decoration: BoxDecoration(
+                                      color: Colors.black54,
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: const Icon(
+                                      Icons.edit,
+                                      size: 14,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+
+                // === NOME ===
+                TextField(
+                  controller: nameController,
+                  decoration: InputDecoration(
+                    labelText: 'Nome',
+                    prefixIcon: const Icon(Icons.person_outline),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // === BIO ===
+                TextField(
+                  controller: bioController,
+                  maxLines: 2,
+                  maxLength: 100,
+                  decoration: InputDecoration(
+                    labelText: 'Bio',
+                    prefixIcon: const Icon(Icons.edit_note),
+                    hintText: 'Conte um pouco sobre você...',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // === TÍTULO ===
+                Text(
+                  'Título',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: colors.onSurface,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                SizedBox(
+                  height: 50,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    itemCount:
+                        unlockedTitles.length + 1, // +1 para opção "Auto"
+                    separatorBuilder: (_, __) => const SizedBox(width: 8),
+                    itemBuilder: (context, index) {
+                      if (index == 0) {
+                        // Opção Auto (usa XP)
+                        final isSelected = selectedTitleIdx == -1;
+                        return GestureDetector(
+                          onTap: () {
+                            setModalState(() => selectedTitleIdx = -1);
+                            HapticFeedback.selectionClick();
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 8,
+                            ),
+                            decoration: BoxDecoration(
+                              color: isSelected
+                                  ? colors.primary.withValues(alpha: 0.2)
+                                  : colors.surfaceContainerHighest,
+                              borderRadius: BorderRadius.circular(10),
+                              border: isSelected
+                                  ? Border.all(color: colors.primary)
+                                  : null,
+                            ),
+                            child: Row(
+                              children: [
+                                const Text(
+                                  '🎯',
+                                  style: TextStyle(fontSize: 16),
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  'Auto',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: isSelected
+                                        ? FontWeight.w600
+                                        : FontWeight.w400,
+                                    color: colors.onSurface,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      }
+
+                      final title = unlockedTitles[index - 1];
+                      final titleIndex = UserTitles.titles.indexOf(title);
+                      final isSelected = selectedTitleIdx == titleIndex;
+
+                      return GestureDetector(
+                        onTap: () {
+                          setModalState(() => selectedTitleIdx = titleIndex);
+                          HapticFeedback.selectionClick();
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
+                          decoration: BoxDecoration(
+                            color: isSelected
+                                ? colors.primary.withValues(alpha: 0.2)
+                                : colors.surfaceContainerHighest,
+                            borderRadius: BorderRadius.circular(10),
+                            border: isSelected
+                                ? Border.all(color: colors.primary)
+                                : null,
+                          ),
+                          child: Row(
+                            children: [
+                              Text(
+                                title.emoji,
+                                style: const TextStyle(fontSize: 16),
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                title.name,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: isSelected
+                                      ? FontWeight.w600
+                                      : FontWeight.w400,
+                                  color: colors.onSurface,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(height: 24),
+
+                // === SALVAR ===
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    onPressed: () async {
+                      // Salvar nome
+                      if (nameController.text.isNotEmpty) {
+                        await ref
+                            .read(settingsProvider.notifier)
+                            .setUserName(nameController.text);
+                      }
+
+                      // Salvar bio
+                      final repo = GamificationRepository(_gamificationBox!);
+                      await repo.updateBio(bioController.text);
+
+                      // Salvar título selecionado
+                      await ref
+                          .read(settingsProvider.notifier)
+                          .setSelectedTitleIndex(selectedTitleIdx);
+
+                      setState(() {
+                        _stats = repo.getStats();
+                      });
+
+                      if (mounted) Navigator.pop(context);
+                    },
+                    icon: const Icon(Icons.check),
+                    label: const Text('Salvar'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Opções de avatar
+  void _showAvatarOptions(ColorScheme colors) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: colors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: Icon(Icons.photo_library, color: colors.primary),
+              title: const Text('Galeria'),
+              onTap: () async {
+                Navigator.pop(context);
+                await ref
+                    .read(settingsProvider.notifier)
+                    .setAvatarFromGallery();
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.camera_alt, color: colors.secondary),
+              title: const Text('Câmera'),
+              onTap: () async {
+                Navigator.pop(context);
+                await ref.read(settingsProvider.notifier).setAvatarFromCamera();
+              },
+            ),
+            if (ref.read(settingsProvider).avatarPath != null)
+              ListTile(
+                leading: const Icon(Icons.delete, color: Colors.red),
+                title: const Text(
+                  'Remover',
+                  style: TextStyle(color: Colors.red),
+                ),
+                onTap: () async {
+                  Navigator.pop(context);
+                  await ref.read(settingsProvider.notifier).removeAvatar();
+                },
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Opções de banner
+  void _showBannerOptions(ColorScheme colors) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: colors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: Icon(Icons.photo_library, color: colors.primary),
+              title: const Text('Galeria'),
+              onTap: () async {
+                Navigator.pop(context);
+                await ref
+                    .read(settingsProvider.notifier)
+                    .setBannerFromGallery();
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.camera_alt, color: colors.secondary),
+              title: const Text('Câmera'),
+              onTap: () async {
+                Navigator.pop(context);
+                await ref.read(settingsProvider.notifier).setBannerFromCamera();
+              },
+            ),
+            if (ref.read(settingsProvider).bannerPath != null)
+              ListTile(
+                leading: const Icon(Icons.delete, color: Colors.red),
+                title: const Text(
+                  'Remover',
+                  style: TextStyle(color: Colors.red),
+                ),
+                onTap: () async {
+                  Navigator.pop(context);
+                  await ref.read(settingsProvider.notifier).removeBanner();
+                },
+              ),
+          ],
         ),
       ),
     );
@@ -676,19 +1149,326 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
 
   // ============= TAB 0: VISÃO GERAL =============
   Widget _buildOverviewTab(UserStats stats, ColorScheme colors) {
+    // Calcular scores para breakdown
+    final streakScore = ((stats.currentStreak / 30) * 100)
+        .clamp(0, 100)
+        .round();
+    final moodScore = (stats.averageMoodScore * 20).clamp(0, 100).round();
+    final activityScore = stats.recentMoods.isNotEmpty ? 80 : 30;
+    final engagementScore = (stats.unlockedBadges.length / 10 * 100)
+        .clamp(0, 100)
+        .round();
+
+    // Calcular comparações temporais (simulado por enquanto)
+    final dailyChange = stats.currentStreak > 0 ? 15.0 : -5.0;
+    final weeklyChange = stats.wellnessScore > 50 ? 8.0 : -3.0;
+    final monthlyChange = stats.moodRecordsCount > 10 ? 12.0 : 0.0;
+
+    // Gerar atividades recentes (baseado em dados reais)
+    final recentActivities = _getRecentActivities(stats);
+
     return Padding(
       key: const ValueKey('overview'),
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Wellness Score elegante com breakdown
+          WellnessScoreCard(
+            score: stats.wellnessScore,
+            emoji: stats.wellnessEmoji,
+            description: stats.wellnessDescription,
+            animation: _animController,
+            streakScore: streakScore,
+            moodScore: moodScore,
+            activityScore: activityScore,
+            engagementScore: engagementScore,
+          ),
+          const SizedBox(height: 20),
+
+          // Comparação temporal
+          TemporalComparisonCard(
+            dailyChange: dailyChange,
+            weeklyChange: weeklyChange,
+            monthlyChange: monthlyChange,
+          ),
+          const SizedBox(height: 20),
+
+          // Timeline de atividades recentes
+          ActivityTimeline(activities: recentActivities),
+          const SizedBox(height: 20),
+
+          // Metas pessoais
+          PersonalGoalsCard(
+            goals: stats.personalGoals,
+            colors: colors,
+            onAddGoal: () => _showAddGoalDialog(colors),
+          ),
+          const SizedBox(height: 20),
+
           // Weekly Activity Chart
           _buildWeeklyActivityChart(colors),
           const SizedBox(height: 16),
 
-          // Maslow Quote
+          // Quote inspiracional
           _buildMaslowQuote(colors),
         ],
+      ),
+    );
+  }
+
+  /// Gera lista de atividades recentes baseado nas estatísticas
+  List<ActivityItem> _getRecentActivities(UserStats stats) {
+    final activities = <ActivityItem>[];
+    final now = DateTime.now();
+
+    // Adicionar atividades baseado nos dados
+    if (stats.moodRecordsCount > 0) {
+      activities.add(
+        ActivityItem(
+          emoji: stats.currentMoodEmoji ?? '😊',
+          title: 'Check-in de Humor',
+          subtitle: 'Total: ${stats.moodRecordsCount}',
+          timestamp: now.subtract(const Duration(hours: 2)),
+          color: const Color(0xFFFFA94D),
+          type: 'mood',
+        ),
+      );
+    }
+
+    if (stats.tasksCompleted > 0) {
+      activities.add(
+        ActivityItem(
+          emoji: '✅',
+          title: 'Tarefa Concluída',
+          subtitle: 'Total: ${stats.tasksCompleted}',
+          timestamp: now.subtract(const Duration(hours: 4)),
+          color: const Color(0xFF51CF66),
+          type: 'task',
+        ),
+      );
+    }
+
+    if (stats.pomodoroSessions > 0) {
+      activities.add(
+        ActivityItem(
+          emoji: '🍅',
+          title: 'Pomodoro',
+          subtitle: '${stats.pomodoroSessions} sessões',
+          timestamp: now.subtract(const Duration(hours: 6)),
+          color: const Color(0xFFFF6B6B),
+          type: 'pomodoro',
+        ),
+      );
+    }
+
+    if (stats.habitsCompleted > 0) {
+      activities.add(
+        ActivityItem(
+          emoji: '🎯',
+          title: 'Hábito Completo',
+          subtitle: 'Total: ${stats.habitsCompleted}',
+          timestamp: now.subtract(const Duration(hours: 8)),
+          color: const Color(0xFFB197FC),
+          type: 'habit',
+        ),
+      );
+    }
+
+    if (stats.notesCreated > 0) {
+      activities.add(
+        ActivityItem(
+          emoji: '📝',
+          title: 'Nota Criada',
+          subtitle: 'Total: ${stats.notesCreated}',
+          timestamp: now.subtract(const Duration(days: 1)),
+          color: const Color(0xFF339AF0),
+          type: 'note',
+        ),
+      );
+    }
+
+    return activities;
+  }
+
+  /// Dialog para adicionar nova meta pessoal
+  void _showAddGoalDialog(ColorScheme colors) {
+    final titleController = TextEditingController();
+    String selectedType = 'tasks';
+    int targetValue = 10;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: colors.surface,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setModalState) => Padding(
+          padding: EdgeInsets.fromLTRB(
+            24,
+            24,
+            24,
+            MediaQuery.of(context).viewInsets.bottom + 24,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: colors.outlineVariant,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Text(
+                '🎯 Nova Meta',
+                style: Theme.of(
+                  context,
+                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 20),
+              TextField(
+                controller: titleController,
+                decoration: InputDecoration(
+                  labelText: 'Título da meta',
+                  hintText: 'Ex: Completar 10 tarefas',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Tipo de meta:',
+                style: TextStyle(color: colors.onSurfaceVariant),
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                children: [
+                  _goalTypeChip(
+                    'tasks',
+                    '✅ Tarefas',
+                    selectedType,
+                    (v) => setModalState(() => selectedType = v),
+                    colors,
+                  ),
+                  _goalTypeChip(
+                    'mood',
+                    '😊 Humor',
+                    selectedType,
+                    (v) => setModalState(() => selectedType = v),
+                    colors,
+                  ),
+                  _goalTypeChip(
+                    'focus',
+                    '⏱️ Foco',
+                    selectedType,
+                    (v) => setModalState(() => selectedType = v),
+                    colors,
+                  ),
+                  _goalTypeChip(
+                    'habits',
+                    '🎯 Hábitos',
+                    selectedType,
+                    (v) => setModalState(() => selectedType = v),
+                    colors,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Text(
+                    'Meta: ',
+                    style: TextStyle(color: colors.onSurfaceVariant),
+                  ),
+                  Expanded(
+                    child: Slider(
+                      value: targetValue.toDouble(),
+                      min: 1,
+                      max: 100,
+                      divisions: 99,
+                      label: '$targetValue',
+                      onChanged: (v) =>
+                          setModalState(() => targetValue = v.round()),
+                    ),
+                  ),
+                  Text(
+                    '$targetValue',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      color: colors.primary,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: () async {
+                    if (titleController.text.isEmpty) return;
+
+                    final goal = PersonalGoal(
+                      id: DateTime.now().millisecondsSinceEpoch.toString(),
+                      title: titleController.text,
+                      targetValue: targetValue,
+                      type: selectedType,
+                      createdAt: DateTime.now(),
+                    );
+
+                    final repo = GamificationRepository(_gamificationBox!);
+                    await repo.addPersonalGoal(goal);
+
+                    // Recarregar stats
+                    setState(() {
+                      _stats = repo.getStats();
+                    });
+
+                    if (mounted) Navigator.pop(context);
+                  },
+                  child: const Text('Criar Meta'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _goalTypeChip(
+    String type,
+    String label,
+    String selected,
+    Function(String) onSelect,
+    ColorScheme colors,
+  ) {
+    final isSelected = type == selected;
+    return GestureDetector(
+      onTap: () => onSelect(type),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? colors.primary : colors.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+            color: isSelected ? Colors.white : colors.onSurfaceVariant,
+          ),
+        ),
       ),
     );
   }
@@ -837,71 +1617,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
   }
 
   Widget _buildMaslowQuote(ColorScheme colors) {
-    final randomCategory =
-        _skillCategories[DateTime.now().day % _skillCategories.length];
-    final quote = MaslowQuotes.getQuoteByCategory(randomCategory.id);
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            randomCategory.color.withValues(alpha: 0.12),
-            randomCategory.color.withValues(alpha: 0.04),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: randomCategory.color.withValues(alpha: 0.2)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(
-                Icons.format_quote_rounded,
-                color: randomCategory.color,
-                size: 22,
-              ),
-              const Spacer(),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: randomCategory.color.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  randomCategory.name,
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w600,
-                    color: randomCategory.color,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Text(
-            quote,
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-              color: colors.onSurface,
-              height: 1.4,
-              fontStyle: FontStyle.italic,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            AppLocalizations.of(context)!.inspiradoEmMaslow,
-            style: TextStyle(fontSize: 11, color: colors.onSurfaceVariant),
-          ),
-        ],
-      ),
-    );
+    return _SwipeableQuoteWidget(categories: _skillCategories, colors: colors);
   }
 
   // ============= TAB 1: DESENVOLVIMENTO =============
@@ -1518,26 +2234,47 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
   Widget _buildAchievementsTab(UserStats stats, ColorScheme colors) {
     final unlockedCount = stats.unlockedBadges.length;
     final totalCount = allBadges.length;
+    final progress = totalCount > 0 ? unlockedCount / totalCount : 0.0;
 
-    // Group badges by type
-    final streakBadges = allBadges
-        .where((b) => b.type == BadgeType.streak)
-        .toList();
-    final moodBadges = allBadges
-        .where((b) => b.type == BadgeType.mood)
-        .toList();
-    final taskBadges = allBadges
-        .where((b) => b.type == BadgeType.tasks)
-        .toList();
-    final timeBadges = allBadges
-        .where((b) => b.type == BadgeType.time)
-        .toList();
-    final pomoBadges = allBadges
-        .where((b) => b.type == BadgeType.pomodoro)
-        .toList();
-    final specialBadges = allBadges
-        .where((b) => b.type == BadgeType.special)
-        .toList();
+    // Categorias organizadas
+    final categories = [
+      _BadgeCategory(
+        '🔥',
+        'Sequência',
+        allBadges.where((b) => b.type == BadgeType.streak).toList(),
+        const Color(0xFFFF6B35),
+      ),
+      _BadgeCategory(
+        '😊',
+        'Humor',
+        allBadges.where((b) => b.type == BadgeType.mood).toList(),
+        const Color(0xFFFFA94D),
+      ),
+      _BadgeCategory(
+        '✅',
+        'Tarefas',
+        allBadges.where((b) => b.type == BadgeType.tasks).toList(),
+        const Color(0xFF51CF66),
+      ),
+      _BadgeCategory(
+        '⏱️',
+        'Foco',
+        allBadges.where((b) => b.type == BadgeType.time).toList(),
+        const Color(0xFF339AF0),
+      ),
+      _BadgeCategory(
+        '🍅',
+        'Pomodoro',
+        allBadges.where((b) => b.type == BadgeType.pomodoro).toList(),
+        const Color(0xFFFF6B6B),
+      ),
+      _BadgeCategory(
+        '⭐',
+        'Especiais',
+        allBadges.where((b) => b.type == BadgeType.special).toList(),
+        const Color(0xFFB197FC),
+      ),
+    ];
 
     return Padding(
       key: const ValueKey('achievements'),
@@ -1545,81 +2282,291 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Progress Overview
+          // Header elegante
           Container(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  colors.tertiary.withValues(alpha: 0.15),
-                  colors.primary.withValues(alpha: 0.08),
+                  colors.primary.withValues(alpha: 0.12),
+                  colors.tertiary.withValues(alpha: 0.06),
                 ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
               ),
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: colors.primary.withValues(alpha: 0.15)),
             ),
-            child: Row(
+            child: Column(
               children: [
-                Container(
-                  width: 56,
-                  height: 56,
-                  decoration: BoxDecoration(
-                    color: colors.tertiary.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Icon(
-                    Icons.emoji_events,
-                    color: colors.tertiary,
-                    size: 28,
-                  ),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '$unlockedCount de $totalCount',
+                Row(
+                  children: [
+                    // Ícone grande
+                    Container(
+                      width: 60,
+                      height: 60,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [colors.primary, colors.tertiary],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(18),
+                        boxShadow: [
+                          BoxShadow(
+                            color: colors.primary.withValues(alpha: 0.3),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: const Icon(
+                        Icons.emoji_events_rounded,
+                        color: Colors.white,
+                        size: 30,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Coleção de Conquistas',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w700,
+                              color: colors.onSurface,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '$unlockedCount de $totalCount desbloqueadas',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: colors.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    // Porcentagem
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: colors.primary.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        '${(progress * 100).toStringAsFixed(0)}%',
                         style: TextStyle(
-                          fontSize: 22,
+                          fontSize: 14,
                           fontWeight: FontWeight.w700,
-                          color: colors.onSurface,
+                          color: colors.primary,
                         ),
                       ),
-                      Text(
-                        AppLocalizations.of(context)!.conquistasDesbloqueadas,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: colors.onSurfaceVariant,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      ClipRRect(
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                // Barra de progresso
+                Stack(
+                  children: [
+                    Container(
+                      height: 8,
+                      decoration: BoxDecoration(
+                        color: colors.surfaceContainerHighest,
                         borderRadius: BorderRadius.circular(4),
-                        child: LinearProgressIndicator(
-                          value: totalCount > 0
-                              ? unlockedCount / totalCount
-                              : 0,
-                          backgroundColor: colors.surfaceContainerHighest,
-                          valueColor: AlwaysStoppedAnimation(colors.tertiary),
-                          minHeight: 6,
+                      ),
+                    ),
+                    FractionallySizedBox(
+                      widthFactor: progress,
+                      child: Container(
+                        height: 8,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [colors.primary, colors.tertiary],
+                          ),
+                          borderRadius: BorderRadius.circular(4),
+                          boxShadow: [
+                            BoxShadow(
+                              color: colors.primary.withValues(alpha: 0.4),
+                              blurRadius: 6,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
                         ),
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 24),
 
-          // Badge sections
-          _buildBadgeSection('🔥 Sequência', streakBadges, stats, colors),
-          _buildBadgeSection('😊 Humor', moodBadges, stats, colors),
-          _buildBadgeSection('✅ Tarefas', taskBadges, stats, colors),
-          _buildBadgeSection('⏱️ Tempo', timeBadges, stats, colors),
-          _buildBadgeSection('🍅 Pomodoro', pomoBadges, stats, colors),
-          _buildBadgeSection('⭐ Especiais', specialBadges, stats, colors),
+          // Categorias de badges
+          ...categories.map(
+            (category) => _buildBadgeCategorySection(category, stats, colors),
+          ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildBadgeCategorySection(
+    _BadgeCategory category,
+    UserStats stats,
+    ColorScheme colors,
+  ) {
+    if (category.badges.isEmpty) return const SizedBox.shrink();
+
+    final unlockedInCategory = category.badges
+        .where((b) => stats.unlockedBadges.contains(b.id))
+        .length;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Header da categoria
+        Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: category.color.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(category.emoji, style: const TextStyle(fontSize: 18)),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    category.name,
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: colors.onSurface,
+                    ),
+                  ),
+                  Text(
+                    '$unlockedInCategory/${category.badges.length}',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: colors.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        // Grid de badges
+        SizedBox(
+          height: 120,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            physics: const BouncingScrollPhysics(),
+            itemCount: category.badges.length,
+            separatorBuilder: (_, __) => const SizedBox(width: 12),
+            itemBuilder: (context, index) {
+              final badge = category.badges[index];
+              final isUnlocked = stats.unlockedBadges.contains(badge.id);
+              return _buildBadgeCard(badge, isUnlocked, category.color, colors);
+            },
+          ),
+        ),
+        const SizedBox(height: 20),
+      ],
+    );
+  }
+
+  Widget _buildBadgeCard(
+    GameBadge badge,
+    bool isUnlocked,
+    Color categoryColor,
+    ColorScheme colors,
+  ) {
+    return GestureDetector(
+      onTap: () {
+        HapticFeedback.selectionClick();
+        _showBadgeDetails(badge, isUnlocked);
+      },
+      child: Container(
+        width: 95,
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: isUnlocked
+              ? categoryColor.withValues(alpha: 0.12)
+              : colors.surfaceContainerHighest.withValues(alpha: 0.6),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isUnlocked
+                ? categoryColor.withValues(alpha: 0.3)
+                : colors.outlineVariant.withValues(alpha: 0.3),
+          ),
+        ),
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // Ícone
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: isUnlocked
+                      ? categoryColor.withValues(alpha: 0.2)
+                      : colors.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Center(
+                  child: Text(
+                    badge.icon,
+                    style: TextStyle(
+                      fontSize: 20,
+                      color: isUnlocked
+                          ? null
+                          : Colors.grey.withValues(alpha: 0.5),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 6),
+              // Nome
+              Text(
+                badge.name,
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: isUnlocked ? FontWeight.w600 : FontWeight.w400,
+                  color: isUnlocked
+                      ? colors.onSurface
+                      : colors.onSurfaceVariant.withValues(alpha: 0.6),
+                ),
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+              // Lock icon
+              if (!isUnlocked) ...[
+                const SizedBox(height: 2),
+                Icon(
+                  Icons.lock_outline_rounded,
+                  size: 10,
+                  color: colors.onSurfaceVariant.withValues(alpha: 0.4),
+                ),
+              ],
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -1967,4 +2914,229 @@ class _LevelRingPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _LevelRingPainter oldDelegate) =>
       oldDelegate.progress != progress;
+}
+
+// ============================================================
+// SWIPEABLE QUOTE WIDGET - Frases com swipe e setas
+// ============================================================
+
+class _SwipeableQuoteWidget extends StatefulWidget {
+  final List<dynamic> categories;
+  final ColorScheme colors;
+
+  const _SwipeableQuoteWidget({required this.categories, required this.colors});
+
+  @override
+  State<_SwipeableQuoteWidget> createState() => _SwipeableQuoteWidgetState();
+}
+
+class _SwipeableQuoteWidgetState extends State<_SwipeableQuoteWidget> {
+  late PageController _pageController;
+  int _currentPage = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    // Começa em uma página aleatória
+    _currentPage = DateTime.now().minute % widget.categories.length;
+    _pageController = PageController(initialPage: _currentPage);
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  void _goToPrevious() {
+    if (_currentPage > 0) {
+      HapticFeedback.selectionClick();
+      _pageController.previousPage(
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
+    }
+  }
+
+  void _goToNext() {
+    if (_currentPage < widget.categories.length - 1) {
+      HapticFeedback.selectionClick();
+      _pageController.nextPage(
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = widget.colors;
+
+    return Column(
+      children: [
+        SizedBox(
+          height: 140,
+          child: PageView.builder(
+            controller: _pageController,
+            onPageChanged: (page) => setState(() => _currentPage = page),
+            itemCount: widget.categories.length,
+            itemBuilder: (context, index) {
+              final category = widget.categories[index];
+              final quote = MaslowQuotes.getQuoteByCategory(category.id);
+
+              return AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                margin: const EdgeInsets.symmetric(horizontal: 4),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      category.color.withValues(alpha: 0.12),
+                      category.color.withValues(alpha: 0.04),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: category.color.withValues(alpha: 0.2),
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.format_quote_rounded,
+                          color: category.color,
+                          size: 20,
+                        ),
+                        const Spacer(),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: category.color.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            category.name,
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                              color: category.color,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Expanded(
+                      child: Text(
+                        quote,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                          color: colors.onSurface,
+                          height: 1.4,
+                          fontStyle: FontStyle.italic,
+                        ),
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ),
+        const SizedBox(height: 12),
+        // Navigation arrows and dots
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // Left arrow
+            GestureDetector(
+              onTap: _currentPage > 0 ? _goToPrevious : null,
+              child: Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: _currentPage > 0
+                      ? colors.surfaceContainerHighest
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  Icons.chevron_left_rounded,
+                  size: 20,
+                  color: _currentPage > 0
+                      ? colors.onSurfaceVariant
+                      : colors.outlineVariant,
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            // Dots
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: List.generate(
+                widget.categories.length,
+                (index) => AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  margin: const EdgeInsets.symmetric(horizontal: 3),
+                  width: index == _currentPage ? 20 : 6,
+                  height: 6,
+                  decoration: BoxDecoration(
+                    color: index == _currentPage
+                        ? colors.primary
+                        : colors.outlineVariant,
+                    borderRadius: BorderRadius.circular(3),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            // Right arrow
+            GestureDetector(
+              onTap: _currentPage < widget.categories.length - 1
+                  ? _goToNext
+                  : null,
+              child: Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: _currentPage < widget.categories.length - 1
+                      ? colors.surfaceContainerHighest
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  Icons.chevron_right_rounded,
+                  size: 20,
+                  color: _currentPage < widget.categories.length - 1
+                      ? colors.onSurfaceVariant
+                      : colors.outlineVariant,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+// Classe auxiliar para categorias de badges
+class _BadgeCategory {
+  final String emoji;
+  final String name;
+  final List<GameBadge> badges;
+  final Color color;
+
+  _BadgeCategory(this.emoji, this.name, this.badges, this.color);
 }

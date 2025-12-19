@@ -86,23 +86,41 @@ class RadioNotifier extends StateNotifier<RadioState> {
       streamUrl: 'http://strm112.1.fm/chilloutlounge_mobile_mp3',
       themeColor: Color(0xFF00BFA5),
     ),
-    // Deep House / Slow Tech - DFM Deep (testado e funcionando)
+    // Deep House - Deeper Link (NYC, 8000 port)
     const RadioTrack(
       title: 'Deep House',
-      artist: 'DFM Deep',
+      artist: 'Deeper Link',
       coverUrl:
           'https://i.scdn.co/image/ab67616d0000b273e913337604471017359dae3d',
-      streamUrl: 'https://dfm-deep.hostingradio.ru/deep128.mp3',
+      streamUrl: 'http://deeperlink.com:8000/stream',
       themeColor: Color(0xFFE91E63),
     ),
-    // Tech House / Electro - Puls'Radio (estável)
+    // Tech House - United Music (Italy, Direct MP3)
     const RadioTrack(
       title: 'Tech House',
-      artist: "Puls'Radio",
+      artist: 'United Music',
       coverUrl:
           'https://i.scdn.co/image/ab67616d0000b2736fc4cc0aaf0c6f4d5f8c9a3d',
-      streamUrl: 'https://pulsradio.org:8200/pulstrance.mp3',
+      streamUrl: 'https://icy.unitedradio.it/um065.mp3',
       themeColor: Color(0xFF9C27B0),
+    ),
+    // Drum & Bass - DnB Base (Working)
+    const RadioTrack(
+      title: 'DnB Base',
+      artist: 'Laut.FM',
+      coverUrl:
+          'https://i.scdn.co/image/ab67616d0000b273b852a657f495574dc5d69114',
+      streamUrl: 'https://stream.laut.fm/dnb-base',
+      themeColor: Color(0xFFFFD700),
+    ),
+    // Drum & Bass - Bassdrive (Official)
+    const RadioTrack(
+      title: 'Bassdrive',
+      artist: 'Worldwide DnB',
+      coverUrl:
+          'https://i.scdn.co/image/ab67616d0000b273df1f0d367c30959f64c6778f',
+      streamUrl: 'http://ice.bassdrive.net:80/stream',
+      themeColor: Color(0xFF000000),
     ),
     // Chill Electro Slow - Costa Del Mar (vibe lounge)
     const RadioTrack(
@@ -174,7 +192,16 @@ class RadioNotifier extends StateNotifier<RadioState> {
     );
 
     try {
-      await _player.setUrl(track.streamUrl);
+      // Usar AudioSource com headers para evitar ytdl_hook do MPV
+      final audioSource = AudioSource.uri(
+        Uri.parse(track.streamUrl),
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Linux; Flutter) OdysseyApp/1.0',
+          'Accept': '*/*',
+          'Connection': 'keep-alive',
+        },
+      );
+      await _player.setAudioSource(audioSource);
       await _player.setVolume(state.volume);
       await _player.play();
       debugPrint('🎵 Now playing: ${track.title}');

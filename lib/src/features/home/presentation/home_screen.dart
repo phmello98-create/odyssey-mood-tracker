@@ -28,6 +28,7 @@ import 'package:odyssey/src/utils/widgets/feedback_widgets.dart';
 import 'package:odyssey/src/utils/services/sound_service.dart';
 import 'package:odyssey/src/utils/animations/animations.dart';
 import 'package:odyssey/src/features/tasks/presentation/tasks_screen.dart';
+import 'package:odyssey/src/features/tasks/presentation/widgets/task_form_sheet.dart';
 import 'package:odyssey/src/features/notes/presentation/notes_screen.dart';
 import 'package:odyssey/src/features/library/presentation/library_screen.dart';
 import 'package:odyssey/src/features/library/domain/book.dart';
@@ -48,6 +49,8 @@ import 'package:odyssey/src/features/home/presentation/widgets/current_reading_w
 import 'package:odyssey/src/features/home/presentation/widgets/daily_goals_widget.dart';
 import 'package:odyssey/src/features/home/presentation/widgets/activity_grid_widget.dart';
 import 'package:odyssey/src/features/home/presentation/widgets/quick_mood_widget.dart';
+import 'package:odyssey/src/features/home/presentation/widgets/task_checkbox.dart';
+import 'package:odyssey/src/features/home/presentation/widgets/header_arrow_button.dart';
 import 'package:odyssey/src/features/onboarding/services/showcase_service.dart'
     as showcase;
 import 'package:odyssey/src/utils/settings_provider.dart';
@@ -59,6 +62,7 @@ import 'package:odyssey/src/features/community/presentation/screens/create_post_
 import 'package:odyssey/src/features/community/presentation/providers/community_providers.dart';
 import 'package:odyssey/src/features/community/domain/post.dart';
 import 'package:odyssey/src/features/community/presentation/widgets/user_avatar.dart';
+import 'package:odyssey/src/features/settings/presentation/settings_screen.dart';
 
 // Frases motivacionais/céticas e de grandes pensadores
 const List<String> _dailyInsights = [
@@ -147,7 +151,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
   late AnimationController _progressController;
+
   late AnimationController _insightController;
+  late AnimationController _staggeredInsightsController;
 
   DateTime _selectedMonth = DateTime.now();
   DateTime _selectedDate = DateTime.now();
@@ -167,10 +173,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   // New variables for chart interactivity
   int _focusTouchedIndex = -1; // For Focus Pie Chart interaction
   int _moodTouchedIndex = -1; // For Mood Pie Chart interaction
-  int _chartViewType = 0; // 0: Trend, 1: Pie, 2: Radar
 
   // NOTE: _selectedDate and _habitRepoInitialized are at lines 153-154
   int _selectedChartIndex = 0; // 0: Habits, 1: Focus, 2: Mood
+  int _chartViewMode = 0; // 0: Trend, 1: Analysis
   bool _isQuoteVisible =
       true; // Restoring this as it was flagged as unused but removal caused more errors? Or maybe not, but chart view logic depends on _selectedChartIndex.
 
@@ -204,6 +210,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       duration: const Duration(milliseconds: 500),
       vsync: this,
     );
+
+    _staggeredInsightsController = AnimationController(
+      duration: const Duration(milliseconds: 1000),
+      vsync: this,
+    );
+    Future.delayed(const Duration(milliseconds: 600), () {
+      if (mounted) _staggeredInsightsController.forward();
+    });
 
     _animationController.forward();
     // Delay para iniciar animação de progresso após fade in
@@ -256,6 +270,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     _animationController.dispose();
     _progressController.dispose();
     _insightController.dispose();
+    _staggeredInsightsController.dispose();
     _insightTimer?.cancel();
     _quickTaskController.dispose();
     super.dispose();
@@ -344,7 +359,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                         userName: settings.userName,
                         onMenuTap: () {
                           HapticFeedback.lightImpact();
-                          ref.read(navigationProvider.notifier).goToProfile();
+                          _showProfileMenu(context, ref);
                         },
                         onCalendarTap: () {
                           HapticFeedback.lightImpact();
@@ -404,37 +419,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               ),
 
               // ==========================================
-              // MOOD / COMUNIDADE
+              // REGISTRO DE HUMOR
               // ==========================================
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.only(left: 4, bottom: 12),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              'Comunidade', // Using 'Comunidade' visual style for Mood Check-in
-                              style: TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                                color: Theme.of(context).colorScheme.onSurface,
-                              ),
-                            ),
-                            TextButton(
-                              onPressed: () {},
-                              child: const Text('Ver mais'),
-                            ),
-                          ],
-                        ),
-                      ),
-                      _buildMoodSection(context),
-                    ],
-                  ),
+                  child: _buildMoodSection(context),
                 ),
               ),
 
@@ -464,36 +454,103 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      GestureDetector(
-                        onTap: _previousMonth,
-                        child: Icon(
-                          Icons.chevron_left,
-                          color: Theme.of(context).colorScheme.primary,
-                          size: 28,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.surfaceContainerHighest.withOpacity(0.5),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Material(
+                          color: Colors.transparent,
+                          borderRadius: BorderRadius.circular(12),
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(12),
+                            onTap: () {
+                              HapticFeedback.selectionClick();
+                              _previousMonth();
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Icon(
+                                Icons.chevron_left_rounded,
+                                color: Theme.of(context).colorScheme.primary,
+                                size: 24,
+                              ),
+                            ),
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 16),
-                      Text(
-                        monthFormat.format(_selectedMonth).capitalize(),
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w500,
-                          color: Theme.of(context).colorScheme.onSurface,
+                        const SizedBox(width: 8),
+                        SizedBox(
+                          width: 140,
+                          child: AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 200),
+                            transitionBuilder: (child, animation) {
+                              return FadeTransition(
+                                opacity: animation,
+                                child: SlideTransition(
+                                  position:
+                                      Tween<Offset>(
+                                        begin: const Offset(0, 0.2),
+                                        end: Offset.zero,
+                                      ).animate(
+                                        CurvedAnimation(
+                                          parent: animation,
+                                          curve: Curves.easeOut,
+                                        ),
+                                      ),
+                                  child: child,
+                                ),
+                              );
+                            },
+                            child: Text(
+                              monthFormat.format(_selectedMonth).capitalize(),
+                              key: ValueKey(_selectedMonth.toString()),
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: Theme.of(context).colorScheme.onSurface,
+                              ),
+                            ),
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 16),
-                      GestureDetector(
-                        onTap: _nextMonth,
-                        child: Icon(
-                          Icons.chevron_right,
-                          color: Theme.of(context).colorScheme.primary,
-                          size: 28,
+                        const SizedBox(width: 8),
+                        Material(
+                          color: Colors.transparent,
+                          borderRadius: BorderRadius.circular(12),
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(12),
+                            onTap: () {
+                              HapticFeedback.selectionClick();
+                              _nextMonth();
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Icon(
+                                Icons.chevron_right_rounded,
+                                color: Theme.of(context).colorScheme.primary,
+                                size: 24,
+                              ),
+                            ),
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -1892,82 +1949,206 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     return FutureBuilder<List<TaskData>>(
       future: taskRepo.getTasksForDate(_selectedDate),
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator(strokeWidth: 2));
+        // Não mostra loading se já tem dados (evita flash)
+        final tasks = snapshot.data ?? [];
+        final isFirstLoad =
+            !snapshot.hasData &&
+            snapshot.connectionState == ConnectionState.waiting;
+
+        if (isFirstLoad) {
+          return const Padding(
+            padding: EdgeInsets.symmetric(vertical: 40),
+            child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+          );
         }
 
-        final tasks = snapshot.data ?? [];
         final pendingTasks = tasks.where((t) => !t.completed).toList();
         final completedTasks = tasks.where((t) => t.completed).toList();
 
-        if (tasks.isEmpty) {
-          return _buildEmptyTasksState(context);
-        }
-
-        final completed = completedTasks.length;
-        final total = tasks.length;
-
+        // Input field é sempre exibido primeiro (fora do AnimatedSwitcher)
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Quick add task field
-            Container(
-              decoration: BoxDecoration(
-                color: colors.surfaceContainerHighest.withOpacity(0.5),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: colors.outline.withOpacity(0.1)),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _quickTaskController,
-                      onSubmitted: (_) => _createQuickTask(taskRepo),
-                      decoration: InputDecoration(
-                        hintText: 'Nova tarefa...',
-                        hintStyle: TextStyle(
-                          fontSize: 14,
-                          color: colors.onSurfaceVariant.withOpacity(0.6),
-                        ),
-                        border: InputBorder.none,
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 12,
-                        ),
-                      ),
-                      style: TextStyle(fontSize: 14, color: colors.onSurface),
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: IconButton(
-                      onPressed: () => _createQuickTask(taskRepo),
-                      icon: Icon(
-                        Icons.add_circle,
-                        color: colors.primary,
-                        size: 28,
-                      ),
-                      tooltip: 'Adicionar tarefa',
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            // Quick add task field - sempre visível, sem animação
+            _buildQuickAddTaskField(colors, taskRepo),
             const SizedBox(height: 16),
 
-            // Header com progresso
-            Row(
-              children: [
-                Text(
-                  'Para ${_isSameDay(_selectedDate, DateTime.now()) ? "hoje" : DateFormat('dd/MM').format(_selectedDate)}',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                    color: colors.onSurfaceVariant,
+            // Conteúdo animado
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 250),
+              switchInCurve: Curves.easeOut,
+              switchOutCurve: Curves.easeIn,
+              transitionBuilder: (child, animation) {
+                return FadeTransition(opacity: animation, child: child);
+              },
+              child: tasks.isEmpty
+                  ? _buildEmptyTasksContent(context, colors)
+                  : _buildTasksContent(
+                      context,
+                      colors,
+                      pendingTasks,
+                      completedTasks,
+                      key: ValueKey(
+                        'tasks_${tasks.length}_${pendingTasks.length}',
+                      ),
+                    ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // Campo de adicionar tarefa separado (não re-renderiza)
+  Widget _buildQuickAddTaskField(ColorScheme colors, TaskRepository taskRepo) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            colors.primary.withOpacity(0.08),
+            colors.primaryContainer.withOpacity(0.05),
+          ],
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: colors.primary.withOpacity(0.2), width: 1.5),
+      ),
+      child: Row(
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(left: 14),
+            child: Icon(
+              Icons.add_task_rounded,
+              color: colors.primary.withOpacity(0.6),
+              size: 20,
+            ),
+          ),
+          Expanded(
+            child: TextField(
+              controller: _quickTaskController,
+              onSubmitted: (_) => _createQuickTask(taskRepo),
+              decoration: InputDecoration(
+                hintText: 'Adicionar nova tarefa...',
+                hintStyle: TextStyle(
+                  fontSize: 14,
+                  color: colors.onSurfaceVariant.withOpacity(0.5),
+                ),
+                border: InputBorder.none,
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 14,
+                ),
+              ),
+              style: TextStyle(
+                fontSize: 14,
+                color: colors.onSurface,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.only(right: 6),
+            child: Material(
+              color: Colors.transparent,
+              borderRadius: BorderRadius.circular(12),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(12),
+                onTap: () => _createQuickTask(taskRepo),
+                child: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: colors.primary.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    Icons.send_rounded,
+                    color: colors.primary,
+                    size: 20,
                   ),
                 ),
-                const Spacer(),
-                Container(
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Conteúdo quando não há tarefas
+  Widget _buildEmptyTasksContent(BuildContext context, ColorScheme colors) {
+    return Container(
+      key: const ValueKey('empty_tasks'),
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: colors.surfaceContainerHighest.withOpacity(0.3),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: colors.outline.withOpacity(0.1)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.task_alt_rounded,
+            size: 48,
+            color: UltravioletColors.accentGreen.withOpacity(0.6),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            _isSameDay(_selectedDate, DateTime.now())
+                ? 'Nenhuma tarefa para hoje!'
+                : 'Nenhuma tarefa para este dia',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+              color: colors.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Digite acima para criar',
+            style: TextStyle(
+              fontSize: 12,
+              color: colors.onSurfaceVariant.withOpacity(0.7),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Conteúdo quando há tarefas
+  Widget _buildTasksContent(
+    BuildContext context,
+    ColorScheme colors,
+    List<TaskData> pendingTasks,
+    List<TaskData> completedTasks, {
+    Key? key,
+  }) {
+    final completed = completedTasks.length;
+    final total = pendingTasks.length + completedTasks.length;
+
+    return Column(
+      key: key,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Header com progresso
+        Row(
+          children: [
+            Text(
+              'Para ${_isSameDay(_selectedDate, DateTime.now()) ? "hoje" : DateFormat('dd/MM').format(_selectedDate)}',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                color: colors.onSurfaceVariant,
+              ),
+            ),
+            const Spacer(),
+            TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0, end: completed.toDouble()),
+              duration: const Duration(milliseconds: 300),
+              builder: (context, value, child) {
+                return Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 10,
                     vertical: 4,
@@ -1979,7 +2160,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
-                    '$completed/$total',
+                    '${value.round()}/$total',
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
@@ -1988,37 +2169,33 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                           : colors.primary,
                     ),
                   ),
-                ),
-                const SizedBox(width: 8),
-                GestureDetector(
-                  onTap: () {
-                    HapticFeedback.lightImpact();
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const TasksScreen()),
-                    );
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: colors.primary.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Icon(
-                      Icons.arrow_forward_ios_rounded,
-                      size: 12,
-                      color: colors.primary,
-                    ),
-                  ),
-                ),
-              ],
+                );
+              },
             ),
-            const SizedBox(height: 12),
-            // Progress bar
-            ClipRRect(
+            const SizedBox(width: 8),
+            HeaderArrowButton(
+              colors: colors,
+              onTap: () {
+                HapticFeedback.lightImpact();
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const TasksScreen()),
+                );
+              },
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        // Progress bar animada
+        TweenAnimationBuilder<double>(
+          tween: Tween(begin: 0, end: total > 0 ? completed / total : 0),
+          duration: const Duration(milliseconds: 400),
+          curve: Curves.easeOutCubic,
+          builder: (context, value, child) {
+            return ClipRRect(
               borderRadius: BorderRadius.circular(4),
               child: LinearProgressIndicator(
-                value: total > 0 ? completed / total : 0,
+                value: value,
                 backgroundColor: colors.surfaceContainerHighest,
                 valueColor: AlwaysStoppedAnimation(
                   completed == total && total > 0
@@ -2027,161 +2204,87 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 ),
                 minHeight: 5,
               ),
-            ),
-            const SizedBox(height: 14),
-
-            // Tarefas pendentes
-            ...pendingTasks.map((task) => _buildTaskItem(context, task)),
-
-            // Botão mostrar/ocultar concluídos
-            if (completedTasks.isNotEmpty) ...[
-              const SizedBox(height: 8),
-              GestureDetector(
-                onTap: () {
-                  HapticFeedback.selectionClick();
-                  setState(() => _showCompletedTasks = !_showCompletedTasks);
-                },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    vertical: 12,
-                    horizontal: 16,
-                  ),
-                  decoration: BoxDecoration(
-                    color: colors.surfaceContainerHighest.withOpacity(0.5),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        _showCompletedTasks
-                            ? Icons.visibility_off_outlined
-                            : Icons.visibility_outlined,
-                        size: 16,
-                        color: colors.onSurfaceVariant,
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        _showCompletedTasks
-                            ? 'Ocultar Concluídas (${completedTasks.length})'
-                            : 'Mostrar Concluídas (${completedTasks.length})',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
-                          color: colors.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-
-            // Tarefas concluídas (com animação)
-            AnimatedSize(
-              duration: const Duration(milliseconds: 300),
-              curve: Curves.easeInOut,
-              child: _showCompletedTasks
-                  ? Column(
-                      children: [
-                        const SizedBox(height: 8),
-                        ...completedTasks.map(
-                          (task) => _buildTaskItem(context, task),
-                        ),
-                      ],
-                    )
-                  : const SizedBox.shrink(),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  Widget _buildEmptyTasksState(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    final taskRepo = ref.watch(taskRepositoryProvider);
-
-    return Column(
-      children: [
-        // Quick add task field (even when empty)
-        Container(
-          decoration: BoxDecoration(
-            color: colors.surfaceContainerHighest.withOpacity(0.5),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: colors.outline.withOpacity(0.1)),
-          ),
-          child: Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _quickTaskController,
-                  onSubmitted: (_) => _createQuickTask(taskRepo),
-                  decoration: InputDecoration(
-                    hintText: 'Digite uma nova tarefa...',
-                    hintStyle: TextStyle(
-                      fontSize: 14,
-                      color: colors.onSurfaceVariant.withOpacity(0.6),
-                    ),
-                    border: InputBorder.none,
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 12,
-                    ),
-                  ),
-                  style: TextStyle(fontSize: 14, color: colors.onSurface),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.only(right: 8),
-                child: IconButton(
-                  onPressed: () => _createQuickTask(taskRepo),
-                  icon: Icon(Icons.add_circle, color: colors.primary, size: 28),
-                  tooltip: 'Adicionar tarefa',
-                ),
-              ),
-            ],
-          ),
+            );
+          },
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 14),
 
-        // Empty state messaging
-        Container(
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            color: colors.surfaceContainerHighest.withOpacity(0.3),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: colors.outline.withOpacity(0.1)),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.task_alt_rounded,
-                size: 48,
-                color: UltravioletColors.accentGreen.withOpacity(0.6),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                _isSameDay(_selectedDate, DateTime.now())
-                    ? 'Nenhuma tarefa para hoje!'
-                    : 'Nenhuma tarefa para este dia',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  color: colors.onSurfaceVariant,
+        // Tarefas pendentes com animação individual
+        ...pendingTasks.asMap().entries.map((entry) {
+          return TweenAnimationBuilder<double>(
+            key: ValueKey(entry.value.key),
+            tween: Tween(begin: 0.0, end: 1.0),
+            duration: Duration(milliseconds: 200 + (entry.key * 50)),
+            curve: Curves.easeOut,
+            builder: (context, value, child) {
+              return Opacity(
+                opacity: value,
+                child: Transform.translate(
+                  offset: Offset(0, 10 * (1 - value)),
+                  child: _buildTaskItem(context, entry.value),
                 ),
+              );
+            },
+          );
+        }),
+
+        // Botão mostrar/ocultar concluídos
+        if (completedTasks.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          GestureDetector(
+            onTap: () {
+              HapticFeedback.selectionClick();
+              setState(() => _showCompletedTasks = !_showCompletedTasks);
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+              decoration: BoxDecoration(
+                color: colors.surfaceContainerHighest.withOpacity(0.5),
+                borderRadius: BorderRadius.circular(12),
               ),
-              const SizedBox(height: 4),
-              Text(
-                'Digite acima para criar',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: colors.onSurfaceVariant.withOpacity(0.7),
-                ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  AnimatedRotation(
+                    turns: _showCompletedTasks ? 0.5 : 0,
+                    duration: const Duration(milliseconds: 200),
+                    child: Icon(
+                      Icons.keyboard_arrow_down_rounded,
+                      size: 18,
+                      color: colors.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    _showCompletedTasks
+                        ? 'Ocultar Concluídas (${completedTasks.length})'
+                        : 'Ver Concluídas (${completedTasks.length})',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                      color: colors.onSurfaceVariant,
+                    ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
+        ],
+
+        // Tarefas concluídas (com animação)
+        AnimatedSize(
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeInOut,
+          child: _showCompletedTasks
+              ? Column(
+                  children: [
+                    const SizedBox(height: 8),
+                    ...completedTasks.map(
+                      (task) => _buildTaskItem(context, task),
+                    ),
+                  ],
+                )
+              : const SizedBox.shrink(),
         ),
       ],
     );
@@ -2192,82 +2295,216 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     final isCompleted = task.completed;
     final syncedRepo = ref.read(syncedTaskRepositoryProvider);
 
-    final priorityColor = task.priority == 'high'
-        ? Colors.red
-        : task.priority == 'low'
-        ? Colors.green
-        : Colors.orange;
+    // Helpers para cores de prioridade
+    Color priorityColor;
+    switch (task.priority) {
+      case 'high':
+        priorityColor = Colors.red;
+        break;
+      case 'low':
+        priorityColor = Colors.green;
+        break;
+      case 'medium':
+      default:
+        priorityColor = Colors.orange;
+    }
 
     return GestureDetector(
-      onTap: () async {
-        HapticFeedback.lightImpact();
-        await syncedRepo.toggleTaskCompletion(task.key);
-        setState(() {});
+      onLongPress: () {
+        HapticFeedback.mediumImpact();
+        showModalBottomSheet(
+          context: context,
+          isScrollControlled: true,
+          backgroundColor: Colors.transparent,
+          builder: (_) =>
+              TaskFormSheet(task: task, onSave: (_) => setState(() {})),
+        ).then((_) => setState(() {}));
       },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         margin: const EdgeInsets.only(bottom: 10),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: isCompleted
-              ? UltravioletColors.accentGreen.withOpacity(0.08)
+              ? UltravioletColors.accentGreen.withOpacity(0.05)
               : colors.surface,
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: isCompleted
-                ? UltravioletColors.accentGreen.withOpacity(0.3)
+                ? UltravioletColors.accentGreen.withOpacity(0.2)
                 : colors.outline.withOpacity(0.1),
           ),
+          boxShadow: [
+            if (!isCompleted)
+              BoxShadow(
+                color: colors.shadow.withOpacity(0.05),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+          ],
         ),
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Checkbox
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              width: 24,
-              height: 24,
-              decoration: BoxDecoration(
-                color: isCompleted
-                    ? UltravioletColors.accentGreen
-                    : colors.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(7),
-                border: isCompleted
-                    ? null
-                    : Border.all(color: colors.outline.withOpacity(0.3)),
-              ),
-              child: isCompleted
-                  ? const Icon(Icons.check, size: 16, color: Colors.white)
-                  : null,
+            // Checkbox clicável
+            // Checkbox clicável com hover
+            TaskCheckbox(
+              isCompleted: isCompleted,
+              colors: colors,
+              onTap: () async {
+                HapticFeedback.lightImpact();
+                await syncedRepo.toggleTaskCompletion(task.key);
+                setState(() {});
+              },
             ),
-            const SizedBox(width: 12),
-            // Título
+
+            // Conteúdo
             Expanded(
-              child: Text(
-                task.title,
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  color: isCompleted
-                      ? colors.onSurfaceVariant
-                      : colors.onSurface,
-                  decoration: isCompleted ? TextDecoration.lineThrough : null,
-                  decorationColor: colors.onSurfaceVariant,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Título e Prioridade
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          task.title,
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            color: isCompleted
+                                ? colors.onSurfaceVariant.withOpacity(0.7)
+                                : colors.onSurface,
+                            decoration: isCompleted
+                                ? TextDecoration.lineThrough
+                                : null,
+                            decorationColor: colors.onSurfaceVariant,
+                            height: 1.2,
+                          ),
+                        ),
+                      ),
+                      // Badge de Prioridade
+                      if (!isCompleted && task.priority != 'medium')
+                        Container(
+                          margin: const EdgeInsets.only(left: 8),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: priorityColor.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(4),
+                            border: Border.all(
+                              color: priorityColor.withOpacity(0.2),
+                            ),
+                          ),
+                          child: Text(
+                            task.priority.toUpperCase(),
+                            style: TextStyle(
+                              fontSize: 9,
+                              fontWeight: FontWeight.bold,
+                              color: priorityColor,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+
+                  // Notes (Descrição)
+                  if (task.notes != null &&
+                      task.notes!.isNotEmpty &&
+                      !isCompleted) ...[
+                    const SizedBox(height: 6),
+                    Text(
+                      task.notes!,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: colors.onSurfaceVariant,
+                        height: 1.3,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+
+                  // Metadata Row (Data, Hora, Tag)
+                  if (!isCompleted) ...[
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 12,
+                      runSpacing: 4,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        // Data
+                        if (task.dueDate != null)
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.calendar_today_rounded,
+                                size: 12,
+                                color: colors.primary,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                DateFormat('dd/MM').format(task.dueDate!),
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: colors.primary,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+
+                        // Hora
+                        if (task.dueTime != null)
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.access_time_rounded,
+                                size: 12,
+                                color: colors.onSurfaceVariant,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                task.dueTime!,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: colors.onSurfaceVariant,
+                                ),
+                              ),
+                            ],
+                          ),
+
+                        // Categoria (Tag)
+                        if (task.category != null && task.category!.isNotEmpty)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: colors.surfaceContainerHighest,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              task.category!,
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: colors.onSurfaceVariant,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ],
+                ],
               ),
             ),
-            // Indicador de prioridade
-            if (task.priority != 'medium' && !isCompleted)
-              Container(
-                width: 8,
-                height: 8,
-                margin: const EdgeInsets.only(left: 8),
-                decoration: BoxDecoration(
-                  color: priorityColor,
-                  shape: BoxShape.circle,
-                ),
-              ),
           ],
         ),
       ),
@@ -3155,106 +3392,96 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   // ==========================================
   // GRÁFICO SEMANAL (Bar Chart)
   // ==========================================
+  // ==========================================
+  // GRÁFICO SEMANAL (Bar Chart)
+  // ==========================================
   Widget _buildWeeklyChart(BuildContext context) {
     if (!_habitRepoInitialized) return const SizedBox.shrink();
 
     final colors = Theme.of(context).colorScheme;
 
     return OdysseyCard(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(24),
       margin: EdgeInsets.zero,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // HEADER ROW: Title + View Toggle
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Resumo Semanal',
+                'Estatísticas',
                 style: TextStyle(
-                  fontSize: 18,
+                  fontSize: 20,
                   fontWeight: FontWeight.bold,
                   color: colors.onSurface,
+                  letterSpacing: -0.5,
                 ),
               ),
-              // View Type Toggle (Right Aligned)
-              Container(
-                padding: const EdgeInsets.all(4),
-                decoration: BoxDecoration(
-                  color: colors.surfaceContainerHighest.withOpacity(0.4),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    _buildViewTypeToggle(
-                      context,
-                      0,
-                      Icons.show_chart_rounded,
-                    ), // Trend
-                    const SizedBox(width: 4),
-                    _buildViewTypeToggle(
-                      context,
-                      1,
-                      Icons.pie_chart_rounded,
-                    ), // Pie
-                    const SizedBox(width: 4),
-                    _buildViewTypeToggle(
-                      context,
-                      2,
-                      Icons.radar_rounded,
-                    ), // Radar
-                  ],
+              // Chart Toggle
+              GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _chartViewMode = _chartViewMode == 0 ? 1 : 0;
+                  });
+                  HapticFeedback.lightImpact();
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: colors.surfaceContainerHighest.withOpacity(0.3),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: colors.outline.withOpacity(0.1)),
+                  ),
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 300),
+                    transitionBuilder: (child, anim) =>
+                        ScaleTransition(scale: anim, child: child),
+                    child: Icon(
+                      _chartViewMode == 0
+                          ? Icons.pie_chart_rounded
+                          : Icons.show_chart_rounded,
+                      key: ValueKey(_chartViewMode),
+                      size: 20,
+                      color: colors.primary,
+                    ),
+                  ),
                 ),
               ),
             ],
           ),
+          const SizedBox(height: 20),
 
-          const SizedBox(height: 16),
-
-          // CATEGORY SELECTOR (Centered)
-          Center(
-            child: Container(
-              padding: const EdgeInsets.all(4),
-              decoration: BoxDecoration(
-                color: colors.surfaceContainerHighest.withOpacity(0.4),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _buildChartToggleBtn(
-                    context,
-                    0,
-                    Icons.check_circle_outline,
-                    'Hábitos',
-                  ),
-                  _buildChartToggleBtn(
-                    context,
-                    1,
-                    Icons.timer_outlined,
-                    'Foco',
-                  ),
-                  _buildChartToggleBtn(
-                    context,
-                    2,
-                    Icons.mood_outlined,
-                    'Humor',
-                  ),
-                ],
-              ),
+          // Premium Category Selector
+          Container(
+            height: 44,
+            decoration: BoxDecoration(
+              color: colors.surfaceContainerHighest.withOpacity(0.3),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            padding: const EdgeInsets.all(4),
+            child: Row(
+              children: [
+                _buildPremiumTab(0, 'Hábitos', Icons.check_circle_outline),
+                _buildPremiumTab(1, 'Foco', Icons.timer_outlined),
+                _buildPremiumTab(2, 'Humor', Icons.mood_outlined),
+              ],
             ),
           ),
 
-          const SizedBox(height: 24),
+          const SizedBox(height: 32),
 
-          // SELECTED CHART AREA
+          // Chart Area
           SizedBox(
-            height: 200,
+            height: 220,
             child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 300),
-              child: _buildSelectedChart(context),
+              duration: const Duration(milliseconds: 400),
+              switchInCurve: Curves.easeOutBack,
+              switchOutCurve: Curves.easeInBack,
+              child: KeyedSubtree(
+                key: ValueKey(_selectedChartIndex),
+                child: _buildSelectedChart(context),
+              ),
             ),
           ),
         ],
@@ -3262,124 +3489,82 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     );
   }
 
-  Widget _buildSelectedChart(BuildContext context) {
-    // Habits
-    if (_selectedChartIndex == 0) {
-      switch (_chartViewType) {
-        case 0:
-          return _buildHabitsBarChart(context);
-        case 1:
-          return _buildHabitsPieChart(context);
-        case 2:
-          return _buildHabitsRadarChart(context);
-        default:
-          return _buildHabitsBarChart(context);
-      }
-    }
-    // Focus
-    if (_selectedChartIndex == 1) {
-      switch (_chartViewType) {
-        case 0:
-          return _buildFocusLineChart(context);
-        case 1:
-          return _buildFocusPieChart(context);
-        case 2:
-          return _buildFocusScatterChart(
-            context,
-          ); // Using Scatter as 3rd option
-        default:
-          return _buildFocusLineChart(context);
-      }
-    }
-    // Mood
-    switch (_chartViewType) {
-      case 0:
-        return _buildMoodTrendChart(context);
-      case 1:
-        return _buildMoodPieChart(context);
-      case 2:
-        return _buildMoodRadarChart(context);
-      default:
-        return _buildMoodTrendChart(context);
-    }
-  }
-
-  Widget _buildViewTypeToggle(BuildContext context, int index, IconData icon) {
-    final isSelected = _chartViewType == index;
-    final colors = Theme.of(context).colorScheme;
-
-    return GestureDetector(
-      onTap: () {
-        HapticFeedback.selectionClick();
-        setState(() => _chartViewType = index);
-      },
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: isSelected ? colors.primary : Colors.transparent,
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Icon(
-          icon,
-          size: 20,
-          color: isSelected ? colors.onPrimary : colors.onSurfaceVariant,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildChartToggleBtn(
-    BuildContext context,
-    int index,
-    IconData icon,
-    String label,
-  ) {
+  Widget _buildPremiumTab(int index, String label, IconData icon) {
     final isSelected = _selectedChartIndex == index;
     final colors = Theme.of(context).colorScheme;
 
-    return GestureDetector(
-      onTap: () {
-        HapticFeedback.selectionClick();
-        setState(() => _selectedChartIndex = index);
-      },
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          color: isSelected ? colors.surface : Colors.transparent,
-          borderRadius: BorderRadius.circular(10),
-          boxShadow: isSelected
-              ? [
-                  BoxShadow(
-                    color: colors.shadow.withOpacity(0.05),
-                    blurRadius: 4,
-                    offset: const Offset(0, 2),
-                  ),
-                ]
-              : null,
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              icon,
-              size: 18,
-              color: isSelected ? colors.primary : colors.onSurfaceVariant,
-            ),
-            const SizedBox(width: 8),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                color: isSelected ? colors.primary : colors.onSurfaceVariant,
+    return Expanded(
+      child: GestureDetector(
+        onTap: () {
+          HapticFeedback.selectionClick();
+          setState(() => _selectedChartIndex = index);
+        },
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          decoration: BoxDecoration(
+            color: isSelected ? colors.surface : Colors.transparent,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: isSelected
+                ? [
+                    BoxShadow(
+                      color: colors.shadow.withOpacity(0.08),
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
+                    ),
+                  ]
+                : null,
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                icon,
+                size: 16,
+                color: isSelected
+                    ? colors.primary
+                    : colors.onSurfaceVariant.withOpacity(0.7),
               ),
-            ),
-          ],
+              const SizedBox(width: 8),
+              if (isSelected || MediaQuery.of(context).size.width > 360)
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                    color: isSelected
+                        ? colors.primary
+                        : colors.onSurfaceVariant.withOpacity(0.7),
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );
+  }
+
+  Widget _buildSelectedChart(BuildContext context) {
+    if (_chartViewMode == 1) {
+      switch (_selectedChartIndex) {
+        case 0:
+          return _buildHabitsRadarChartAnalysis(context);
+        case 1:
+          return _buildFocusDonutChart(context);
+        case 2:
+          return _buildMoodFrequencyChart(context);
+      }
+    }
+
+    switch (_selectedChartIndex) {
+      case 0:
+        return _buildHabitsBarChart(context);
+      case 1:
+        return _buildFocusLineChart(context);
+      case 2:
+        return _buildMoodTrendChart(context);
+      default:
+        return const SizedBox.shrink();
+    }
   }
 
   Widget _buildHabitsBarChart(BuildContext context) {
@@ -3392,239 +3577,136 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         final weekRates = habitRepo.getWeekCompletionRates();
         final dayNames = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
 
-        return BarChart(
-          BarChartData(
-            gridData: const FlGridData(show: false),
-            titlesData: FlTitlesData(
-              show: true,
-              rightTitles: const AxisTitles(
-                sideTitles: SideTitles(showTitles: false),
-              ),
-              topTitles: const AxisTitles(
-                sideTitles: SideTitles(showTitles: false),
-              ),
-              leftTitles: const AxisTitles(
-                sideTitles: SideTitles(showTitles: false),
-              ),
-              bottomTitles: AxisTitles(
-                sideTitles: SideTitles(
-                  showTitles: true,
-                  getTitlesWidget: (double value, TitleMeta meta) {
-                    final index = value.toInt();
-                    if (index < 0 || index >= dayNames.length)
-                      return const SizedBox.shrink();
+        double totalRate = 0;
+        for (var rate in weekRates.values) totalRate += rate;
+        final avgRate = (totalRate / 7 * 100).toInt();
 
-                    final isToday = index == (DateTime.now().weekday - 1);
-                    return SideTitleWidget(
-                      meta: meta,
-                      space: 8,
-                      child: Text(
-                        dayNames[index],
-                        style: TextStyle(
-                          color: isToday
-                              ? colors.primary
-                              : colors.onSurfaceVariant,
-                          fontWeight: isToday
-                              ? FontWeight.bold
-                              : FontWeight.normal,
-                          fontSize: 10,
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ),
-            borderData: FlBorderData(show: false),
-            barGroups: List.generate(7, (index) {
-              final rate = weekRates[index] ?? 0.0;
-              final isToday = index == (DateTime.now().weekday - 1);
-
-              return BarChartGroupData(
-                x: index,
-                barRods: [
-                  BarChartRodData(
-                    toY: rate.clamp(0.05, 1.0), // Min height for visibility
-                    color: isToday
-                        ? colors.primary
-                        : (rate >= 1.0
-                              ? const Color(0xFF07E092)
-                              : colors.primary.withOpacity(
-                                  rate > 0 ? 0.7 : 0.3,
-                                )),
-                    width: 16,
-                    borderRadius: BorderRadius.circular(4),
-                    backDrawRodData: BackgroundBarChartRodData(
-                      show: true,
-                      toY: 1.0,
-                      color: colors.surfaceContainerHighest.withOpacity(0.3),
-                    ),
-                  ),
-                ],
-              );
-            }),
-            maxY: 1.0,
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildFocusPieChart(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    final timeRepo = ref.watch(timeTrackingRepositoryProvider);
-
-    return ValueListenableBuilder(
-      valueListenable: timeRepo.box.listenable(),
-      builder: (context, box, _) {
-        final startOfWeek = _selectedDate.subtract(
-          Duration(days: _selectedDate.weekday - 1),
-        );
-        final endOfWeek = startOfWeek.add(const Duration(days: 7));
-
-        final allRecords = timeRepo.fetchAllTimeTrackingRecords();
-        final weeklyRecords = allRecords.where((r) {
-          return r.startTime.isAfter(
-                startOfWeek.subtract(const Duration(seconds: 1)),
-              ) &&
-              r.startTime.isBefore(endOfWeek);
-        }).toList();
-
-        final durationByActivity = <String, double>{};
-        double totalMinutes = 0;
-
-        for (var record in weeklyRecords) {
-          final minutes = record.durationInSeconds / 60;
-          if (minutes > 0) {
-            durationByActivity.update(
-              record.activityName,
-              (value) => value + minutes,
-              ifAbsent: () => minutes,
-            );
-            totalMinutes += minutes;
-          }
-        }
-
-        if (totalMinutes == 0) {
-          return Center(
-            child: Column(
+        return Column(
+          children: [
+            Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(
-                  Icons.timer_off_outlined,
-                  color: colors.onSurfaceVariant,
-                  size: 24,
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Sem foco esta semana',
-                  style: TextStyle(
-                    color: colors.onSurfaceVariant,
-                    fontSize: 12,
-                  ),
+                _buildAnalysisBadge(
+                  context,
+                  'Média Semanal',
+                  '$avgRate%',
+                  Icons.bar_chart_rounded,
+                  colors.primary,
                 ),
               ],
             ),
-          );
-        }
-
-        final sortedEntries = durationByActivity.entries.toList()
-          ..sort((a, b) => b.value.compareTo(a.value));
-
-        return Row(
-          children: [
+            const SizedBox(height: 12),
             Expanded(
-              flex: 3,
-              child: PieChart(
-                PieChartData(
-                  pieTouchData: PieTouchData(
-                    touchCallback: (FlTouchEvent event, pieTouchResponse) {
-                      setState(() {
-                        if (!event.isInterestedForInteractions ||
-                            pieTouchResponse == null ||
-                            pieTouchResponse.touchedSection == null) {
-                          _focusTouchedIndex = -1;
-                          return;
-                        }
-                        _focusTouchedIndex = pieTouchResponse
-                            .touchedSection!
-                            .touchedSectionIndex;
-                      });
-                    },
+              child: BarChart(
+                BarChartData(
+                  barTouchData: BarTouchData(
+                    touchTooltipData: BarTouchTooltipData(
+                      getTooltipColor: (_) => colors.surfaceContainerHighest,
+                      getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                        return BarTooltipItem(
+                          '${(rod.toY * 100).toInt()}%',
+                          TextStyle(
+                            color: colors.primary,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          children: [
+                            TextSpan(
+                              text: '\nConcluído',
+                              style: TextStyle(
+                                color: colors.onSurfaceVariant,
+                                fontSize: 10,
+                                fontWeight: FontWeight.normal,
+                              ),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+                  ),
+                  gridData: FlGridData(
+                    show: true,
+                    drawVerticalLine: false,
+                    horizontalInterval: 0.25,
+                    getDrawingHorizontalLine: (value) => FlLine(
+                      color: colors.outlineVariant.withOpacity(0.1),
+                      strokeWidth: 1,
+                    ),
+                  ),
+                  titlesData: FlTitlesData(
+                    show: true,
+                    rightTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
+                    topTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
+                    leftTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
+                    bottomTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        getTitlesWidget: (double value, TitleMeta meta) {
+                          final index = value.toInt();
+                          if (index < 0 || index >= dayNames.length)
+                            return const SizedBox.shrink();
+
+                          final isToday = index == (DateTime.now().weekday - 1);
+                          return SideTitleWidget(
+                            meta: meta,
+                            space: 8,
+                            child: Text(
+                              dayNames[index],
+                              style: TextStyle(
+                                color: isToday
+                                    ? colors.primary
+                                    : colors.onSurfaceVariant,
+                                fontWeight: isToday
+                                    ? FontWeight.bold
+                                    : FontWeight.normal,
+                                fontSize: 10,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
                   ),
                   borderData: FlBorderData(show: false),
-                  sectionsSpace: 0,
-                  centerSpaceRadius: 40,
-                  sections: List.generate(sortedEntries.length, (i) {
-                    final isTouched = i == _focusTouchedIndex;
-                    final fontSize = isTouched ? 16.0 : 12.0;
-                    final radius = isTouched ? 50.0 : 40.0;
-                    final entry = sortedEntries[i];
-                    final percentage = (entry.value / totalMinutes) * 100;
+                  barGroups: List.generate(7, (index) {
+                    final rate = weekRates[index] ?? 0.0;
+                    final isToday = index == (DateTime.now().weekday - 1);
 
-                    // Generate a color based on index or existing activity color
-                    // Uses a predefined palette or generates one
-                    final sectionColor =
-                        Colors.primaries[i % Colors.primaries.length];
-
-                    return PieChartSectionData(
-                      color: sectionColor,
-                      value: entry.value,
-                      title: isTouched
-                          ? '${percentage.toStringAsFixed(1)}%'
-                          : '',
-                      radius: radius,
-                      titleStyle: TextStyle(
-                        fontSize: fontSize,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
+                    return BarChartGroupData(
+                      x: index,
+                      barRods: [
+                        BarChartRodData(
+                          toY: rate.clamp(0.01, 1.0),
+                          gradient: LinearGradient(
+                            colors: isToday
+                                ? [colors.primary, colors.tertiary]
+                                : [
+                                    const Color(0xFF07E092).withOpacity(0.7),
+                                    const Color(0xFF00C853),
+                                  ],
+                            begin: Alignment.bottomCenter,
+                            end: Alignment.topCenter,
+                          ),
+                          width: 14,
+                          borderRadius: BorderRadius.circular(6),
+                          backDrawRodData: BackgroundBarChartRodData(
+                            show: true,
+                            toY: 1.0,
+                            color: colors.surfaceContainerHighest.withOpacity(
+                              0.3,
+                            ),
+                          ),
+                        ),
+                      ],
                     );
                   }),
+                  maxY: 1.05,
                 ),
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              flex: 2,
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (_focusTouchedIndex != -1 &&
-                      _focusTouchedIndex < sortedEntries.length) ...[
-                    // Show details for touched section
-                    _buildPieDetail(
-                      sortedEntries[_focusTouchedIndex].key,
-                      '${sortedEntries[_focusTouchedIndex].value.toStringAsFixed(0)} min',
-                      Colors.primaries[_focusTouchedIndex %
-                          Colors.primaries.length],
-                      isLarge: true,
-                    ),
-                  ] else ...[
-                    // Show summary or top activities
-                    Text(
-                      'Total: ${(totalMinutes / 60).toStringAsFixed(1)}h',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                        color: colors.onSurface,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    ...sortedEntries.take(3).map((e) {
-                      final index = sortedEntries.indexOf(e);
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 4),
-                        child: _buildPieDetail(
-                          e.key,
-                          '${(e.value / totalMinutes * 100).round()}%',
-                          Colors.primaries[index % Colors.primaries.length],
-                        ),
-                      );
-                    }),
-                  ],
-                ],
               ),
             ),
           ],
@@ -3685,309 +3767,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     );
   }
 
-  Widget _buildMoodPieChart(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    final moodRepo = ref.watch(moodRecordRepositoryProvider);
-
-    return ValueListenableBuilder(
-      valueListenable: moodRepo.box.listenable(),
-      builder: (context, box, _) {
-        final startOfWeek = _selectedDate.subtract(
-          Duration(days: _selectedDate.weekday - 1),
-        );
-        final endOfWeek = startOfWeek.add(const Duration(days: 7));
-
-        final allRecords = moodRepo.fetchMoodRecords().values;
-        final weeklyRecords = allRecords.where((r) {
-          return r.date.isAfter(
-                startOfWeek.subtract(const Duration(seconds: 1)),
-              ) &&
-              r.date.isBefore(endOfWeek);
-        }).toList();
-
-        final countByLabel = <String, int>{};
-        final colorByLabel = <String, Color>{};
-        int totalRecords = weeklyRecords.length;
-
-        for (var record in weeklyRecords) {
-          final label = record.label;
-          countByLabel.update(label, (val) => val + 1, ifAbsent: () => 1);
-          if (!colorByLabel.containsKey(label)) {
-            colorByLabel[label] = Color(record.color);
-          }
-        }
-
-        if (totalRecords == 0) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.mood_bad_outlined,
-                  color: colors.onSurfaceVariant,
-                  size: 24,
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Sem registros de humor',
-                  style: TextStyle(
-                    color: colors.onSurfaceVariant,
-                    fontSize: 12,
-                  ),
-                ),
-              ],
-            ),
-          );
-        }
-
-        final sortedEntries = countByLabel.entries.toList()
-          ..sort((a, b) => b.value.compareTo(a.value));
-
-        return Row(
-          children: [
-            Expanded(
-              flex: 3,
-              child: PieChart(
-                PieChartData(
-                  pieTouchData: PieTouchData(
-                    touchCallback: (FlTouchEvent event, pieTouchResponse) {
-                      setState(() {
-                        if (!event.isInterestedForInteractions ||
-                            pieTouchResponse == null ||
-                            pieTouchResponse.touchedSection == null) {
-                          _moodTouchedIndex = -1;
-                          return;
-                        }
-                        _moodTouchedIndex = pieTouchResponse
-                            .touchedSection!
-                            .touchedSectionIndex;
-                      });
-                    },
-                  ),
-                  borderData: FlBorderData(show: false),
-                  sectionsSpace: 0,
-                  centerSpaceRadius: 40,
-                  sections: List.generate(sortedEntries.length, (i) {
-                    final isTouched = i == _moodTouchedIndex;
-                    final fontSize = isTouched ? 16.0 : 12.0;
-                    final radius = isTouched ? 50.0 : 40.0;
-                    final entry = sortedEntries[i];
-                    final percentage = (entry.value / totalRecords) * 100;
-                    final color = colorByLabel[entry.key] ?? Colors.grey;
-
-                    return PieChartSectionData(
-                      color: color,
-                      value: entry.value.toDouble(),
-                      title: isTouched
-                          ? '${percentage.toStringAsFixed(0)}%'
-                          : '',
-                      radius: radius,
-                      titleStyle: TextStyle(
-                        fontSize: fontSize,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    );
-                  }),
-                ),
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              flex: 2,
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (_moodTouchedIndex != -1 &&
-                      _moodTouchedIndex < sortedEntries.length) ...[
-                    // Show details for touched section
-                    _buildPieDetail(
-                      sortedEntries[_moodTouchedIndex].key,
-                      '${sortedEntries[_moodTouchedIndex].value} reg.',
-                      colorByLabel[sortedEntries[_moodTouchedIndex].key] ??
-                          Colors.grey,
-                      isLarge: true,
-                    ),
-                  ] else ...[
-                    // General Info
-                    Text(
-                      'Total: $totalRecords',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                        color: colors.onSurface,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    ...sortedEntries.take(3).map((e) {
-                      // final index = sortedEntries.indexOf(e);
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 4),
-                        child: _buildPieDetail(
-                          e.key,
-                          '${(e.value / totalRecords * 100).round()}%',
-                          colorByLabel[e.key] ?? Colors.grey,
-                        ),
-                      );
-                    }),
-                  ],
-                ],
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  // ==========================================
-  // HABITS CHARTS (Values: 1: Pie, 2: Radar)
-  // ==========================================
-
-  Widget _buildHabitsPieChart(BuildContext context) {
-    final habitRepo = ref.watch(habitRepositoryProvider);
-    final colors = Theme.of(context).colorScheme;
-
-    return ValueListenableBuilder(
-      valueListenable: habitRepo.box.listenable(),
-      builder: (context, box, _) {
-        final weekRates = habitRepo.getWeekCompletionRates();
-
-        double totalCompletedPercent = 0;
-        int daysWithData = 0;
-
-        for (int i = 0; i < 7; i++) {
-          if (weekRates.containsKey(i)) {
-            totalCompletedPercent += weekRates[i]!;
-            daysWithData++;
-          }
-        }
-
-        double averageCompletion = daysWithData > 0
-            ? (totalCompletedPercent / 7)
-            : 0.0;
-        double remaining = 1.0 - averageCompletion;
-
-        return Row(
-          children: [
-            Expanded(
-              flex: 3,
-              child: PieChart(
-                PieChartData(
-                  borderData: FlBorderData(show: false),
-                  sectionsSpace: 0,
-                  centerSpaceRadius: 40,
-                  sections: [
-                    PieChartSectionData(
-                      color: const Color(0xFF07E092),
-                      value: averageCompletion * 100,
-                      title: '${(averageCompletion * 100).toStringAsFixed(0)}%',
-                      radius: 50,
-                      titleStyle: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
-                    PieChartSectionData(
-                      color: colors.surfaceContainerHighest,
-                      value: remaining * 100,
-                      title: '',
-                      radius: 40,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              flex: 2,
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildPieDetail(
-                    'Concluído',
-                    '${(averageCompletion * 100).toStringAsFixed(0)}%',
-                    const Color(0xFF07E092),
-                  ),
-                  const SizedBox(height: 8),
-                  _buildPieDetail(
-                    'Pendente',
-                    '${(remaining * 100).toStringAsFixed(0)}%',
-                    colors.surfaceContainerHighest,
-                  ),
-                ],
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  Widget _buildHabitsRadarChart(BuildContext context) {
-    final habitRepo = ref.watch(habitRepositoryProvider);
-    final colors = Theme.of(context).colorScheme;
-
-    return ValueListenableBuilder(
-      valueListenable: habitRepo.box.listenable(),
-      builder: (context, box, _) {
-        final weekRates = habitRepo.getWeekCompletionRates();
-        final dayNames = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
-
-        final dataEntries = <RadarEntry>[];
-        for (int i = 0; i < 7; i++) {
-          dataEntries.add(RadarEntry(value: (weekRates[i] ?? 0.0) * 100));
-        }
-
-        if (dataEntries.every((e) => e.value == 0)) {
-          return Center(
-            child: Text(
-              'Sem dados esta semana',
-              style: TextStyle(color: colors.onSurfaceVariant, fontSize: 12),
-            ),
-          );
-        }
-
-        return RadarChart(
-          RadarChartData(
-            radarShape: RadarShape.polygon,
-            radarBackgroundColor: Colors.transparent,
-            borderData: FlBorderData(show: false),
-            tickCount: 4,
-            ticksTextStyle: TextStyle(
-              color: colors.onSurfaceVariant,
-              fontSize: 8,
-            ),
-            tickBorderData: BorderSide(
-              color: colors.outlineVariant.withOpacity(0.3),
-            ),
-            gridBorderData: BorderSide(
-              color: colors.outlineVariant.withOpacity(0.3),
-              width: 1,
-            ),
-            titleTextStyle: TextStyle(
-              color: colors.onSurfaceVariant,
-              fontSize: 10,
-            ),
-            getTitle: (index, angle) => RadarChartTitle(text: dayNames[index]),
-            dataSets: [
-              RadarDataSet(
-                fillColor: colors.primary.withOpacity(0.2),
-                borderColor: colors.primary,
-                borderWidth: 2,
-                entryRadius: 3,
-                dataEntries: dataEntries,
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
   // ==========================================
   // FOCUS CHARTS (Values: 0: Line, 2: Scatter)
   // ==========================================
@@ -4019,8 +3798,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         }
 
         final maxVal = dailyMinutes.reduce(max);
-        final maxY = maxVal > 0 ? maxVal * 1.2 : 60.0;
-        final dayNames = ['S', 'T', 'Q', 'Q', 'S', 'S', 'D'];
 
         if (maxVal == 0) {
           return Center(
@@ -4031,215 +3808,148 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           );
         }
 
-        return LineChart(
-          LineChartData(
-            gridData: FlGridData(show: false),
-            titlesData: FlTitlesData(
-              show: true,
-              rightTitles: const AxisTitles(
-                sideTitles: SideTitles(showTitles: false),
-              ),
-              topTitles: const AxisTitles(
-                sideTitles: SideTitles(showTitles: false),
-              ),
-              bottomTitles: AxisTitles(
-                sideTitles: SideTitles(
-                  showTitles: true,
-                  interval: 1,
-                  getTitlesWidget: (value, meta) {
-                    final index = value.toInt();
-                    if (index < 0 || index >= dayNames.length)
-                      return const SizedBox.shrink();
-                    return SideTitleWidget(
-                      meta: meta,
-                      child: Text(
-                        dayNames[index],
-                        style: TextStyle(
-                          fontSize: 10,
-                          color: colors.onSurfaceVariant,
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-              leftTitles: const AxisTitles(
-                sideTitles: SideTitles(showTitles: false),
-              ),
-            ),
-            borderData: FlBorderData(show: false),
-            minX: 0,
-            maxX: 6,
-            minY: 0,
-            maxY: maxY,
-            lineBarsData: [
-              LineChartBarData(
-                spots: List.generate(
-                  7,
-                  (i) => FlSpot(i.toDouble(), dailyMinutes[i]),
-                ),
-                isCurved: true,
-                color: const Color(0xFF5E60CE),
-                barWidth: 3,
-                isStrokeCapRound: true,
-                dotData: const FlDotData(show: false),
-                belowBarData: BarAreaData(
-                  show: true,
-                  color: const Color(0xFF5E60CE).withOpacity(0.15),
-                ),
-              ),
-            ],
-            lineTouchData: LineTouchData(
-              touchTooltipData: LineTouchTooltipData(
-                getTooltipColor: (_) => colors.surfaceContainerHighest,
-                getTooltipItems: (touchedSpots) {
-                  return touchedSpots
-                      .map(
-                        (spot) => LineTooltipItem(
-                          '${spot.y.toInt()} min',
-                          TextStyle(
-                            color: colors.onSurface,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      )
-                      .toList();
-                },
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
+        final totalMinutes =
+            dailyMinutes.reduce((value, element) => value + element) * 60;
+        final totalHours = totalMinutes / 60;
+        final dailyAvg = totalHours / 7;
 
-  Widget _buildFocusScatterChart(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    final timeRepo = ref.watch(timeTrackingRepositoryProvider);
-
-    return ValueListenableBuilder(
-      valueListenable: timeRepo.box.listenable(),
-      builder: (context, box, _) {
-        final startOfWeek = _selectedDate.subtract(
-          Duration(days: _selectedDate.weekday - 1),
-        );
-        final endOfWeek = startOfWeek.add(const Duration(days: 7));
-
-        final allRecords = timeRepo.fetchAllTimeTrackingRecords();
-        final weeklyRecords = allRecords
-            .where(
-              (r) =>
-                  r.startTime.isAfter(
-                    startOfWeek.subtract(const Duration(seconds: 1)),
-                  ) &&
-                  r.startTime.isBefore(endOfWeek),
-            )
-            .toList();
-
-        if (weeklyRecords.isEmpty) {
-          return Center(
-            child: Text(
-              'Sem sessões de foco',
-              style: TextStyle(color: colors.onSurfaceVariant, fontSize: 12),
-            ),
-          );
+        final allPoints = <FlSpot>[];
+        for (int i = 0; i < 7; i++) {
+          allPoints.add(FlSpot(i.toDouble(), dailyMinutes[i]));
         }
 
-        final activityMap = <String, int>{};
-        int activityIndex = 0;
-        for (var r in weeklyRecords) {
-          if (!activityMap.containsKey(r.activityName))
-            activityMap[r.activityName] = activityIndex++;
-        }
-
-        final spots = weeklyRecords.map((r) {
-          return ScatterSpot(
-            activityMap[r.activityName]!.toDouble(),
-            r.durationInSeconds / 60,
-            dotPainter: FlDotCirclePainter(
-              radius: 6,
-              color:
-                  Colors.primaries[activityMap[r.activityName]! %
-                      Colors.primaries.length],
-              strokeWidth: 1,
-              strokeColor: Colors.white,
-            ),
-          );
-        }).toList();
-
-        final maxY = spots.map((s) => s.y).reduce(max) * 1.2;
-
-        return ScatterChart(
-          ScatterChartData(
-            scatterSpots: spots,
-            minX: -0.5,
-            maxX: (activityMap.length - 0.5).clamp(0.5, double.infinity),
-            minY: 0,
-            maxY: maxY > 0 ? maxY : 60,
-            borderData: FlBorderData(show: false),
-            gridData: FlGridData(
-              show: true,
-              drawHorizontalLine: true,
-              drawVerticalLine: false,
-              getDrawingHorizontalLine: (_) => FlLine(
-                color: colors.outlineVariant.withOpacity(0.2),
-                strokeWidth: 1,
-              ),
-            ),
-            titlesData: FlTitlesData(
-              show: true,
-              rightTitles: const AxisTitles(
-                sideTitles: SideTitles(showTitles: false),
-              ),
-              topTitles: const AxisTitles(
-                sideTitles: SideTitles(showTitles: false),
-              ),
-              bottomTitles: AxisTitles(
-                sideTitles: SideTitles(
-                  showTitles: true,
-                  interval: 1,
-                  getTitlesWidget: (value, meta) {
-                    final name = activityMap.keys.elementAtOrNull(
-                      value.toInt(),
-                    );
-                    if (name == null) return const SizedBox.shrink();
-                    return SideTitleWidget(
-                      meta: meta,
-                      child: Text(
-                        name.length > 4 ? '${name.substring(0, 4)}.' : name,
-                        style: TextStyle(
-                          fontSize: 8,
-                          color: colors.onSurfaceVariant,
-                        ),
-                      ),
-                    );
-                  },
+        return Column(
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                _buildAnalysisBadge(
+                  context,
+                  'Total Foco',
+                  '${totalHours.toStringAsFixed(1)}h',
+                  Icons.timer_outlined,
+                  colors.primary,
                 ),
-              ),
-              leftTitles: const AxisTitles(
-                sideTitles: SideTitles(showTitles: false),
-              ),
+                _buildAnalysisBadge(
+                  context,
+                  'Média Diária',
+                  '${dailyAvg.toStringAsFixed(1)}h',
+                  Icons.show_chart_rounded,
+                  colors.tertiary,
+                ),
+              ],
             ),
-            scatterTouchData: ScatterTouchData(
-              enabled: true,
-              touchTooltipData: ScatterTouchTooltipData(
-                getTooltipColor: (_) => colors.surfaceContainerHighest,
-                getTooltipItems: (touchedSpot) {
-                  final name =
-                      activityMap.keys.elementAtOrNull(touchedSpot.x.toInt()) ??
-                      '?';
-                  return ScatterTooltipItem(
-                    '$name\n${touchedSpot.y.toInt()} min',
-                    textStyle: TextStyle(
-                      color: colors.onSurface,
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
+            const SizedBox(height: 12),
+            Expanded(
+              child: LineChart(
+                LineChartData(
+                  gridData: FlGridData(
+                    show: true,
+                    verticalInterval: 1,
+                    horizontalInterval: maxVal > 0 ? maxVal / 4 : 15,
+                    getDrawingHorizontalLine: (value) => FlLine(
+                      color: colors.outlineVariant.withOpacity(0.1),
+                      strokeWidth: 1,
                     ),
-                  );
-                },
+                    getDrawingVerticalLine: (value) => FlLine(
+                      color: colors.outlineVariant.withOpacity(0.1),
+                      strokeWidth: 1,
+                    ),
+                  ),
+                  titlesData: FlTitlesData(
+                    show: true,
+                    rightTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
+                    topTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
+                    leftTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
+                    bottomTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        interval: 1,
+                        getTitlesWidget: (value, meta) {
+                          final dayNames = ['S', 'T', 'Q', 'Q', 'S', 'S', 'D'];
+                          final idx = value.toInt();
+                          if (idx < 0 || idx >= 7)
+                            return const SizedBox.shrink();
+                          return SideTitleWidget(
+                            meta: meta,
+                            space: 8,
+                            child: Text(
+                              dayNames[idx],
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: colors.onSurfaceVariant,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                  borderData: FlBorderData(show: false),
+                  minX: 0,
+                  maxX: 6,
+                  minY: 0,
+                  maxY: maxVal > 0 ? maxVal * 1.2 : 60,
+                  lineBarsData: [
+                    LineChartBarData(
+                      spots: allPoints,
+                      isCurved: true,
+                      curveSmoothness: 0.35,
+                      color: colors.primary,
+                      barWidth: 3,
+                      isStrokeCapRound: true,
+                      dotData: FlDotData(
+                        show: true,
+                        getDotPainter: (spot, percent, barData, index) {
+                          return FlDotCirclePainter(
+                            radius: 4,
+                            color: colors.surface,
+                            strokeWidth: 2,
+                            strokeColor: colors.primary,
+                          );
+                        },
+                      ),
+                      belowBarData: BarAreaData(
+                        show: true,
+                        gradient: LinearGradient(
+                          colors: [
+                            colors.primary.withOpacity(0.3),
+                            colors.primary.withOpacity(0.0),
+                          ],
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                        ),
+                      ),
+                    ),
+                  ],
+                  lineTouchData: LineTouchData(
+                    touchTooltipData: LineTouchTooltipData(
+                      getTooltipColor: (_) => colors.surfaceContainerHighest,
+                      getTooltipItems: (touchedSpots) {
+                        return touchedSpots.map((spot) {
+                          final hours = spot.y.toInt();
+                          final minutes = ((spot.y - hours) * 60).toInt();
+                          return LineTooltipItem(
+                            '${hours}h ${minutes}m',
+                            TextStyle(
+                              color: colors.onSurface,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          );
+                        }).toList();
+                      },
+                    ),
+                  ),
+                ),
               ),
             ),
-          ),
+          ],
         );
       },
     );
@@ -4279,9 +3989,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         }
 
         final spots = <FlSpot>[];
+        double totalScore = 0;
+        int totalDays = 0;
+
         for (int i = 0; i < 7; i++) {
-          if (dailyCounts[i] > 0)
-            spots.add(FlSpot(i.toDouble(), dailyScores[i] / dailyCounts[i]));
+          if (dailyCounts[i] > 0) {
+            final dailyAvg = dailyScores[i] / dailyCounts[i];
+            spots.add(FlSpot(i.toDouble(), dailyAvg));
+            totalScore += dailyAvg;
+            totalDays++;
+          }
         }
 
         if (spots.isEmpty) {
@@ -4293,68 +4010,382 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           );
         }
 
-        return LineChart(
-          LineChartData(
-            gridData: FlGridData(show: false),
-            titlesData: FlTitlesData(
-              show: true,
-              rightTitles: const AxisTitles(
-                sideTitles: SideTitles(showTitles: false),
-              ),
-              topTitles: const AxisTitles(
-                sideTitles: SideTitles(showTitles: false),
-              ),
-              bottomTitles: AxisTitles(
-                sideTitles: SideTitles(
-                  showTitles: true,
-                  interval: 1,
-                  getTitlesWidget: (value, meta) {
-                    final dayNames = ['S', 'T', 'Q', 'Q', 'S', 'S', 'D'];
-                    final idx = value.toInt();
-                    if (idx < 0 || idx >= 7) return const SizedBox.shrink();
-                    return SideTitleWidget(
-                      meta: meta,
-                      child: Text(
-                        dayNames[idx],
-                        style: TextStyle(
-                          fontSize: 10,
-                          color: colors.onSurfaceVariant,
+        final avgMood = totalScore / totalDays;
+
+        return Column(
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                _buildAnalysisBadge(
+                  context,
+                  'Humor Médio',
+                  avgMood.toStringAsFixed(1),
+                  Icons.mood,
+                  _getColorForScore(avgMood),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Expanded(
+              child: LineChart(
+                LineChartData(
+                  gridData: FlGridData(
+                    show: true,
+                    horizontalInterval: 1,
+                    drawVerticalLine: false,
+                    getDrawingHorizontalLine: (value) => FlLine(
+                      color: colors.outlineVariant.withOpacity(0.05),
+                      strokeWidth: 1,
+                    ),
+                  ),
+                  titlesData: FlTitlesData(
+                    show: true,
+                    rightTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
+                    topTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
+                    bottomTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        interval: 1,
+                        getTitlesWidget: (value, meta) {
+                          final dayNames = ['S', 'T', 'Q', 'Q', 'S', 'S', 'D'];
+                          final idx = value.toInt();
+                          if (idx < 0 || idx >= 7)
+                            return const SizedBox.shrink();
+                          return SideTitleWidget(
+                            meta: meta,
+                            child: Text(
+                              dayNames[idx],
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: colors.onSurfaceVariant,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    leftTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
+                  ),
+                  borderData: FlBorderData(show: false),
+                  minX: 0,
+                  maxX: 6,
+                  minY: 1,
+                  maxY: 5.5,
+                  lineBarsData: [
+                    LineChartBarData(
+                      spots: spots,
+                      isCurved: true,
+                      gradient: const LinearGradient(
+                        colors: [
+                          Color(0xFFFF5E5E),
+                          Color(0xFFFFB703),
+                          Color(0xFF07E092),
+                        ],
+                        stops: [0.0, 0.5, 1.0],
+                      ),
+                      barWidth: 4,
+                      isStrokeCapRound: true,
+                      dotData: FlDotData(
+                        show: true,
+                        getDotPainter: (spot, percent, barData, index) {
+                          Color color = Colors.grey;
+                          if (spot.y >= 4) {
+                            color = const Color(0xFF07E092);
+                          } else if (spot.y >= 3) {
+                            color = const Color(0xFFFFB703);
+                          } else {
+                            color = const Color(0xFFFF5E5E);
+                          }
+
+                          return FlDotCirclePainter(
+                            radius: 5,
+                            color: color,
+                            strokeWidth: 2,
+                            strokeColor: colors.surface,
+                          );
+                        },
+                      ),
+                      belowBarData: BarAreaData(
+                        show: true,
+                        gradient: LinearGradient(
+                          colors: [
+                            const Color(0xFFFFB703).withOpacity(0.2),
+                            const Color(0xFFFFB703).withOpacity(0.0),
+                          ],
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
                         ),
                       ),
-                    );
-                  },
+                    ),
+                  ],
+                  lineTouchData: LineTouchData(
+                    touchTooltipData: LineTouchTooltipData(
+                      getTooltipColor: (_) => colors.surfaceContainerHighest,
+
+                      getTooltipItems: (touchedSpots) {
+                        return touchedSpots.map((spot) {
+                          String moodText;
+                          if (spot.y >= 4.5) {
+                            moodText = 'Maravilhoso';
+                          } else if (spot.y >= 3.5) {
+                            moodText = 'Bem';
+                          } else if (spot.y >= 2.5) {
+                            moodText = 'Neutro';
+                          } else if (spot.y >= 1.5) {
+                            moodText = 'Mal';
+                          } else {
+                            moodText = 'Horrível';
+                          }
+                          return LineTooltipItem(
+                            moodText,
+                            TextStyle(
+                              color: colors.onSurface,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          );
+                        }).toList();
+                      },
+                    ),
+                  ),
                 ),
-              ),
-              leftTitles: const AxisTitles(
-                sideTitles: SideTitles(showTitles: false),
               ),
             ),
-            borderData: FlBorderData(show: false),
-            minX: 0,
-            maxX: 6,
-            minY: 1,
-            maxY: 5,
-            lineBarsData: [
-              LineChartBarData(
-                spots: spots,
-                isCurved: true,
-                color: const Color(0xFFFFB703),
-                barWidth: 3,
-                isStrokeCapRound: true,
-                dotData: const FlDotData(show: true),
-                belowBarData: BarAreaData(
-                  show: true,
-                  color: const Color(0xFFFFB703).withOpacity(0.15),
-                ),
-              ),
-            ],
-          ),
+          ],
         );
       },
     );
   }
 
-  Widget _buildMoodRadarChart(BuildContext context) {
+  // ==========================================
+  // ANALYSIS CHARTS (Mode 1 - Premium Views)
+  // ==========================================
+
+  Widget _buildFocusDonutChart(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final timeRepo = ref.watch(timeTrackingRepositoryProvider);
+
+    return ValueListenableBuilder(
+      valueListenable: timeRepo.box.listenable(),
+      builder: (context, box, _) {
+        final startOfWeek = _selectedDate.subtract(
+          Duration(days: _selectedDate.weekday - 1),
+        );
+        final endOfWeek = startOfWeek.add(const Duration(days: 7));
+
+        final allRecords = timeRepo.fetchAllTimeTrackingRecords();
+        final weeklyRecords = allRecords
+            .where(
+              (r) =>
+                  r.startTime.isAfter(
+                    startOfWeek.subtract(const Duration(seconds: 1)),
+                  ) &&
+                  r.startTime.isBefore(endOfWeek),
+            )
+            .toList();
+
+        final durationByActivity = <String, double>{};
+        double totalMinutes = 0;
+
+        for (var record in weeklyRecords) {
+          final minutes = record.durationInSeconds / 60;
+          if (minutes > 0) {
+            durationByActivity.update(
+              record.activityName,
+              (v) => v + minutes,
+              ifAbsent: () => minutes,
+            );
+            totalMinutes += minutes;
+          }
+        }
+
+        if (totalMinutes == 0) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.donut_small_rounded,
+                  color: colors.onSurfaceVariant.withOpacity(0.5),
+                  size: 32,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Sem foco essa semana',
+                  style: TextStyle(
+                    color: colors.onSurfaceVariant,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+
+        final sortedEntries = durationByActivity.entries.toList()
+          ..sort((a, b) => b.value.compareTo(a.value));
+
+        return Row(
+          children: [
+            Expanded(
+              flex: 5, // Slightly more space for chart
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  PieChart(
+                    PieChartData(
+                      centerSpaceRadius: 40,
+                      sectionsSpace: 2,
+                      startDegreeOffset: 270,
+                      sections: List.generate(sortedEntries.length, (i) {
+                        final entry = sortedEntries[i];
+                        final isTouched = i == _focusTouchedIndex;
+                        return PieChartSectionData(
+                          color: _getNiceColor(i, colors),
+                          value: entry.value,
+                          title: '',
+                          radius: isTouched ? 30 : 25,
+                          showTitle: false,
+                        );
+                      }),
+                      pieTouchData: PieTouchData(
+                        touchCallback: (FlTouchEvent event, pieTouchResponse) {
+                          setState(() {
+                            if (!event.isInterestedForInteractions ||
+                                pieTouchResponse == null ||
+                                pieTouchResponse.touchedSection == null) {
+                              _focusTouchedIndex = -1;
+                              return;
+                            }
+                            _focusTouchedIndex = pieTouchResponse
+                                .touchedSection!
+                                .touchedSectionIndex;
+                          });
+                        },
+                      ),
+                    ),
+                  ),
+                  Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        _focusTouchedIndex != -1 &&
+                                _focusTouchedIndex < sortedEntries.length
+                            ? sortedEntries[_focusTouchedIndex].key
+                            : 'Total',
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: colors.onSurfaceVariant,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      Text(
+                        _focusTouchedIndex != -1 &&
+                                _focusTouchedIndex < sortedEntries.length
+                            ? '${(sortedEntries[_focusTouchedIndex].value).toInt()}m'
+                            : '${(totalMinutes / 60).toStringAsFixed(1)}h',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: colors.onSurface,
+                          letterSpacing: -0.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              flex: 4,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Top Atividades',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        color: colors.onSurfaceVariant.withOpacity(0.7),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    ...sortedEntries.take(4).map((e) {
+                      final i = sortedEntries.indexOf(e);
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 6),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 10,
+                              height: 10,
+                              decoration: BoxDecoration(
+                                color: _getNiceColor(i, colors),
+                                borderRadius: BorderRadius.circular(3),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    e.key,
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                      color: colors.onSurface,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  Text(
+                                    '${(e.value / totalMinutes * 100).toInt()}% • ${(e.value).toInt()}m',
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      color: colors.onSurfaceVariant,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Color _getNiceColor(int index, ColorScheme colors) {
+    final palette = [
+      const Color(0xFF6930C3),
+      const Color(0xFF5E60CE),
+      const Color(0xFF5390D9),
+      const Color(0xFF48BFE3),
+      const Color(0xFF64DFDF),
+    ];
+    return palette[index % palette.length];
+  }
+
+  Widget _buildMoodFrequencyChart(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     final moodRepo = ref.watch(moodRecordRepositoryProvider);
 
@@ -4365,78 +4396,357 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           Duration(days: _selectedDate.weekday - 1),
         );
         final endOfWeek = startOfWeek.add(const Duration(days: 7));
-        final dayNames = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
+        final records = moodRepo
+            .fetchMoodRecords()
+            .values
+            .where(
+              (r) =>
+                  r.date.isAfter(
+                    startOfWeek.subtract(const Duration(seconds: 1)),
+                  ) &&
+                  r.date.isBefore(endOfWeek),
+            )
+            .toList();
 
-        final allRecords = moodRepo.fetchMoodRecords().values.where(
-          (r) =>
-              r.date.isAfter(
-                startOfWeek.subtract(const Duration(seconds: 1)),
-              ) &&
-              r.date.isBefore(endOfWeek),
-        );
-
-        final dailyScores = List.filled(7, 0.0);
-        final dailyCounts = List.filled(7, 0);
-
-        for (var record in allRecords) {
-          final idx = record.date.weekday - 1;
-          if (idx >= 0 && idx < 7) {
-            dailyScores[idx] += record.score;
-            dailyCounts[idx]++;
-          }
-        }
-
-        final dataEntries = <RadarEntry>[];
-        for (int i = 0; i < 7; i++) {
-          final avg = dailyCounts[i] > 0
-              ? (dailyScores[i] / dailyCounts[i])
-              : 0.0;
-          dataEntries.add(RadarEntry(value: avg));
-        }
-
-        if (dataEntries.every((e) => e.value == 0)) {
+        if (records.isEmpty) {
           return Center(
             child: Text(
-              'Sem dados de humor',
+              'Sem registros',
               style: TextStyle(color: colors.onSurfaceVariant, fontSize: 12),
             ),
           );
         }
 
-        return RadarChart(
-          RadarChartData(
-            radarShape: RadarShape.polygon,
-            radarBackgroundColor: Colors.transparent,
-            borderData: FlBorderData(show: false),
-            tickCount: 5,
-            ticksTextStyle: TextStyle(
-              color: colors.onSurfaceVariant,
-              fontSize: 8,
+        final counts = List.filled(6, 0); // 1 to 5
+        int maxCount = 0;
+        int dominantScore = 0;
+
+        for (var r in records) {
+          final score = r.score.round().clamp(1, 5);
+          counts[score]++;
+          if (counts[score] > maxCount) {
+            maxCount = counts[score];
+            dominantScore = score;
+          }
+        }
+
+        final dominantLabel = dominantScore > 0
+            ? [
+                '',
+                'Horrível',
+                'Mal',
+                'Neutro',
+                'Bem',
+                'Maravilhoso',
+              ][dominantScore]
+            : 'N/A';
+        final dominantIconData = dominantScore > 0
+            ? [
+                Icons.sentiment_very_dissatisfied,
+                Icons.sentiment_very_dissatisfied,
+                Icons.sentiment_dissatisfied,
+                Icons.sentiment_neutral,
+                Icons.sentiment_satisfied,
+                Icons.sentiment_very_satisfied_rounded,
+              ][dominantScore]
+            : Icons.help_outline;
+
+        return Column(
+          children: [
+            // Summary Header
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  dominantIconData,
+                  color: dominantScore > 0
+                      ? _getColorForScore(dominantScore.toDouble())
+                      : colors.onSurfaceVariant,
+                  size: 20,
+                ),
+                const SizedBox(width: 8),
+                RichText(
+                  text: TextSpan(
+                    text: 'Humor Predominante: ',
+                    style: TextStyle(
+                      color: colors.onSurfaceVariant,
+                      fontSize: 12,
+                    ),
+                    children: [
+                      TextSpan(
+                        text: dominantLabel,
+                        style: TextStyle(
+                          color: colors.onSurface,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
-            tickBorderData: BorderSide(
-              color: colors.outlineVariant.withOpacity(0.3),
+            const SizedBox(height: 12),
+            Expanded(
+              child: BarChart(
+                BarChartData(
+                  alignment: BarChartAlignment.spaceAround,
+                  maxY: (maxCount + 1).toDouble(),
+                  gridData: FlGridData(
+                    show: true,
+                    drawVerticalLine: false,
+                    horizontalInterval: 1,
+                    getDrawingHorizontalLine: (value) => FlLine(
+                      color: colors.outlineVariant.withOpacity(0.05),
+                      strokeWidth: 1,
+                    ),
+                  ),
+                  titlesData: FlTitlesData(
+                    show: true,
+                    rightTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
+                    topTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
+                    leftTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
+                    bottomTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        getTitlesWidget: (val, meta) {
+                          final index = val.toInt();
+                          if (index < 1 || index > 5)
+                            return const SizedBox.shrink();
+                          final iconData = [
+                            Icons.sentiment_very_dissatisfied,
+                            Icons.sentiment_dissatisfied,
+                            Icons.sentiment_neutral,
+                            Icons.sentiment_satisfied,
+                            Icons.sentiment_very_satisfied_rounded,
+                          ][index - 1];
+                          return SideTitleWidget(
+                            meta: meta,
+                            child: Icon(
+                              iconData,
+                              size: 16,
+                              color: colors.onSurfaceVariant,
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                  borderData: FlBorderData(show: false),
+                  barGroups: List.generate(5, (i) {
+                    final score = i + 1;
+                    final count = counts[score];
+                    Color color;
+                    switch (score) {
+                      case 5:
+                        color = const Color(0xFF07E092);
+                        break;
+                      case 4:
+                        color = const Color(0xFFB5E48C);
+                        break;
+                      case 3:
+                        color = const Color(0xFFFFB703);
+                        break;
+                      case 2:
+                        color = const Color(0xFFFF832B);
+                        break;
+                      default:
+                        color = const Color(0xFFFF5E5E);
+                        break;
+                    }
+
+                    return BarChartGroupData(
+                      x: score,
+                      barRods: [
+                        BarChartRodData(
+                          toY: count.toDouble(),
+                          color: color,
+                          width: 16,
+                          borderRadius: const BorderRadius.vertical(
+                            top: Radius.circular(6),
+                          ),
+                          backDrawRodData: BackgroundBarChartRodData(
+                            show: true,
+                            toY: (maxCount + 1).toDouble(),
+                            color: colors.surfaceContainerHighest.withOpacity(
+                              0.2,
+                            ),
+                          ),
+                        ),
+                      ],
+                      showingTooltipIndicators: count > 0 ? [0] : [],
+                    );
+                  }),
+                  barTouchData: BarTouchData(
+                    enabled: false,
+                    touchTooltipData: BarTouchTooltipData(
+                      getTooltipColor: (_) => Colors.transparent,
+                      tooltipPadding: EdgeInsets.zero,
+                      tooltipMargin: 2,
+                      getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                        return BarTooltipItem(
+                          rod.toY.toInt().toString(),
+                          TextStyle(
+                            color: colors.onSurfaceVariant,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 10,
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+              ),
             ),
-            gridBorderData: BorderSide(
-              color: colors.outlineVariant.withOpacity(0.3),
-              width: 1,
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildHabitsRadarChartAnalysis(BuildContext context) {
+    final habitRepo = ref.watch(habitRepositoryProvider);
+    final colors = Theme.of(context).colorScheme;
+
+    return ValueListenableBuilder(
+      valueListenable: habitRepo.box.listenable(),
+      builder: (context, box, _) {
+        final weekRates = habitRepo.getWeekCompletionRates();
+        final dayNames = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
+
+        final entries = <RadarEntry>[];
+        bool hasData = false;
+        double totalRate = 0;
+        int maxDayIndex = 0;
+        double maxRate = -1;
+
+        for (int i = 0; i < 7; i++) {
+          final baseRate = weekRates[i] ?? 0.0;
+          final val = baseRate * 100;
+          if (val > 0) hasData = true;
+          totalRate += baseRate;
+          if (baseRate > maxRate) {
+            maxRate = baseRate;
+            maxDayIndex = i;
+          }
+          entries.add(RadarEntry(value: val));
+        }
+
+        if (!hasData) {
+          return Center(
+            child: Text(
+              'Sem dados esta semana',
+              style: TextStyle(color: colors.onSurfaceVariant, fontSize: 12),
             ),
-            titleTextStyle: TextStyle(
-              color: colors.onSurfaceVariant,
-              fontSize: 10,
+          );
+        }
+
+        final consistency = (totalRate / 7 * 100).toInt();
+        final bestDay = dayNames[maxDayIndex];
+
+        return Column(
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                _buildAnalysisBadge(
+                  context,
+                  'Consistência',
+                  '$consistency%',
+                  Icons.timelapse_rounded,
+                  colors.primary,
+                ),
+                _buildAnalysisBadge(
+                  context,
+                  'Melhor Dia',
+                  bestDay,
+                  Icons.calendar_today_rounded,
+                  const Color(0xFF07E092),
+                ),
+              ],
             ),
-            getTitle: (index, angle) => RadarChartTitle(text: dayNames[index]),
-            dataSets: [
-              RadarDataSet(
-                fillColor: const Color(0xFFFFB703).withOpacity(0.2),
-                borderColor: const Color(0xFFFFB703),
-                borderWidth: 2,
-                entryRadius: 3,
-                dataEntries: dataEntries,
+            Expanded(
+              child: RadarChart(
+                RadarChartData(
+                  radarShape: RadarShape.polygon,
+                  radarBackgroundColor: Colors.transparent,
+                  borderData: FlBorderData(show: false),
+                  tickCount: 1,
+                  gridBorderData: BorderSide(
+                    color: colors.outlineVariant.withOpacity(0.2),
+                    width: 1,
+                  ),
+                  tickBorderData: const BorderSide(color: Colors.transparent),
+                  titleTextStyle: TextStyle(
+                    color: colors.onSurfaceVariant,
+                    fontSize: 10,
+                  ),
+                  getTitle: (index, angle) => RadarChartTitle(
+                    text: dayNames[index],
+                    angle: 0,
+                  ), // fixed angle
+                  dataSets: [
+                    RadarDataSet(
+                      fillColor: colors.primary.withOpacity(0.25),
+                      borderColor: colors.primary.withOpacity(0.8),
+                      entryRadius: 3,
+                      borderWidth: 2,
+                      dataEntries: entries,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildAnalysisBadge(
+    BuildContext context,
+    String label,
+    String value,
+    IconData icon,
+    Color color,
+  ) {
+    final colors = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: colors.surfaceContainerHighest.withOpacity(0.3),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: colors.outlineVariant.withOpacity(0.2)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: color),
+          const SizedBox(width: 6),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: TextStyle(fontSize: 9, color: colors.onSurfaceVariant),
+              ),
+              Text(
+                value,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: colors.onSurface,
+                ),
               ),
             ],
           ),
-        );
-      },
+        ],
+      ),
     );
   }
 
@@ -4447,6 +4757,55 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
 // Continuation of _HomeScreenState methods
 extension _HomeScreenStateDataInsights on _HomeScreenState {
+  // Handle insight card tap - navigate to relevant screen
+  void _handleInsightTap(String route) {
+    final colors = Theme.of(context).colorScheme;
+    String message;
+    IconData icon;
+
+    switch (route) {
+      case 'habits':
+        message = 'Vá para a aba de Hábitos para ver mais detalhes';
+        icon = Icons.check_box_rounded;
+        break;
+      case 'tasks':
+        Navigator.of(
+          context,
+        ).push(MaterialPageRoute(builder: (_) => const TasksScreen()));
+        return;
+      case 'focus':
+        message = 'Vá para a aba de Foco para ver suas sessões';
+        icon = Icons.timer_rounded;
+        break;
+      case 'mood':
+        message = 'Registre seu humor para mais insights';
+        icon = Icons.mood_rounded;
+        break;
+      case 'notes':
+        message = 'Continue criando notas para capturar ideias';
+        icon = Icons.lightbulb_rounded;
+        break;
+      default:
+        return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(icon, color: colors.onPrimary, size: 20),
+            const SizedBox(width: 12),
+            Expanded(child: Text(message)),
+          ],
+        ),
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: colors.primary,
+        duration: const Duration(seconds: 2),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
+  }
+
   // ==========================================
   // INSIGHTS BASEADOS EM DADOS - REDESIGNED 🔥
   // ==========================================
@@ -4516,7 +4875,19 @@ extension _HomeScreenStateDataInsights on _HomeScreenState {
                 : 0.0;
 
             // 3. Tasks
-            final allTasks = taskBox.values.cast<TaskData>().toList();
+            final allTasks = taskBox.keys
+                .map((key) {
+                  final value = taskBox.get(key);
+                  if (value is Map) {
+                    return TaskData.fromMap(
+                      key,
+                      Map<String, dynamic>.from(value),
+                    );
+                  }
+                  return null;
+                })
+                .whereType<TaskData>()
+                .toList();
             final completedTasks = allTasks.where((t) => t.completed).length;
             final taskCompletionRate = allTasks.isNotEmpty
                 ? completedTasks / allTasks.length
@@ -4555,10 +4926,11 @@ extension _HomeScreenStateDataInsights on _HomeScreenState {
             } else if (bestStreak >= 3) {
               insights.add({
                 'icon': Icons.local_fire_department_rounded,
-                'gradient': [const Color(0xFFFF6B6B), const Color(0xFFFF8E53)],
+                'gradient': [const Color(0xFFFF6B6B), const Color(0xFFFFA556)],
                 'text':
                     '🔥 ${bestHabit?.name} está em alta com $bestStreak dias seguidos!',
                 'badge': '$bestStreak dias',
+                'route': 'habits',
               });
             }
 
@@ -4570,32 +4942,29 @@ extension _HomeScreenStateDataInsights on _HomeScreenState {
                 'text':
                     '⭐ Você foi consistente em $consistentDays dos últimos 7 dias. Excelente!',
                 'badge': '${(consistentDays / 7 * 100).round()}%',
+                'route': 'habits',
               });
             } else if (consistentDays >= 4) {
               insights.add({
                 'icon': Icons.trending_up_rounded,
                 'gradient': [const Color(0xFF5E60CE), const Color(0xFF7209B7)],
                 'text':
-                    '📈 Boa consistência! Ativo em $consistentDays dias esta semana.',
+                    'Boa consistência! Ativo em $consistentDays dias esta semana.',
                 'badge': '$consistentDays/7',
+                'route': 'habits',
               });
             }
 
             // Insight sobre humor
             if (allMoods.isNotEmpty) {
-              String moodEmoji = '😊';
               String moodText = 'Bem';
               if (avgMoodScore >= 4.5) {
-                moodEmoji = '😄';
                 moodText = 'Excelente';
               } else if (avgMoodScore >= 3.5) {
-                moodEmoji = '😊';
                 moodText = 'Bem';
               } else if (avgMoodScore >= 2.5) {
-                moodEmoji = '😐';
                 moodText = 'Ok';
               } else {
-                moodEmoji = '😔';
                 moodText = 'Desafiador';
               }
 
@@ -4603,8 +4972,9 @@ extension _HomeScreenStateDataInsights on _HomeScreenState {
                 'icon': Icons.mood_rounded,
                 'gradient': [const Color(0xFFFFB703), const Color(0xFFFB8500)],
                 'text':
-                    '$moodEmoji Seu humor médio esta semana está $moodText (${avgMoodScore.toStringAsFixed(1)}/5).',
+                    'Seu humor médio esta semana está $moodText (${avgMoodScore.toStringAsFixed(1)}/5).',
                 'badge': '${allMoods.length} registros',
+                'route': 'mood',
               });
             }
 
@@ -4614,8 +4984,9 @@ extension _HomeScreenStateDataInsights on _HomeScreenState {
                 'icon': Icons.check_circle_rounded,
                 'gradient': [const Color(0xFF07E092), const Color(0xFF00B4D8)],
                 'text':
-                    '✅ Taxa de conclusão de tarefas: ${(taskCompletionRate * 100).round()}% ($completedTasks de ${allTasks.length}).',
+                    'Taxa de conclusão de tarefas: ${(taskCompletionRate * 100).round()}% ($completedTasks de ${allTasks.length}).',
                 'badge': '${(taskCompletionRate * 100).round()}%',
+                'route': 'tasks',
               });
             }
 
@@ -4626,8 +4997,9 @@ extension _HomeScreenStateDataInsights on _HomeScreenState {
                 'icon': Icons.timer_rounded,
                 'gradient': [const Color(0xFF5E60CE), const Color(0xFF7209B7)],
                 'text':
-                    '⏱️ Você focou por ${hours}h esta semana. Mantendo o ritmo!',
+                    'Você focou por ${hours}h esta semana. Mantendo o ritmo!',
                 'badge': '${hours}h',
+                'route': 'focus',
               });
             }
 
@@ -4637,8 +5009,9 @@ extension _HomeScreenStateDataInsights on _HomeScreenState {
                 'icon': Icons.lightbulb_rounded,
                 'gradient': [const Color(0xFFFFB703), const Color(0xFFFB8500)],
                 'text':
-                    '💡 $recentNotes nota${recentNotes > 1 ? 's' : ''} criada${recentNotes > 1 ? 's' : ''} esta semana. Capturando ideias!',
+                    '$recentNotes nota${recentNotes > 1 ? 's' : ''} criada${recentNotes > 1 ? 's' : ''} esta semana. Capturando ideias!',
                 'badge': '$recentNotes nota${recentNotes > 1 ? 's' : ''}',
+                'route': 'notes',
               });
             }
 
@@ -4648,8 +5021,9 @@ extension _HomeScreenStateDataInsights on _HomeScreenState {
                 'icon': Icons.wb_sunny_rounded,
                 'gradient': [const Color(0xFFFFA556), const Color(0xFFFF6B6B)],
                 'text':
-                    '🌅 Você tem $morningHabits hábito(s) matinal(is). Ótimo para produtividade!',
+                    'Você tem $morningHabits hábito(s) matinal(is). Ótimo para produtividade!',
                 'badge': '$morningHabits matinais',
+                'route': 'habits',
               });
             }
 
@@ -4659,8 +5033,9 @@ extension _HomeScreenStateDataInsights on _HomeScreenState {
                 'icon': Icons.rocket_launch_rounded,
                 'gradient': [const Color(0xFF5E60CE), const Color(0xFF7209B7)],
                 'text':
-                    '🚀 Continue assim! Cada pequeno passo conta na sua jornada.',
+                    'Continue assim! Cada pequeno passo conta na sua jornada.',
                 'badge': 'Vamos lá!',
+                'route': null,
               });
             }
 
@@ -4694,27 +5069,26 @@ extension _HomeScreenStateDataInsights on _HomeScreenState {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Header com gradiente
+                  // Header Moderno e Minimalista
                   Row(
                     children: [
+                      // Ícone simples com gradiente sutil
                       Container(
-                        padding: const EdgeInsets.all(12),
+                        padding: const EdgeInsets.all(10),
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
-                            colors: [colors.primary, colors.secondary],
+                            colors: [
+                              colors.primary.withOpacity(0.15),
+                              colors.tertiary.withOpacity(0.1),
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
                           ),
                           borderRadius: BorderRadius.circular(14),
-                          boxShadow: [
-                            BoxShadow(
-                              color: colors.primary.withOpacity(0.3),
-                              blurRadius: 12,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
                         ),
                         child: Icon(
-                          Icons.psychology_rounded,
-                          color: Colors.white,
+                          Icons.auto_graph_rounded,
+                          color: colors.primary,
                           size: 22,
                         ),
                       ),
@@ -4724,19 +5098,19 @@ extension _HomeScreenStateDataInsights on _HomeScreenState {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Insights Inteligentes',
+                              'Insights',
                               style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
+                                fontSize: 20,
+                                fontWeight: FontWeight.w700,
                                 color: colors.onSurface,
                                 letterSpacing: -0.5,
                               ),
                             ),
                             Text(
-                              'Análise do seu progresso',
+                              'Análise do seu progresso semanal',
                               style: TextStyle(
                                 fontSize: 12,
-                                color: colors.onSurfaceVariant,
+                                color: colors.onSurfaceVariant.withOpacity(0.8),
                               ),
                             ),
                           ],
@@ -4747,101 +5121,174 @@ extension _HomeScreenStateDataInsights on _HomeScreenState {
                   const SizedBox(height: 20),
 
                   // Insights cards
-                  ...topInsights.map((insight) {
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: colors.surface.withOpacity(0.8),
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(
-                            color: colors.outline.withOpacity(0.1),
-                            width: 1,
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: (insight['gradient'] as List<Color>).first
-                                  .withOpacity(0.1),
-                              blurRadius: 8,
-                              offset: const Offset(0, 3),
+                  ...List.generate(topInsights.length, (index) {
+                    final insight = topInsights[index];
+                    final route = insight['route'] as String?;
+
+                    // Staggered animation
+                    final start = index * 0.15;
+                    final end = start + 0.6;
+                    final animation = Tween<double>(begin: 0.0, end: 1.0)
+                        .animate(
+                          CurvedAnimation(
+                            parent: _staggeredInsightsController,
+                            curve: Interval(
+                              start,
+                              end > 1.0 ? 1.0 : end,
+                              curve: Curves.easeOutQuart,
                             ),
-                          ],
-                        ),
-                        child: Row(
-                          children: [
-                            // Ícone com gradiente
-                            Container(
-                              padding: const EdgeInsets.all(10),
+                          ),
+                        );
+
+                    return AnimatedBuilder(
+                      animation: animation,
+                      builder: (context, child) {
+                        return Transform.translate(
+                          offset: Offset(0, 20 * (1 - animation.value)),
+                          child: Opacity(
+                            opacity: animation.value,
+                            child: child,
+                          ),
+                        );
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: Material(
+                          color: Colors.transparent,
+                          borderRadius: BorderRadius.circular(20),
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(20),
+                            onTap: route != null
+                                ? () {
+                                    HapticFeedback.lightImpact();
+                                    _handleInsightTap(route);
+                                  }
+                                : null,
+                            child: Container(
+                              padding: const EdgeInsets.all(16),
                               decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: insight['gradient'] as List<Color>,
+                                color: colors.surface.withOpacity(0.8),
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(
+                                  color: colors.outline.withOpacity(0.1),
+                                  width: 1,
                                 ),
-                                borderRadius: BorderRadius.circular(12),
                                 boxShadow: [
                                   BoxShadow(
                                     color: (insight['gradient'] as List<Color>)
                                         .first
-                                        .withOpacity(0.3),
+                                        .withOpacity(0.1),
                                     blurRadius: 8,
                                     offset: const Offset(0, 3),
                                   ),
                                 ],
                               ),
-                              child: Icon(
-                                insight['icon'] as IconData,
-                                color: Colors.white,
-                                size: 20,
+                              child: Row(
+                                children: [
+                                  // Ícone com gradiente
+                                  Container(
+                                    padding: const EdgeInsets.all(10),
+                                    decoration: BoxDecoration(
+                                      gradient: LinearGradient(
+                                        colors:
+                                            insight['gradient'] as List<Color>,
+                                      ),
+                                      borderRadius: BorderRadius.circular(12),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color:
+                                              (insight['gradient']
+                                                      as List<Color>)
+                                                  .first
+                                                  .withOpacity(0.3),
+                                          blurRadius: 8,
+                                          offset: const Offset(0, 3),
+                                        ),
+                                      ],
+                                    ),
+                                    child: Icon(
+                                      insight['icon'] as IconData,
+                                      color: Colors.white,
+                                      size: 20,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 14),
+                                  // Texto
+                                  Expanded(
+                                    child: Text(
+                                      insight['text'] as String,
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        color: colors.onSurface.withOpacity(
+                                          0.9,
+                                        ),
+                                        height: 1.4,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  // Badge + Arrow
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 10,
+                                          vertical: 6,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          gradient: LinearGradient(
+                                            colors: [
+                                              (insight['gradient']
+                                                      as List<Color>)
+                                                  .first
+                                                  .withOpacity(0.2),
+                                              (insight['gradient']
+                                                      as List<Color>)
+                                                  .last
+                                                  .withOpacity(0.1),
+                                            ],
+                                          ),
+                                          borderRadius: BorderRadius.circular(
+                                            10,
+                                          ),
+                                          border: Border.all(
+                                            color:
+                                                (insight['gradient']
+                                                        as List<Color>)
+                                                    .first
+                                                    .withOpacity(0.3),
+                                            width: 1,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          insight['badge'] as String,
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w700,
+                                            color:
+                                                (insight['gradient']
+                                                        as List<Color>)
+                                                    .first,
+                                          ),
+                                        ),
+                                      ),
+                                      if (route != null) ...[
+                                        const SizedBox(width: 8),
+                                        Icon(
+                                          Icons.arrow_forward_ios_rounded,
+                                          size: 14,
+                                          color: colors.onSurfaceVariant
+                                              .withOpacity(0.5),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                ],
                               ),
                             ),
-                            const SizedBox(width: 14),
-                            // Texto
-                            Expanded(
-                              child: Text(
-                                insight['text'] as String,
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  color: colors.onSurface.withOpacity(0.9),
-                                  height: 1.4,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            // Badge
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 10,
-                                vertical: 6,
-                              ),
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: [
-                                    (insight['gradient'] as List<Color>).first
-                                        .withOpacity(0.2),
-                                    (insight['gradient'] as List<Color>).last
-                                        .withOpacity(0.1),
-                                  ],
-                                ),
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(
-                                  color: (insight['gradient'] as List<Color>)
-                                      .first
-                                      .withOpacity(0.3),
-                                  width: 1,
-                                ),
-                              ),
-                              child: Text(
-                                insight['badge'] as String,
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w700,
-                                  color: (insight['gradient'] as List<Color>)
-                                      .first,
-                                ),
-                              ),
-                            ),
-                          ],
+                          ),
                         ),
                       ),
                     );
@@ -5430,6 +5877,14 @@ extension _HomeScreenStateDataInsights on _HomeScreenState {
     return colors.surfaceContainerHighest;
   }
 
+  Color _getColorForScore(double score) {
+    if (score >= 4.5) return const Color(0xFF07E092);
+    if (score >= 3.5) return const Color(0xFFB5E48C);
+    if (score >= 2.5) return const Color(0xFFFFB703);
+    if (score >= 1.5) return const Color(0xFFFF832B);
+    return const Color(0xFFFF5E5E);
+  }
+
   // ==========================================
   // WIDGET DE NOTÍCIAS
   // ==========================================
@@ -5577,7 +6032,10 @@ extension _HomeScreenStateDataInsights on _HomeScreenState {
   // Helper method to create quick task
   Future<void> _createQuickTask(TaskRepository taskRepo) async {
     final text = _quickTaskController.text.trim();
-    if (text.isEmpty) return;
+    if (text.isEmpty) {
+      HapticFeedback.lightImpact();
+      return;
+    }
 
     HapticFeedback.mediumImpact();
     final newTask = TaskData(
@@ -5595,7 +6053,189 @@ extension _HomeScreenStateDataInsights on _HomeScreenState {
 
     await taskRepo.addTask(newTask);
     _quickTaskController.clear();
-    refresh(); // Refresh UI
+
+    // Mostrar feedback visual de sucesso
+    if (mounted) {
+      setState(() {}); // Força rebuild para atualizar lista
+      FeedbackService.showSuccess(
+        context,
+        '✅ Tarefa criada!',
+        icon: Icons.task_alt_rounded,
+      );
+    }
+  }
+
+  // ==========================================
+  // PROFILE MENU - Menu de atalhos rápidos
+  // ==========================================
+  void _showProfileMenu(BuildContext context, WidgetRef ref) {
+    final colors = Theme.of(context).colorScheme;
+    final settings = ref.read(settingsProvider);
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: colors.surface,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Handle
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: colors.outlineVariant,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // User info header
+              Row(
+                children: [
+                  CircleAvatar(
+                    radius: 28,
+                    backgroundImage: settings.avatarPath != null
+                        ? FileImage(File(settings.avatarPath!))
+                        : null,
+                    backgroundColor: colors.primary.withValues(alpha: 0.2),
+                    child: settings.avatarPath == null
+                        ? Text(
+                            settings.userName.isNotEmpty
+                                ? settings.userName[0].toUpperCase()
+                                : 'U',
+                            style: TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                              color: colors.primary,
+                            ),
+                          )
+                        : null,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          settings.userName,
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                            color: colors.onSurface,
+                          ),
+                        ),
+                        Text(
+                          'Toque para ver seu perfil',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: colors.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Icon(Icons.chevron_right, color: colors.onSurfaceVariant),
+                ],
+              ),
+              const SizedBox(height: 16),
+              const Divider(),
+              const SizedBox(height: 8),
+
+              // Menu items
+              _menuItem(ctx, '👤', 'Meu Perfil', () {
+                Navigator.pop(ctx);
+                ref.read(navigationProvider.notifier).goToProfile();
+              }, colors),
+              _menuItem(ctx, '⚙️', 'Configurações', () {
+                Navigator.pop(ctx);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const SettingsScreen()),
+                );
+              }, colors),
+              _menuItem(ctx, '📊', 'Estatísticas', () {
+                Navigator.pop(ctx);
+                ref.read(navigationProvider.notifier).goToProfile();
+              }, colors),
+              _menuItem(ctx, '🎯', 'Minhas Metas', () {
+                Navigator.pop(ctx);
+                // TODO: Navegar para metas
+                ref.read(navigationProvider.notifier).goToProfile();
+              }, colors),
+              _menuItem(ctx, '🏆', 'Conquistas', () {
+                Navigator.pop(ctx);
+                ref.read(navigationProvider.notifier).goToProfile();
+              }, colors),
+              _menuItem(ctx, '📅', 'Calendário', () {
+                Navigator.pop(ctx);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const HabitsCalendarScreen(),
+                  ),
+                );
+              }, colors),
+
+              const SizedBox(height: 8),
+              const Divider(),
+              const SizedBox(height: 8),
+
+              _menuItem(
+                ctx,
+                '🌙',
+                'Tema Escuro',
+                () {
+                  Navigator.pop(ctx);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const SettingsScreen()),
+                  );
+                },
+                colors,
+                trailing: Switch.adaptive(
+                  value: Theme.of(context).brightness == Brightness.dark,
+                  onChanged: (v) {
+                    ref
+                        .read(settingsProvider.notifier)
+                        .setThemeMode(v ? ThemeMode.dark : ThemeMode.light);
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _menuItem(
+    BuildContext context,
+    String emoji,
+    String title,
+    VoidCallback onTap,
+    ColorScheme colors, {
+    Widget? trailing,
+  }) {
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+      leading: Text(emoji, style: const TextStyle(fontSize: 22)),
+      title: Text(
+        title,
+        style: TextStyle(fontSize: 15, color: colors.onSurface),
+      ),
+      trailing:
+          trailing ??
+          Icon(Icons.chevron_right, size: 20, color: colors.onSurfaceVariant),
+      onTap: onTap,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    );
   }
 
   // ==========================================
@@ -7687,6 +8327,7 @@ class _OverviewItem extends StatelessWidget {
               children: [
                 Icon(icon, size: 18, color: color),
                 const Spacer(),
+
                 if (isActive)
                   Container(
                     width: 6,
