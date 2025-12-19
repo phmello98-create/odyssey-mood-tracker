@@ -1253,7 +1253,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                 padding: const EdgeInsets.only(bottom: 12),
                 child: PremiumGoalCard(
                   goal: goal,
-                  onIncrement: () => _incrementGoal(goal),
+                  onIncrement: () => _incrementGoal(
+                    goal,
+                    delta: goal.trackingType == 'percentage' ? 10 : 1,
+                  ),
                   onDelete: () => _deleteGoal(goal.id),
                   showActions: true,
                   onTap: () => _showGoalPopup(goal, colors),
@@ -1604,6 +1607,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
     final titleController = TextEditingController();
     String selectedType = 'tasks';
     int targetValue = 10;
+    String trackingType = 'counter';
 
     showModalBottomSheet(
       context: context,
@@ -1655,7 +1659,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
               const SizedBox(height: 16),
               Text(
                 'Tipo de meta:',
-                style: TextStyle(color: colors.onSurfaceVariant),
+                style: TextStyle(
+                  color: colors.onSurfaceVariant,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
+                ),
               ),
               const SizedBox(height: 8),
               Wrap(
@@ -1692,32 +1700,58 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                 ],
               ),
               const SizedBox(height: 16),
-              Row(
-                children: [
-                  Text(
-                    'Meta: ',
-                    style: TextStyle(color: colors.onSurfaceVariant),
-                  ),
-                  Expanded(
-                    child: Slider(
-                      value: targetValue.toDouble(),
-                      min: 1,
-                      max: 100,
-                      divisions: 99,
-                      label: '$targetValue',
-                      onChanged: (v) =>
-                          setModalState(() => targetValue = v.round()),
-                    ),
-                  ),
-                  Text(
-                    '$targetValue',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w700,
-                      color: colors.primary,
-                    ),
-                  ),
-                ],
+              Text(
+                'Técnica de Acompanhamento:',
+                style: TextStyle(
+                  color: colors.onSurfaceVariant,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
+                ),
               ),
+              const SizedBox(height: 12),
+              _buildTrackingTypeSelector(
+                (newType) => setModalState(() {
+                  trackingType = newType;
+                  if (trackingType == 'percentage') targetValue = 100;
+                  if (trackingType == 'checklist') targetValue = 1;
+                }),
+                trackingType,
+                colors,
+              ),
+
+              if (trackingType != 'checklist') ...[
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Text(
+                      trackingType == 'percentage'
+                          ? 'Progresso: '
+                          : 'Quantidade: ',
+                      style: TextStyle(color: colors.onSurfaceVariant),
+                    ),
+                    Expanded(
+                      child: Slider(
+                        value: targetValue.toDouble(),
+                        min: trackingType == 'percentage' ? 100 : 1,
+                        max: trackingType == 'percentage' ? 100 : 100,
+                        divisions: trackingType == 'percentage' ? 1 : 99,
+                        label: '$targetValue',
+                        onChanged: trackingType == 'percentage'
+                            ? null
+                            : (v) =>
+                                  setModalState(() => targetValue = v.round()),
+                      ),
+                    ),
+                    Text(
+                      '$targetValue${trackingType == 'percentage' ? '%' : ''}',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        color: colors.primary,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
               const SizedBox(height: 24),
               SizedBox(
                 width: double.infinity,
@@ -1728,8 +1762,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                     final goal = PersonalGoal(
                       id: DateTime.now().millisecondsSinceEpoch.toString(),
                       title: titleController.text,
-                      targetValue: targetValue,
+                      targetValue: trackingType == 'checklist'
+                          ? 1
+                          : targetValue,
                       type: selectedType,
+                      trackingType: trackingType,
                       createdAt: DateTime.now(),
                     );
 
@@ -1750,6 +1787,68 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildTrackingTypeSelector(
+    Function(String) onSelect,
+    String currentType,
+    ColorScheme colors,
+  ) {
+    final types = [
+      ('counter', 'Contagem', Icons.add_rounded),
+      ('checklist', 'Checklist', Icons.check_box_rounded),
+      ('percentage', 'Porcentagem', Icons.percent_rounded),
+    ];
+
+    return Row(
+      children: types.map((type) {
+        final isSelected = currentType == type.$1;
+        return Expanded(
+          child: GestureDetector(
+            onTap: () => onSelect(type.$1),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              margin: const EdgeInsets.symmetric(horizontal: 4),
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              decoration: BoxDecoration(
+                color: isSelected
+                    ? colors.primaryContainer
+                    : colors.surfaceContainerHighest.withValues(alpha: 0.5),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: isSelected ? colors.primary : Colors.transparent,
+                  width: 1.5,
+                ),
+              ),
+              child: Column(
+                children: [
+                  Icon(
+                    type.$3,
+                    size: 20,
+                    color: isSelected
+                        ? colors.primary
+                        : colors.onSurfaceVariant,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    type.$2,
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: isSelected
+                          ? FontWeight.w700
+                          : FontWeight.w500,
+                      color: isSelected
+                          ? colors.primary
+                          : colors.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      }).toList(),
     );
   }
 
@@ -3378,66 +3477,16 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                       ),
                     ),
 
-                    // Increment buttons (only if not completed)
+                    // Controls (only if not completed)
                     if (!goal.isCompleted) ...[
                       const SizedBox(height: 20),
-                      Row(
-                        children: [
-                          _buildQuickBtn('+1', 1, goal, goalColor, colors, ctx),
-                          const SizedBox(width: 10),
-                          _buildQuickBtn('+5', 5, goal, goalColor, colors, ctx),
-                          const SizedBox(width: 10),
-                          _buildQuickBtn(
-                            '+10',
-                            10,
-                            goal,
-                            goalColor,
-                            colors,
-                            ctx,
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: GestureDetector(
-                              onTap: () => _showCustomIncrementDialog(
-                                goal,
-                                goalColor,
-                                colors,
-                                ctx,
-                              ),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 12,
-                                ),
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    colors: [
-                                      goalColor,
-                                      goalColor.withValues(alpha: 0.8),
-                                    ],
-                                  ),
-                                  borderRadius: BorderRadius.circular(12),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: goalColor.withValues(alpha: 0.3),
-                                      blurRadius: 8,
-                                      offset: const Offset(0, 4),
-                                    ),
-                                  ],
-                                ),
-                                child: const Center(
-                                  child: Icon(
-                                    Icons.edit,
-                                    color: Colors.white,
-                                    size: 18,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
+                      if (goal.trackingType == 'checklist')
+                        _buildChecklistControl(goal, goalColor, colors, ctx)
+                      else if (goal.trackingType == 'percentage')
+                        _buildPercentageControls(goal, goalColor, colors, ctx)
+                      else
+                        _buildCounterControls(goal, goalColor, colors, ctx),
                     ],
-
                     const SizedBox(height: 16),
 
                     // Delete button
@@ -3528,6 +3577,126 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
     );
   }
 
+  Widget _buildChecklistControl(
+    PersonalGoal goal,
+    Color goalColor,
+    ColorScheme colors,
+    BuildContext ctx,
+  ) {
+    return GestureDetector(
+      onTap: () async {
+        HapticFeedback.heavyImpact();
+        Navigator.pop(ctx);
+        await _incrementGoal(goal, delta: 1);
+      },
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [goalColor, goalColor.withValues(alpha: 0.8)],
+          ),
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: goalColor.withValues(alpha: 0.3),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: const Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.check_circle_outline, color: Colors.white, size: 24),
+            SizedBox(width: 12),
+            Text(
+              'Marcar como Concluída',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPercentageControls(
+    PersonalGoal goal,
+    Color goalColor,
+    ColorScheme colors,
+    BuildContext ctx,
+  ) {
+    return Column(
+      children: [
+        Row(
+          children: [
+            _buildQuickBtn('+5%', 5, goal, goalColor, colors, ctx),
+            const SizedBox(width: 8),
+            _buildQuickBtn('+10%', 10, goal, goalColor, colors, ctx),
+            const SizedBox(width: 8),
+            _buildQuickBtn('+25%', 25, goal, goalColor, colors, ctx),
+          ],
+        ),
+        const SizedBox(height: 12),
+        _buildQuickBtn(
+          'Definir como 100%',
+          100 - goal.currentValue,
+          goal,
+          goalColor,
+          colors,
+          ctx,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCounterControls(
+    PersonalGoal goal,
+    Color goalColor,
+    ColorScheme colors,
+    BuildContext ctx,
+  ) {
+    return Row(
+      children: [
+        _buildQuickBtn('+1', 1, goal, goalColor, colors, ctx),
+        const SizedBox(width: 10),
+        _buildQuickBtn('+5', 5, goal, goalColor, colors, ctx),
+        const SizedBox(width: 10),
+        _buildQuickBtn('+10', 10, goal, goalColor, colors, ctx),
+        const SizedBox(width: 10),
+        Expanded(
+          child: GestureDetector(
+            onTap: () =>
+                _showCustomIncrementDialog(goal, goalColor, colors, ctx),
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [goalColor, goalColor.withValues(alpha: 0.8)],
+                ),
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: goalColor.withValues(alpha: 0.3),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: const Center(
+                child: Icon(Icons.edit, color: Colors.white, size: 18),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   void _showCustomIncrementDialog(
     PersonalGoal goal,
     Color goalColor,
@@ -3605,7 +3774,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                 child: Text(
                   updatedGoal.isCompleted
                       ? '🎉 Meta concluída! +50 tokens'
-                      : '+$delta • ${updatedGoal.currentValue}/${updatedGoal.targetValue}',
+                      : '+$delta • ${_getFormattedProgress(updatedGoal)}',
                   style: const TextStyle(fontWeight: FontWeight.w600),
                 ),
               ),
@@ -3625,6 +3794,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
         ),
       );
     }
+  }
+
+  String _getFormattedProgress(PersonalGoal goal) {
+    if (goal.trackingType == 'percentage') {
+      return '${goal.currentValue}% de ${goal.targetValue}%';
+    }
+    return '${goal.currentValue}/${goal.targetValue}';
   }
 
   Future<void> _deleteGoal(String goalId) async {
@@ -3700,52 +3876,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
         return 'Geral';
     }
   }
-}
-
-class _LevelRingPainter extends CustomPainter {
-  final double progress;
-  final Color backgroundColor;
-  final Color foregroundColor;
-
-  _LevelRingPainter({
-    required this.progress,
-    required this.backgroundColor,
-    required this.foregroundColor,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final center = Offset(size.width / 2, size.height / 2);
-    final radius = size.width / 2 - 4;
-    const strokeWidth = 6.0;
-
-    final bgPaint = Paint()
-      ..color = backgroundColor
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = strokeWidth
-      ..strokeCap = StrokeCap.round;
-
-    canvas.drawCircle(center, radius, bgPaint);
-
-    final progressPaint = Paint()
-      ..color = foregroundColor
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = strokeWidth
-      ..strokeCap = StrokeCap.round;
-
-    final sweepAngle = 2 * math.pi * progress;
-    canvas.drawArc(
-      Rect.fromCircle(center: center, radius: radius),
-      -math.pi / 2,
-      sweepAngle,
-      false,
-      progressPaint,
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant _LevelRingPainter oldDelegate) =>
-      oldDelegate.progress != progress;
 }
 
 // ============================================================

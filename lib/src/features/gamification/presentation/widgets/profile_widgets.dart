@@ -1029,7 +1029,7 @@ class PremiumGoalCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        '${goal.currentValue} de ${goal.targetValue} concluídos',
+                        _getGoalStatusText(goal),
                         style: TextStyle(
                           fontSize: 13,
                           color: colors.onSurfaceVariant,
@@ -1042,10 +1042,17 @@ class PremiumGoalCard extends StatelessWidget {
                 if (showActions && !goal.isCompleted)
                   Row(
                     children: [
-                      _circleIconButton(Icons.add, goalColor, () {
-                        HapticFeedback.mediumImpact();
-                        onIncrement();
-                      }, colors),
+                      _circleIconButton(
+                        goal.trackingType == 'checklist'
+                            ? Icons.check_rounded
+                            : Icons.add,
+                        goalColor,
+                        () {
+                          HapticFeedback.mediumImpact();
+                          onIncrement();
+                        },
+                        colors,
+                      ),
                       const SizedBox(width: 8),
                       _circleIconButton(
                         Icons.delete_outline,
@@ -1143,6 +1150,19 @@ class PremiumGoalCard extends StatelessWidget {
 
   bool isDark(BuildContext context) =>
       Theme.of(context).brightness == Brightness.dark;
+
+  String _getGoalStatusText(PersonalGoal goal) {
+    if (goal.isCompleted) return 'Concluída';
+    switch (goal.trackingType) {
+      case 'checklist':
+        return 'Pendente';
+      case 'percentage':
+        return '${goal.currentValue}% de ${goal.targetValue}%';
+      case 'counter':
+      default:
+        return '${goal.currentValue} de ${goal.targetValue} concluídos';
+    }
+  }
 
   Color _getGoalColor(String type) {
     switch (type) {

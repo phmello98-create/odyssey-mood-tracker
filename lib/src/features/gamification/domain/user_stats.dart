@@ -84,6 +84,7 @@ class PersonalGoal {
   final int targetValue;
   final int currentValue;
   final String type; // 'mood', 'tasks', 'focus', 'habits', 'custom'
+  final String trackingType; // 'counter', 'checklist', 'percentage'
   final DateTime? deadline;
   final DateTime createdAt;
   final bool isCompleted;
@@ -95,13 +96,22 @@ class PersonalGoal {
     required this.targetValue,
     this.currentValue = 0,
     required this.type,
+    this.trackingType = 'counter',
     this.deadline,
     required this.createdAt,
     this.isCompleted = false,
   });
 
-  double get progress =>
-      targetValue > 0 ? (currentValue / targetValue).clamp(0.0, 1.0) : 0.0;
+  double get progress {
+    if (isCompleted) return 1.0;
+    if (targetValue <= 0) return 0.0;
+
+    if (trackingType == 'checklist') {
+      return currentValue >= 1 ? 1.0 : 0.0;
+    }
+
+    return (currentValue / targetValue).clamp(0.0, 1.0);
+  }
 
   bool get isOverdue =>
       deadline != null && DateTime.now().isAfter(deadline!) && !isCompleted;
@@ -113,6 +123,7 @@ class PersonalGoal {
     'targetValue': targetValue,
     'currentValue': currentValue,
     'type': type,
+    'trackingType': trackingType,
     'deadline': deadline?.toIso8601String(),
     'createdAt': createdAt.toIso8601String(),
     'isCompleted': isCompleted,
@@ -125,6 +136,7 @@ class PersonalGoal {
     targetValue: map['targetValue'] ?? 0,
     currentValue: map['currentValue'] ?? 0,
     type: map['type'] ?? 'custom',
+    trackingType: map['trackingType'] ?? 'counter',
     deadline: map['deadline'] != null ? DateTime.parse(map['deadline']) : null,
     createdAt: map['createdAt'] != null
         ? DateTime.parse(map['createdAt'])
@@ -137,6 +149,7 @@ class PersonalGoal {
     String? description,
     int? targetValue,
     int? currentValue,
+    String? trackingType,
     DateTime? deadline,
     bool? isCompleted,
   }) {
@@ -147,6 +160,7 @@ class PersonalGoal {
       targetValue: targetValue ?? this.targetValue,
       currentValue: currentValue ?? this.currentValue,
       type: type,
+      trackingType: trackingType ?? this.trackingType,
       deadline: deadline ?? this.deadline,
       createdAt: createdAt,
       isCompleted: isCompleted ?? this.isCompleted,
