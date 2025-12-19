@@ -1773,12 +1773,17 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                     final repo = GamificationRepository(_gamificationBox!);
                     await repo.addPersonalGoal(goal);
 
-                    // Recarregar stats
-                    setState(() {
-                      _stats = repo.getStats();
-                    });
-
-                    if (mounted) Navigator.pop(context);
+                    if (mounted) {
+                      Navigator.pop(context);
+                      // Adiar o setState para evitar conflito com a animação de fechar semantics
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        if (mounted) {
+                          setState(() {
+                            _stats = repo.getStats();
+                          });
+                        }
+                      });
+                    }
                   },
                   child: const Text('Criar Meta'),
                 ),
@@ -3545,15 +3550,23 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
         onTap: () async {
           HapticFeedback.mediumImpact();
           Navigator.pop(ctx);
-          await _incrementGoal(goal, delta: delta);
-          // Reopen with updated data
-          final updatedGoal = _stats?.personalGoals.firstWhere(
-            (g) => g.id == goal.id,
-            orElse: () => goal,
-          );
-          if (updatedGoal != null && !updatedGoal.isCompleted) {
-            _showGoalPopup(updatedGoal, colors);
-          }
+
+          // Pequeno atraso para estabilizar a árvore de widgets e semântica após o pop
+          Future.delayed(const Duration(milliseconds: 100), () async {
+            if (!mounted) return;
+
+            await _incrementGoal(goal, delta: delta);
+
+            // Recarregar os dados atualizados dos stats
+            final updatedGoal = _stats?.personalGoals.firstWhere(
+              (g) => g.id == goal.id,
+              orElse: () => goal,
+            );
+
+            if (mounted && updatedGoal != null && !updatedGoal.isCompleted) {
+              _showGoalPopup(updatedGoal, colors);
+            }
+          });
         },
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 12),
@@ -3587,7 +3600,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
       onTap: () async {
         HapticFeedback.heavyImpact();
         Navigator.pop(ctx);
-        await _incrementGoal(goal, delta: 1);
+        // Pequeno atraso para o Navigator fechar semântica
+        Future.delayed(const Duration(milliseconds: 50), () {
+          if (mounted) _incrementGoal(goal, delta: 1);
+        });
       },
       child: Container(
         width: double.infinity,
@@ -3751,7 +3767,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
     await repo.incrementGoalProgress(goal.id, delta: delta);
     HapticFeedback.mediumImpact();
     final updatedStats = repo.getStats();
-    setState(() => _stats = updatedStats);
+
+    if (mounted) {
+      setState(() => _stats = updatedStats);
+    }
 
     // Mostrar feedback visual
     final updatedGoal = updatedStats.personalGoals.firstWhere(
