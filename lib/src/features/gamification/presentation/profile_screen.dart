@@ -41,6 +41,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
   String _userName = 'Praticante';
   late List<SkillCategory> _skillCategories;
   int _selectedTabIndex = 0;
+  bool _showCompletedGoals = false;
 
   // Showcase keys
   final GlobalKey _showcaseStats = GlobalKey();
@@ -1061,6 +1062,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
       (AppLocalizations.of(context)!.development, Icons.trending_up_rounded),
       (AppLocalizations.of(context)!.achievements, Icons.emoji_events_rounded),
       (AppLocalizations.of(context)!.tools, Icons.apps_rounded),
+      ('Metas', Icons.flag_rounded),
     ];
 
     return Container(
@@ -1142,9 +1144,313 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
         return _buildAchievementsTab(stats, colors);
       case 3:
         return _buildToolsTab(colors);
+      case 4:
+        return _buildGoalsTab(stats, colors);
       default:
         return _buildOverviewTab(stats, colors);
     }
+  }
+
+  // ============= TAB 4: METAS =============
+  Widget _buildGoalsTab(UserStats stats, ColorScheme colors) {
+    final activeGoals = stats.personalGoals
+        .where((g) => !g.isCompleted)
+        .toList();
+    final completedGoals = stats.personalGoals
+        .where((g) => g.isCompleted)
+        .toList();
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header com resumo
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  colors.primaryContainer,
+                  colors.primaryContainer.withValues(alpha: 0.7),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: colors.primary.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Icon(
+                    Icons.flag_rounded,
+                    color: colors.primary,
+                    size: 28,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Suas Metas',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: colors.onPrimaryContainer,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '${activeGoals.length} ativas • ${completedGoals.length} concluídas',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: colors.onPrimaryContainer.withValues(
+                            alpha: 0.8,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                FilledButton.icon(
+                  onPressed: () => _showAddGoalDialog(colors),
+                  icon: const Icon(Icons.add, size: 18),
+                  label: const Text('Nova'),
+                  style: FilledButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 10,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
+
+          // Metas Ativas
+          if (activeGoals.isEmpty)
+            _buildEmptyGoalsState(colors)
+          else ...[
+            Text(
+              'Metas Ativas',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: colors.onSurface,
+              ),
+            ),
+            const SizedBox(height: 12),
+            ...activeGoals.map(
+              (goal) => Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: PremiumGoalCard(
+                  goal: goal,
+                  onIncrement: () => _incrementGoal(goal),
+                  onDelete: () => _deleteGoal(goal.id),
+                  showActions: true,
+                  onTap: () => _showGoalPopup(goal, colors),
+                ),
+              ),
+            ),
+          ],
+
+          // Toggle para metas concluídas
+          if (completedGoals.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            GestureDetector(
+              onTap: () =>
+                  setState(() => _showCompletedGoals = !_showCompletedGoals),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
+                decoration: BoxDecoration(
+                  color: colors.surfaceContainerHighest.withValues(alpha: 0.5),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.check_circle,
+                      color: const Color(0xFF51CF66),
+                      size: 20,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'Metas Concluídas (${completedGoals.length})',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: colors.onSurface,
+                        ),
+                      ),
+                    ),
+                    AnimatedRotation(
+                      turns: _showCompletedGoals ? 0.5 : 0,
+                      duration: const Duration(milliseconds: 200),
+                      child: Icon(
+                        Icons.keyboard_arrow_down,
+                        color: colors.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            AnimatedCrossFade(
+              firstChild: const SizedBox.shrink(),
+              secondChild: Column(
+                children: [
+                  const SizedBox(height: 12),
+                  ...completedGoals.map(
+                    (goal) => Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: _buildCompletedGoalCard(goal, colors),
+                    ),
+                  ),
+                ],
+              ),
+              crossFadeState: _showCompletedGoals
+                  ? CrossFadeState.showSecond
+                  : CrossFadeState.showFirst,
+              duration: const Duration(milliseconds: 200),
+            ),
+          ],
+
+          const SizedBox(height: 20),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyGoalsState(ColorScheme colors) {
+    return Container(
+      padding: const EdgeInsets.all(32),
+      decoration: BoxDecoration(
+        color: colors.surfaceContainerHighest.withValues(alpha: 0.3),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: colors.outlineVariant.withValues(alpha: 0.3),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: colors.primaryContainer.withValues(alpha: 0.5),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(Icons.flag_outlined, size: 40, color: colors.primary),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Nenhuma meta ativa',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              color: colors.onSurface,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Crie metas para acompanhar seu progresso!',
+            style: TextStyle(fontSize: 14, color: colors.onSurfaceVariant),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 20),
+          FilledButton.icon(
+            onPressed: () => _showAddGoalDialog(colors),
+            icon: const Icon(Icons.add),
+            label: const Text('Criar Meta'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCompletedGoalCard(PersonalGoal goal, ColorScheme colors) {
+    final goalColor = _getGoalColorForType(goal.type);
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: colors.surfaceContainerHighest.withValues(alpha: 0.3),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: const Color(0xFF51CF66).withValues(alpha: 0.3),
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: goalColor.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Center(
+              child: Text(
+                _getGoalEmojiForType(goal.type),
+                style: const TextStyle(fontSize: 22),
+              ),
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  goal.title,
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: colors.onSurface,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    Icon(
+                      Icons.check_circle,
+                      size: 14,
+                      color: const Color(0xFF51CF66),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      '${goal.targetValue}/${goal.targetValue} • Concluída',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: colors.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            onPressed: () => _deleteGoal(goal.id),
+            icon: Icon(Icons.delete_outline, color: colors.error, size: 20),
+            style: IconButton.styleFrom(
+              backgroundColor: colors.error.withValues(alpha: 0.1),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   // ============= TAB 0: VISÃO GERAL =============
@@ -1204,6 +1510,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
             colors: colors,
             onAddGoal: () => _showAddGoalDialog(colors),
             onGoalTap: (goal) => _showGoalPopup(goal, colors),
+            onViewAll: () => setState(() => _selectedTabIndex = 4),
           ),
           const SizedBox(height: 20),
 
@@ -3274,7 +3581,50 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
     final repo = GamificationRepository(_gamificationBox!);
     await repo.incrementGoalProgress(goal.id, delta: delta);
     HapticFeedback.mediumImpact();
-    setState(() => _stats = repo.getStats());
+    final updatedStats = repo.getStats();
+    setState(() => _stats = updatedStats);
+
+    // Mostrar feedback visual
+    final updatedGoal = updatedStats.personalGoals.firstWhere(
+      (g) => g.id == goal.id,
+      orElse: () => goal,
+    );
+
+    if (mounted) {
+      final emoji = _getGoalEmojiForType(goal.type);
+      final colors = Theme.of(context).colorScheme;
+
+      ScaffoldMessenger.of(context).clearSnackBars();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              Text(emoji, style: const TextStyle(fontSize: 20)),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  updatedGoal.isCompleted
+                      ? '🎉 Meta concluída! +50 tokens'
+                      : '+$delta • ${updatedGoal.currentValue}/${updatedGoal.targetValue}',
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: updatedGoal.isCompleted
+              ? const Color(0xFF51CF66)
+              : colors.inverseSurface,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          duration: Duration(
+            milliseconds: updatedGoal.isCompleted ? 3000 : 1500,
+          ),
+          margin: const EdgeInsets.all(16),
+        ),
+      );
+    }
   }
 
   Future<void> _deleteGoal(String goalId) async {
