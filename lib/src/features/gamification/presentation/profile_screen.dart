@@ -1203,6 +1203,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
             goals: stats.personalGoals,
             colors: colors,
             onAddGoal: () => _showAddGoalDialog(colors),
+            onGoalTap: (goal) => _showGoalPopup(goal, colors),
           ),
           const SizedBox(height: 20),
 
@@ -2867,6 +2868,487 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
         ),
       ),
     );
+  }
+
+  // ========================================
+  // GOAL POPUP FUNCTIONALITY
+  // ========================================
+
+  void _showGoalPopup(PersonalGoal goal, ColorScheme colors) {
+    final goalColor = _getGoalColorForType(goal.type);
+
+    showGeneralDialog(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: 'Goal Detail',
+      barrierColor: Colors.black54,
+      transitionDuration: const Duration(milliseconds: 200),
+      pageBuilder: (ctx, animation, secondaryAnimation) {
+        return Center(
+          child: Material(
+            color: Colors.transparent,
+            child: ScaleTransition(
+              scale: CurvedAnimation(
+                parent: animation,
+                curve: Curves.easeOutBack,
+              ),
+              child: Container(
+                width: MediaQuery.of(ctx).size.width * 0.85,
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: colors.surface,
+                  borderRadius: BorderRadius.circular(28),
+                  boxShadow: [
+                    BoxShadow(
+                      color: goalColor.withValues(alpha: 0.2),
+                      blurRadius: 20,
+                      offset: const Offset(0, 10),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Header
+                    Row(
+                      children: [
+                        Container(
+                          width: 56,
+                          height: 56,
+                          decoration: BoxDecoration(
+                            color: goalColor.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Center(
+                            child: Text(
+                              _getGoalEmojiForType(goal.type),
+                              style: const TextStyle(fontSize: 28),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                goal.title,
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: colors.onSurface,
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 4),
+                              Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 2,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: goalColor.withValues(alpha: 0.1),
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: Text(
+                                      _getGoalTypeName(goal.type),
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w600,
+                                        color: goalColor,
+                                      ),
+                                    ),
+                                  ),
+                                  if (goal.isCompleted) ...[
+                                    const SizedBox(width: 8),
+                                    const Icon(
+                                      Icons.check_circle,
+                                      color: Color(0xFF51CF66),
+                                      size: 18,
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                        GestureDetector(
+                          onTap: () => Navigator.pop(ctx),
+                          child: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: colors.surfaceContainerHighest,
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              Icons.close,
+                              size: 18,
+                              color: colors.onSurfaceVariant,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Progress
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: colors.surfaceContainerHighest.withValues(
+                          alpha: 0.4,
+                        ),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Row(
+                        children: [
+                          SizedBox(
+                            width: 60,
+                            height: 60,
+                            child: Stack(
+                              alignment: Alignment.center,
+                              children: [
+                                CircularProgressIndicator(
+                                  value: goal.progress,
+                                  strokeWidth: 6,
+                                  backgroundColor: goalColor.withValues(
+                                    alpha: 0.1,
+                                  ),
+                                  valueColor: AlwaysStoppedAnimation(goalColor),
+                                  strokeCap: StrokeCap.round,
+                                ),
+                                Text(
+                                  '${(goal.progress * 100).round()}%',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                    color: goalColor,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  '${goal.currentValue} / ${goal.targetValue}',
+                                  style: TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.w800,
+                                    color: colors.onSurface,
+                                  ),
+                                ),
+                                Text(
+                                  'concluídos',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: colors.onSurfaceVariant,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Column(
+                            children: [
+                              const Text('🪙', style: TextStyle(fontSize: 20)),
+                              Text(
+                                '+50',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: const Color(0xFFFFA94D),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    // Increment buttons (only if not completed)
+                    if (!goal.isCompleted) ...[
+                      const SizedBox(height: 20),
+                      Row(
+                        children: [
+                          _buildQuickBtn('+1', 1, goal, goalColor, colors, ctx),
+                          const SizedBox(width: 10),
+                          _buildQuickBtn('+5', 5, goal, goalColor, colors, ctx),
+                          const SizedBox(width: 10),
+                          _buildQuickBtn(
+                            '+10',
+                            10,
+                            goal,
+                            goalColor,
+                            colors,
+                            ctx,
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: () => _showCustomIncrementDialog(
+                                goal,
+                                goalColor,
+                                colors,
+                                ctx,
+                              ),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 12,
+                                ),
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      goalColor,
+                                      goalColor.withValues(alpha: 0.8),
+                                    ],
+                                  ),
+                                  borderRadius: BorderRadius.circular(12),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: goalColor.withValues(alpha: 0.3),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ],
+                                ),
+                                child: const Center(
+                                  child: Icon(
+                                    Icons.edit,
+                                    color: Colors.white,
+                                    size: 18,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+
+                    const SizedBox(height: 16),
+
+                    // Delete button
+                    GestureDetector(
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        _deleteGoal(goal.id);
+                      },
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        decoration: BoxDecoration(
+                          color: colors.error.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.delete_outline,
+                              color: colors.error,
+                              size: 18,
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              'Excluir',
+                              style: TextStyle(
+                                color: colors.error,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildQuickBtn(
+    String label,
+    int delta,
+    PersonalGoal goal,
+    Color goalColor,
+    ColorScheme colors,
+    BuildContext ctx,
+  ) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: () async {
+          HapticFeedback.mediumImpact();
+          Navigator.pop(ctx);
+          await _incrementGoal(goal, delta: delta);
+          // Reopen with updated data
+          final updatedGoal = _stats?.personalGoals.firstWhere(
+            (g) => g.id == goal.id,
+            orElse: () => goal,
+          );
+          if (updatedGoal != null && !updatedGoal.isCompleted) {
+            _showGoalPopup(updatedGoal, colors);
+          }
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          decoration: BoxDecoration(
+            color: goalColor.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: goalColor.withValues(alpha: 0.2)),
+          ),
+          child: Center(
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                color: goalColor,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showCustomIncrementDialog(
+    PersonalGoal goal,
+    Color goalColor,
+    ColorScheme colors,
+    BuildContext popupCtx,
+  ) {
+    final controller = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        title: const Text('Adicionar Progresso'),
+        content: TextField(
+          controller: controller,
+          keyboardType: TextInputType.number,
+          decoration: const InputDecoration(
+            labelText: 'Quantidade',
+            hintText: 'Ex: 3',
+          ),
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogCtx),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () async {
+              final value = int.tryParse(controller.text) ?? 0;
+              if (value > 0) {
+                Navigator.pop(dialogCtx);
+                Navigator.pop(popupCtx);
+                await _incrementGoal(goal, delta: value);
+                final updatedGoal = _stats?.personalGoals.firstWhere(
+                  (g) => g.id == goal.id,
+                  orElse: () => goal,
+                );
+                if (updatedGoal != null && !updatedGoal.isCompleted) {
+                  _showGoalPopup(updatedGoal, colors);
+                }
+              }
+            },
+            child: const Text('Adicionar'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _incrementGoal(PersonalGoal goal, {int delta = 1}) async {
+    if (_gamificationBox == null) return;
+    final repo = GamificationRepository(_gamificationBox!);
+    await repo.incrementGoalProgress(goal.id, delta: delta);
+    HapticFeedback.mediumImpact();
+    setState(() => _stats = repo.getStats());
+  }
+
+  Future<void> _deleteGoal(String goalId) async {
+    if (_gamificationBox == null) return;
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Excluir Meta'),
+        content: const Text('Tem certeza que deseja excluir esta meta?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(ctx).colorScheme.error,
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Excluir'),
+          ),
+        ],
+      ),
+    );
+    if (result == true) {
+      final repo = GamificationRepository(_gamificationBox!);
+      await repo.removePersonalGoal(goalId);
+      setState(() => _stats = repo.getStats());
+    }
+  }
+
+  Color _getGoalColorForType(String type) {
+    switch (type) {
+      case 'mood':
+        return const Color(0xFFFFA94D);
+      case 'tasks':
+        return const Color(0xFF51CF66);
+      case 'focus':
+        return const Color(0xFF339AF0);
+      case 'habits':
+        return const Color(0xFFB197FC);
+      default:
+        return const Color(0xFF868E96);
+    }
+  }
+
+  String _getGoalEmojiForType(String type) {
+    switch (type) {
+      case 'mood':
+        return '😊';
+      case 'tasks':
+        return '✅';
+      case 'focus':
+        return '⏱️';
+      case 'habits':
+        return '🎯';
+      default:
+        return '🌟';
+    }
+  }
+
+  String _getGoalTypeName(String type) {
+    switch (type) {
+      case 'mood':
+        return 'Humor';
+      case 'tasks':
+        return 'Tarefas';
+      case 'focus':
+        return 'Foco';
+      case 'habits':
+        return 'Hábitos';
+      default:
+        return 'Geral';
+    }
   }
 }
 

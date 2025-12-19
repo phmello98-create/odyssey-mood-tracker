@@ -857,12 +857,16 @@ class PersonalGoalsCard extends StatelessWidget {
   final List<PersonalGoal> goals;
   final ColorScheme colors;
   final VoidCallback onAddGoal;
+  final VoidCallback? onViewAll;
+  final void Function(PersonalGoal goal)? onGoalTap;
 
   const PersonalGoalsCard({
     super.key,
     required this.goals,
     required this.colors,
     required this.onAddGoal,
+    this.onViewAll,
+    this.onGoalTap,
   });
 
   @override
@@ -912,7 +916,7 @@ class PersonalGoalsCard extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(vertical: 20),
                 child: Column(
                   children: [
-                    Text('🎯', style: const TextStyle(fontSize: 32)),
+                    const Text('🎯', style: TextStyle(fontSize: 32)),
                     const SizedBox(height: 8),
                     Text(
                       'Nenhuma meta ativa',
@@ -924,9 +928,28 @@ class PersonalGoalsCard extends StatelessWidget {
             )
           else
             ...activeGoals.map(
-              (goal) => Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: _GoalItem(goal: goal, colors: colors),
+              (goal) => PremiumGoalCard(
+                goal: goal,
+                onIncrement: () {},
+                onDelete: () {},
+                showActions: false,
+                onTap: onGoalTap != null ? () => onGoalTap!(goal) : null,
+              ),
+            ),
+
+          if (activeGoals.isNotEmpty)
+            Center(
+              child: TextButton(
+                onPressed: () {
+                  if (onViewAll != null) onViewAll!();
+                },
+                child: Text(
+                  'Ver Todas as Metas',
+                  style: TextStyle(
+                    color: colors.primary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ),
             ),
         ],
@@ -935,86 +958,191 @@ class PersonalGoalsCard extends StatelessWidget {
   }
 }
 
-class _GoalItem extends StatelessWidget {
+class PremiumGoalCard extends StatelessWidget {
   final PersonalGoal goal;
-  final ColorScheme colors;
+  final VoidCallback onIncrement;
+  final VoidCallback onDelete;
+  final VoidCallback? onTap;
+  final bool showActions;
 
-  const _GoalItem({required this.goal, required this.colors});
+  const PremiumGoalCard({
+    super.key,
+    required this.goal,
+    required this.onIncrement,
+    required this.onDelete,
+    this.onTap,
+    this.showActions = true,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
     final goalColor = _getGoalColor(goal.type);
     final percentage = (goal.progress * 100).round();
 
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: colors.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: colors.outlineVariant.withValues(alpha: 0.5)),
-      ),
-      child: Row(
-        children: [
-          // Progress ring
-          SizedBox(
-            width: 44,
-            height: 44,
-            child: Stack(
-              alignment: Alignment.center,
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: colors.surfaceContainerHighest.withValues(alpha: 0.3),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(
+            color: isDark(context)
+                ? Colors.white.withValues(alpha: 0.05)
+                : colors.outline.withValues(alpha: 0.1),
+          ),
+        ),
+        child: Column(
+          children: [
+            Row(
               children: [
-                CircularProgressIndicator(
-                  value: goal.progress,
-                  backgroundColor: goalColor.withValues(alpha: 0.2),
-                  valueColor: AlwaysStoppedAnimation(goalColor),
-                  strokeWidth: 4,
+                // Icon with glow
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: goalColor.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Center(
+                    child: Text(
+                      _getGoalEmoji(goal.type),
+                      style: const TextStyle(fontSize: 24),
+                    ),
+                  ),
                 ),
-                Text(
-                  _getGoalEmoji(goal.type),
-                  style: const TextStyle(fontSize: 16),
+                const SizedBox(width: 16),
+                // Title and Progress Text
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        goal.title,
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: colors.onSurface,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '${goal.currentValue} de ${goal.targetValue} concluídos',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: colors.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                // Actions
+                if (showActions && !goal.isCompleted)
+                  Row(
+                    children: [
+                      _circleIconButton(Icons.add, goalColor, () {
+                        HapticFeedback.mediumImpact();
+                        onIncrement();
+                      }, colors),
+                      const SizedBox(width: 8),
+                      _circleIconButton(
+                        Icons.delete_outline,
+                        colors.error,
+                        onDelete,
+                        colors,
+                      ),
+                    ],
+                  )
+                else if (goal.isCompleted)
+                  const Icon(
+                    Icons.check_circle,
+                    color: Color(0xFF51CF66),
+                    size: 28,
+                  ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            // Progress Bar (Gradient)
+            Stack(
+              children: [
+                Container(
+                  height: 8,
+                  decoration: BoxDecoration(
+                    color: colors.outlineVariant.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+                FractionallySizedBox(
+                  widthFactor: goal.progress,
+                  child: Container(
+                    height: 8,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [goalColor, goalColor.withValues(alpha: 0.7)],
+                      ),
+                      borderRadius: BorderRadius.circular(4),
+                      boxShadow: [
+                        BoxShadow(
+                          color: goalColor.withValues(alpha: 0.3),
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ],
             ),
-          ),
-          const SizedBox(width: 14),
-          // Info
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  goal.title,
+                  'Progresso',
                   style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: colors.onSurface,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  '${goal.currentValue}/${goal.targetValue}',
-                  style: TextStyle(
-                    fontSize: 12,
+                    fontSize: 11,
                     color: colors.onSurfaceVariant,
                   ),
                 ),
+                Text(
+                  '$percentage%',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    color: goalColor,
+                  ),
+                ),
               ],
             ),
-          ),
-          // Percentage
-          Text(
-            '$percentage%',
-            style: TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w700,
-              color: goalColor,
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
+
+  Widget _circleIconButton(
+    IconData icon,
+    Color color,
+    VoidCallback onTap,
+    ColorScheme colors,
+  ) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.1),
+          shape: BoxShape.circle,
+        ),
+        child: Icon(icon, color: color, size: 20),
+      ),
+    );
+  }
+
+  bool isDark(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark;
 
   Color _getGoalColor(String type) {
     switch (type) {
@@ -1044,6 +1172,150 @@ class _GoalItem extends StatelessWidget {
       default:
         return '🌟';
     }
+  }
+}
+
+class GoalsSummaryCard extends StatelessWidget {
+  final int totalGoals;
+  final int completedGoals;
+  final double successRate;
+
+  const GoalsSummaryCard({
+    super.key,
+    required this.totalGoals,
+    required this.completedGoals,
+    required this.successRate,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            colors.primary.withValues(alpha: 0.15),
+            colors.secondary.withValues(alpha: 0.1),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(32),
+        border: Border.all(color: colors.primary.withValues(alpha: 0.1)),
+      ),
+      child: Row(
+        children: [
+          // Circular Progress
+          SizedBox(
+            width: 100,
+            height: 100,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                SizedBox(
+                  width: 100,
+                  height: 100,
+                  child: CircularProgressIndicator(
+                    value: successRate,
+                    strokeWidth: 10,
+                    backgroundColor: colors.primary.withValues(alpha: 0.1),
+                    valueColor: AlwaysStoppedAnimation(colors.primary),
+                    strokeCap: StrokeCap.round,
+                  ),
+                ),
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      '${(successRate * 100).round()}%',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
+                        color: colors.onSurface,
+                      ),
+                    ),
+                    Text(
+                      'Sucesso',
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: colors.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 24),
+          // Stats
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildSummaryStat(
+                  'Metas Ativas',
+                  '${totalGoals - completedGoals}',
+                  colors.primary,
+                  colors,
+                ),
+                const SizedBox(height: 12),
+                _buildSummaryStat(
+                  'Concluídas',
+                  '$completedGoals',
+                  const Color(0xFF51CF66),
+                  colors,
+                ),
+                const SizedBox(height: 12),
+                _buildSummaryStat(
+                  'Tokens Ganhos',
+                  '${completedGoals * 50}',
+                  const Color(0xFFFFA94D),
+                  colors,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSummaryStat(
+    String label,
+    String value,
+    Color color,
+    ColorScheme colors,
+  ) {
+    return Row(
+      children: [
+        Container(
+          width: 8,
+          height: 8,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        ),
+        const SizedBox(width: 12),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              value,
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: colors.onSurface,
+                height: 1,
+              ),
+            ),
+            Text(
+              label,
+              style: TextStyle(fontSize: 11, color: colors.onSurfaceVariant),
+            ),
+          ],
+        ),
+      ],
+    );
   }
 }
 

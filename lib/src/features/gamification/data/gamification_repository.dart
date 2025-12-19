@@ -287,6 +287,23 @@ class GamificationRepository {
     await saveStats(stats);
   }
 
+  /// Incrementa progresso de uma meta
+  Future<void> incrementGoalProgress(String goalId, {int delta = 1}) async {
+    var stats = getStats();
+    final goals = stats.personalGoals.map((g) {
+      if (g.id == goalId) {
+        final newValue = g.currentValue + delta;
+        return g.copyWith(
+          currentValue: newValue,
+          isCompleted: newValue >= g.targetValue,
+        );
+      }
+      return g;
+    }).toList();
+    stats = stats.copyWith(personalGoals: goals);
+    await saveStats(stats);
+  }
+
   /// Remove uma meta pessoal
   Future<void> removePersonalGoal(String goalId) async {
     var stats = getStats();

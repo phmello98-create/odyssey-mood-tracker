@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:odyssey/src/providers/timer_provider.dart';
 import 'package:flutter/services.dart';
@@ -23,6 +24,7 @@ import 'package:odyssey/src/features/gamification/data/gamification_repository.d
 import 'package:odyssey/src/features/notes/data/notes_repository.dart';
 import 'package:odyssey/src/features/time_tracker/data/time_tracking_repository.dart';
 import 'package:odyssey/src/features/time_tracker/domain/time_tracking_record.dart';
+import 'package:odyssey/src/features/gamification/domain/user_stats.dart';
 
 import 'package:odyssey/src/utils/widgets/feedback_widgets.dart';
 import 'package:odyssey/src/utils/services/sound_service.dart';
@@ -6071,141 +6073,372 @@ extension _HomeScreenStateDataInsights on _HomeScreenState {
   void _showProfileMenu(BuildContext context, WidgetRef ref) {
     final colors = Theme.of(context).colorScheme;
     final settings = ref.read(settingsProvider);
+    final stats = ref.read(userStatsProvider);
+    final title = UserTitles.getTitleForXP(stats.totalXP);
 
     showModalBottomSheet(
       context: context,
-      backgroundColor: colors.surface,
+      backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (ctx) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Handle
-              Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: colors.outlineVariant,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              const SizedBox(height: 16),
+      builder: (ctx) => Container(
+        decoration: BoxDecoration(
+          color: colors.surface.withValues(alpha: 0.85),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+          border: Border.all(
+            color: colors.primary.withValues(alpha: 0.1),
+            width: 1.5,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: colors.shadow.withValues(alpha: 0.1),
+              blurRadius: 20,
+              offset: const Offset(0, -5),
+            ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+          child: BackdropFilter(
+            filter: ui.ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+            child: SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Handle
+                    Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: colors.outlineVariant.withValues(alpha: 0.5),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
 
-              // User info header
-              Row(
-                children: [
-                  CircleAvatar(
-                    radius: 28,
-                    backgroundImage: settings.avatarPath != null
-                        ? FileImage(File(settings.avatarPath!))
-                        : null,
-                    backgroundColor: colors.primary.withValues(alpha: 0.2),
-                    child: settings.avatarPath == null
-                        ? Text(
-                            settings.userName.isNotEmpty
-                                ? settings.userName[0].toUpperCase()
-                                : 'U',
-                            style: TextStyle(
-                              fontSize: 22,
-                              fontWeight: FontWeight.bold,
-                              color: colors.primary,
-                            ),
-                          )
-                        : null,
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          settings.userName,
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w600,
-                            color: colors.onSurface,
-                          ),
+                    // User Profile Card - Premium Look
+                    Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            colors.primaryContainer.withValues(alpha: 0.7),
+                            colors.secondaryContainer.withValues(alpha: 0.5),
+                          ],
                         ),
-                        Text(
-                          'Toque para ver seu perfil',
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: colors.onSurfaceVariant,
+                        borderRadius: BorderRadius.circular(24),
+                        border: Border.all(
+                          color: colors.primary.withValues(alpha: 0.1),
+                        ),
+                      ),
+                      child: Column(
+                        children: [
+                          Row(
+                            children: [
+                              GestureDetector(
+                                onTap: () {
+                                  Navigator.pop(ctx);
+                                  ref
+                                      .read(navigationProvider.notifier)
+                                      .goToProfile();
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.all(3),
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    gradient: LinearGradient(
+                                      colors: [
+                                        colors.primary,
+                                        colors.secondary,
+                                      ],
+                                    ),
+                                  ),
+                                  child: CircleAvatar(
+                                    radius: 32,
+                                    backgroundImage: settings.avatarPath != null
+                                        ? FileImage(File(settings.avatarPath!))
+                                        : null,
+                                    backgroundColor: colors.surface,
+                                    child: settings.avatarPath == null
+                                        ? Text(
+                                            settings.userName.isNotEmpty
+                                                ? settings.userName[0]
+                                                      .toUpperCase()
+                                                : 'U',
+                                            style: TextStyle(
+                                              fontSize: 24,
+                                              fontWeight: FontWeight.bold,
+                                              color: colors.primary,
+                                            ),
+                                          )
+                                        : null,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      settings.userName,
+                                      style: TextStyle(
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.bold,
+                                        color: colors.onSurface,
+                                        letterSpacing: -0.5,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 2,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: colors.primary.withValues(
+                                          alpha: 0.1,
+                                        ),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Text(
+                                        '${title.emoji} ${title.name}',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                          color: colors.primary,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  Text(
+                                    'Nível ${stats.level}',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.bold,
+                                      color: colors.primary,
+                                    ),
+                                  ),
+                                  Text(
+                                    '${stats.totalXP} XP',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: colors.onSurfaceVariant,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
                           ),
+                          const SizedBox(height: 16),
+                          // XP Progress Bar
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    'Progresso do Nível',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w500,
+                                      color: colors.onSurfaceVariant,
+                                    ),
+                                  ),
+                                  Text(
+                                    '${(stats.levelProgress * 100).round()}%',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                      color: colors.primary,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 6),
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(4),
+                                child: LinearProgressIndicator(
+                                  value: stats.levelProgress,
+                                  backgroundColor: colors.surface.withValues(
+                                    alpha: 0.5,
+                                  ),
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    colors.primary,
+                                  ),
+                                  minHeight: 6,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+
+                    // Quick Actions Grid
+                    GridView.count(
+                      shrinkWrap: true,
+                      crossAxisCount: 2,
+                      crossAxisSpacing: 12,
+                      mainAxisSpacing: 12,
+                      childAspectRatio: 2.5,
+                      physics: const NeverScrollableScrollPhysics(),
+                      children: [
+                        _quickActionCard(
+                          ctx,
+                          '📊',
+                          'Estatísticas',
+                          colors.primary,
+                          () {
+                            Navigator.pop(ctx);
+                            ref
+                                .read(navigationProvider.notifier)
+                                .goToProfile(tabIndex: 0);
+                          },
+                          colors,
+                        ),
+                        _quickActionCard(
+                          ctx,
+                          '🎯',
+                          'Metas',
+                          colors.secondary,
+                          () {
+                            Navigator.pop(ctx);
+                            ref
+                                .read(navigationProvider.notifier)
+                                .goToProfile(tabIndex: 4);
+                          },
+                          colors,
+                        ),
+                        _quickActionCard(
+                          ctx,
+                          '🏆',
+                          'Conquistas',
+                          colors.tertiary,
+                          () {
+                            Navigator.pop(ctx);
+                            ref
+                                .read(navigationProvider.notifier)
+                                .goToProfile(tabIndex: 2);
+                          },
+                          colors,
+                        ),
+                        _quickActionCard(
+                          ctx,
+                          '📅',
+                          'Calendário',
+                          WellnessColors.primary,
+                          () {
+                            Navigator.pop(ctx);
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const HabitsCalendarScreen(),
+                              ),
+                            );
+                          },
+                          colors,
                         ),
                       ],
                     ),
-                  ),
-                  Icon(Icons.chevron_right, color: colors.onSurfaceVariant),
-                ],
+                    const SizedBox(height: 20),
+                    const Divider(),
+                    const SizedBox(height: 8),
+
+                    // Secondary Options
+                    _menuItem(ctx, '⚙️', 'Configurações', () {
+                      Navigator.pop(ctx);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const SettingsScreen(),
+                        ),
+                      );
+                    }, colors),
+                    _menuItem(
+                      ctx,
+                      Theme.of(context).brightness == Brightness.dark
+                          ? '🌙'
+                          : '☀️',
+                      'Mudar Tema',
+                      () {
+                        final isDark =
+                            Theme.of(context).brightness == Brightness.dark;
+                        ref
+                            .read(settingsProvider.notifier)
+                            .setThemeMode(
+                              isDark ? ThemeMode.light : ThemeMode.dark,
+                            );
+                        HapticFeedback.mediumImpact();
+                      },
+                      colors,
+                      trailing: Switch.adaptive(
+                        value: Theme.of(context).brightness == Brightness.dark,
+                        activeColor: colors.primary,
+                        onChanged: (v) {
+                          ref
+                              .read(settingsProvider.notifier)
+                              .setThemeMode(
+                                v ? ThemeMode.dark : ThemeMode.light,
+                              );
+                          HapticFeedback.mediumImpact();
+                        },
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              const SizedBox(height: 16),
-              const Divider(),
-              const SizedBox(height: 8),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 
-              // Menu items
-              _menuItem(ctx, '👤', 'Meu Perfil', () {
-                Navigator.pop(ctx);
-                ref.read(navigationProvider.notifier).goToProfile();
-              }, colors),
-              _menuItem(ctx, '⚙️', 'Configurações', () {
-                Navigator.pop(ctx);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const SettingsScreen()),
-                );
-              }, colors),
-              _menuItem(ctx, '📊', 'Estatísticas', () {
-                Navigator.pop(ctx);
-                ref.read(navigationProvider.notifier).goToProfile();
-              }, colors),
-              _menuItem(ctx, '🎯', 'Minhas Metas', () {
-                Navigator.pop(ctx);
-                // TODO: Navegar para metas
-                ref.read(navigationProvider.notifier).goToProfile();
-              }, colors),
-              _menuItem(ctx, '🏆', 'Conquistas', () {
-                Navigator.pop(ctx);
-                ref.read(navigationProvider.notifier).goToProfile();
-              }, colors),
-              _menuItem(ctx, '📅', 'Calendário', () {
-                Navigator.pop(ctx);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => const HabitsCalendarScreen(),
-                  ),
-                );
-              }, colors),
-
-              const SizedBox(height: 8),
-              const Divider(),
-              const SizedBox(height: 8),
-
-              _menuItem(
-                ctx,
-                '🌙',
-                'Tema Escuro',
-                () {
-                  Navigator.pop(ctx);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const SettingsScreen()),
-                  );
-                },
-                colors,
-                trailing: Switch.adaptive(
-                  value: Theme.of(context).brightness == Brightness.dark,
-                  onChanged: (v) {
-                    ref
-                        .read(settingsProvider.notifier)
-                        .setThemeMode(v ? ThemeMode.dark : ThemeMode.light);
-                  },
+  Widget _quickActionCard(
+    BuildContext context,
+    String emoji,
+    String title,
+    Color color,
+    VoidCallback onTap,
+    ColorScheme colors,
+  ) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () {
+          HapticFeedback.lightImpact();
+          onTap();
+        },
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: color.withValues(alpha: 0.2)),
+          ),
+          child: Row(
+            children: [
+              Text(emoji, style: const TextStyle(fontSize: 20)),
+              const SizedBox(width: 12),
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: colors.onSurface,
                 ),
               ),
             ],
@@ -6224,16 +6457,36 @@ extension _HomeScreenStateDataInsights on _HomeScreenState {
     Widget? trailing,
   }) {
     return ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 8),
-      leading: Text(emoji, style: const TextStyle(fontSize: 22)),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      leading: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          color: colors.surfaceContainerHighest.withValues(alpha: 0.5),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        alignment: Alignment.center,
+        child: Text(emoji, style: const TextStyle(fontSize: 20)),
+      ),
       title: Text(
         title,
-        style: TextStyle(fontSize: 15, color: colors.onSurface),
+        style: TextStyle(
+          fontSize: 15,
+          fontWeight: FontWeight.w500,
+          color: colors.onSurface,
+        ),
       ),
       trailing:
           trailing ??
-          Icon(Icons.chevron_right, size: 20, color: colors.onSurfaceVariant),
-      onTap: onTap,
+          Icon(
+            Icons.chevron_right_rounded,
+            size: 20,
+            color: colors.onSurfaceVariant,
+          ),
+      onTap: () {
+        HapticFeedback.lightImpact();
+        onTap();
+      },
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
     );
   }
