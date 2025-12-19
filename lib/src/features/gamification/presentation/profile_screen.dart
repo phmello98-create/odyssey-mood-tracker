@@ -3286,6 +3286,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
   // ========================================
 
   void _showGoalPopup(PersonalGoal goal, ColorScheme colors) {
+    // Debug log
+    print(
+      'Opening goal popup for: ${goal.title}, trackingType: ${goal.trackingType}',
+    );
+
     final goalColor = _getGoalColorForType(goal.type);
 
     showGeneralDialog(
@@ -3485,12 +3490,33 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                     // Controls (only if not completed)
                     if (!goal.isCompleted) ...[
                       const SizedBox(height: 20),
-                      if (goal.trackingType == 'checklist')
-                        _buildChecklistControl(goal, goalColor, colors, ctx)
-                      else if (goal.trackingType == 'percentage')
-                        _buildPercentageControls(goal, goalColor, colors, ctx)
-                      else
-                        _buildCounterControls(goal, goalColor, colors, ctx),
+                      Builder(
+                        builder: (context) {
+                          final trackingType = goal.trackingType;
+                          if (trackingType == 'checklist') {
+                            return _buildChecklistControl(
+                              goal,
+                              goalColor,
+                              colors,
+                              ctx,
+                            );
+                          } else if (trackingType == 'percentage') {
+                            return _buildPercentageControls(
+                              goal,
+                              goalColor,
+                              colors,
+                              ctx,
+                            );
+                          } else {
+                            return _buildCounterControls(
+                              goal,
+                              goalColor,
+                              colors,
+                              ctx,
+                            );
+                          }
+                        },
+                      ),
                     ],
                     const SizedBox(height: 16),
 
