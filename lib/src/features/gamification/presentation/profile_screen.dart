@@ -1251,15 +1251,17 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
             ...activeGoals.map(
               (goal) => Padding(
                 padding: const EdgeInsets.only(bottom: 12),
-                child: PremiumGoalCard(
-                  goal: goal,
-                  onIncrement: () => _incrementGoal(
-                    goal,
-                    delta: goal.trackingType == 'percentage' ? 10 : 1,
+                child: ExcludeSemantics(
+                  child: PremiumGoalCard(
+                    goal: goal,
+                    onIncrement: () => _incrementGoal(
+                      goal,
+                      delta: goal.trackingType == 'percentage' ? 10 : 1,
+                    ),
+                    onDelete: () => _deleteGoal(goal.id),
+                    showActions: true,
+                    onTap: () => _showGoalPopup(goal, colors),
                   ),
-                  onDelete: () => _deleteGoal(goal.id),
-                  showActions: true,
-                  onTap: () => _showGoalPopup(goal, colors),
                 ),
               ),
             ),
@@ -1508,31 +1510,33 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
           const SizedBox(height: 20),
 
           // Metas pessoais
-          PersonalGoalsCard(
-            goals: stats.personalGoals,
-            colors: colors,
-            onAddGoal: () {
-              print('DEBUG: onAddGoal triggered');
-              _showAddGoalDialog(colors);
-            },
-            onGoalTap: (goal) {
-              print('DEBUG: onGoalTap triggered for goal: ${goal.title}');
-              try {
-                _showGoalPopup(goal, colors);
-              } catch (e, stack) {
-                print('ERROR in _showGoalPopup: $e');
-                print('Stack: $stack');
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Erro ao abrir meta: $e')),
+          ExcludeSemantics(
+            child: PersonalGoalsCard(
+              goals: stats.personalGoals,
+              colors: colors,
+              onAddGoal: () {
+                print('DEBUG: onAddGoal triggered');
+                _showAddGoalDialog(colors);
+              },
+              onGoalTap: (goal) {
+                print('DEBUG: onGoalTap triggered for goal: ${goal.title}');
+                try {
+                  _showGoalPopup(goal, colors);
+                } catch (e, stack) {
+                  print('ERROR in _showGoalPopup: $e');
+                  print('Stack: $stack');
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Erro ao abrir meta: $e')),
+                  );
+                }
+              },
+              onViewAll: () {
+                print(
+                  'DEBUG: onViewAll triggered, navigating to Goals tab (index 4)',
                 );
-              }
-            },
-            onViewAll: () {
-              print(
-                'DEBUG: onViewAll triggered, navigating to Goals tab (index 4)',
-              );
-              setState(() => _selectedTabIndex = 4);
-            },
+                setState(() => _selectedTabIndex = 4);
+              },
+            ),
           ),
           const SizedBox(height: 20),
 
