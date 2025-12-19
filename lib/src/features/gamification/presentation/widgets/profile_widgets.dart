@@ -930,10 +930,29 @@ class PersonalGoalsCard extends StatelessWidget {
             ...activeGoals.map(
               (goal) => PremiumGoalCard(
                 goal: goal,
-                onIncrement: () {},
-                onDelete: () {},
+                onIncrement: () {
+                  print(
+                    'DEBUG: Goal card increment clicked (but handler empty in overview)',
+                  );
+                },
+                onDelete: () {
+                  print(
+                    'DEBUG: Goal card delete clicked (but handler empty in overview)',
+                  );
+                },
                 showActions: false,
-                onTap: onGoalTap != null ? () => onGoalTap!(goal) : null,
+                onTap: onGoalTap != null
+                    ? () {
+                        print(
+                          'DEBUG: PremiumGoalCard tapped for goal: ${goal.title}',
+                        );
+                        onGoalTap!(goal);
+                      }
+                    : () {
+                        print(
+                          'DEBUG: PremiumGoalCard tapped but onGoalTap is null',
+                        );
+                      },
               ),
             ),
 
@@ -941,7 +960,13 @@ class PersonalGoalsCard extends StatelessWidget {
             Center(
               child: TextButton(
                 onPressed: () {
-                  if (onViewAll != null) onViewAll!();
+                  print('DEBUG: Ver Todas as Metas button clicked');
+                  if (onViewAll != null) {
+                    print('DEBUG: onViewAll callback exists, calling it');
+                    onViewAll!();
+                  } else {
+                    print('DEBUG: onViewAll callback is null!');
+                  }
                 },
                 child: Text(
                   'Ver Todas as Metas',

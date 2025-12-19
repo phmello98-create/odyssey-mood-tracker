@@ -1511,9 +1511,28 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
           PersonalGoalsCard(
             goals: stats.personalGoals,
             colors: colors,
-            onAddGoal: () => _showAddGoalDialog(colors),
-            onGoalTap: (goal) => _showGoalPopup(goal, colors),
-            onViewAll: () => setState(() => _selectedTabIndex = 4),
+            onAddGoal: () {
+              print('DEBUG: onAddGoal triggered');
+              _showAddGoalDialog(colors);
+            },
+            onGoalTap: (goal) {
+              print('DEBUG: onGoalTap triggered for goal: ${goal.title}');
+              try {
+                _showGoalPopup(goal, colors);
+              } catch (e, stack) {
+                print('ERROR in _showGoalPopup: $e');
+                print('Stack: $stack');
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Erro ao abrir meta: $e')),
+                );
+              }
+            },
+            onViewAll: () {
+              print(
+                'DEBUG: onViewAll triggered, navigating to Goals tab (index 4)',
+              );
+              setState(() => _selectedTabIndex = 4);
+            },
           ),
           const SizedBox(height: 20),
 
