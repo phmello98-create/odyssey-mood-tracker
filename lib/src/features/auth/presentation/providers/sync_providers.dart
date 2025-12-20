@@ -1,6 +1,7 @@
 // lib/src/features/auth/presentation/providers/sync_providers.dart
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -20,6 +21,9 @@ export '../../services/realtime_sync_service.dart' show SyncConfig;
 
 /// Provider para FirebaseFirestore
 final firestoreProvider = Provider<FirebaseFirestore>((ref) {
+  if (Firebase.apps.isEmpty) {
+    throw Exception('Firebase não inicializado');
+  }
   return FirebaseFirestore.instance;
 });
 
@@ -128,31 +132,29 @@ class SyncConfigNotifier extends StateNotifier<SyncConfig> {
   }
 }
 
-final syncConfigProvider = StateNotifierProvider<SyncConfigNotifier, SyncConfig>((ref) {
-  return SyncConfigNotifier();
-});
+final syncConfigProvider =
+    StateNotifierProvider<SyncConfigNotifier, SyncConfig>((ref) {
+      return SyncConfigNotifier();
+    });
 
 // ============================================
 // SYNC SERVICE PROVIDER
 // ============================================
 
 /// Provider para o SyncService
-/// 
+///
 /// Retorna null se o usuário não estiver autenticado ou for guest.
 /// Isso evita sincronização acidental de dados de usuários não logados.
 final syncServiceProvider = Provider<SyncService?>((ref) {
   final user = ref.watch(currentUserProvider);
-  
+
   // Não fornece sync service se não houver usuário ou for guest
   if (user == null || user.isGuest) {
     return null;
   }
-  
+
   final firestore = ref.watch(firestoreProvider);
-  return SyncService(
-    firestore: firestore,
-    userId: user.uid,
-  );
+  return SyncService(firestore: firestore, userId: user.uid);
 });
 
 // ============================================
@@ -160,32 +162,32 @@ final syncServiceProvider = Provider<SyncService?>((ref) {
 // ============================================
 
 /// Provider para o RealtimeSyncService (sync bidirecional)
-/// 
+///
 /// Escuta mudanças no Firestore e aplica localmente.
 final realtimeSyncServiceProvider = Provider<RealtimeSyncService?>((ref) {
   final user = ref.watch(currentUserProvider);
-  
+
   if (user == null || user.isGuest) {
     return null;
   }
-  
+
   final firestore = ref.watch(firestoreProvider);
   final config = ref.watch(syncConfigProvider);
-  
+
   final service = RealtimeSyncService(
     firestore: firestore,
     userId: user.uid,
     config: config,
   );
-  
+
   // Iniciar escuta automaticamente
   service.startListening();
-  
+
   // Limpar recursos quando o provider for descartado
   ref.onDispose(() {
     service.dispose();
   });
-  
+
   return service;
 });
 
@@ -203,19 +205,17 @@ final realtimeSyncEventsProvider = StreamProvider<SyncChangeEvent>((ref) {
 // ============================================
 
 /// Provider para o CloudStorageService
-/// 
+///
 /// Usado para upload de fotos de perfil e capas de livros.
 /// Retorna null se o usuário não estiver autenticado ou for guest.
 final cloudStorageServiceProvider = Provider<CloudStorageService?>((ref) {
   final user = ref.watch(currentUserProvider);
-  
+
   if (user == null || user.isGuest) {
     return null;
   }
-  
-  return CloudStorageService(
-    userId: user.uid,
-  );
+
+  return CloudStorageService(userId: user.uid);
 });
 
 // ============================================
@@ -223,31 +223,31 @@ final cloudStorageServiceProvider = Provider<CloudStorageService?>((ref) {
 // ============================================
 
 /// Provider para o OfflineSyncQueue
-/// 
+///
 /// Gerencia fila de operações offline com auto-sync quando volta online.
 /// Retorna null se o usuário não estiver autenticado ou for guest.
 final offlineSyncQueueProvider = Provider<OfflineSyncQueue?>((ref) {
   final user = ref.watch(currentUserProvider);
-  
+
   if (user == null || user.isGuest) {
     return null;
   }
-  
+
   final firestore = ref.watch(firestoreProvider);
   final queue = OfflineSyncQueue(
     firestore: firestore,
     userId: user.uid,
     strategy: ConflictResolutionStrategy.lastWriteWins,
   );
-  
+
   // Inicializar a fila
   queue.initialize();
-  
+
   // Limpar recursos quando o provider for descartado
   ref.onDispose(() {
     queue.dispose();
   });
-  
+
   return queue;
 });
 
@@ -255,11 +255,9 @@ final offlineSyncQueueProvider = Provider<OfflineSyncQueue?>((ref) {
 final offlineSyncStatusProvider = StreamProvider<SyncQueueStatus>((ref) {
   final queue = ref.watch(offlineSyncQueueProvider);
   if (queue == null) {
-    return Stream.value(const SyncQueueStatus(
-      pendingCount: 0,
-      isSyncing: false,
-      isOnline: true,
-    ));
+    return Stream.value(
+      const SyncQueueStatus(pendingCount: 0, isSyncing: false, isOnline: true),
+    );
   }
   return queue.statusStream;
 });
@@ -412,9 +410,7 @@ class SyncController extends StateNotifier<SyncState> {
       final results = await _syncService.downloadAll(
         onProgress: (category, status) {
           if (status == SyncOperationStatus.syncing) {
-            state = state.copyWith(
-              currentOperation: 'Baixando $category...',
-            );
+            state = state.copyWith(currentOperation: 'Baixando $category...');
           }
         },
       );
@@ -437,9 +433,7 @@ class SyncController extends StateNotifier<SyncState> {
   /// Sincroniza apenas uma categoria específica
   Future<void> syncCategory(String category) async {
     if (_syncService == null) {
-      state = state.copyWith(
-        errorMessage: 'Sync não disponível.',
-      );
+      state = state.copyWith(errorMessage: 'Sync não disponível.');
       return;
     }
 
@@ -509,11 +503,12 @@ class SyncController extends StateNotifier<SyncState> {
 }
 
 /// Provider para o SyncController
-final syncControllerProvider =
-    StateNotifierProvider<SyncController, SyncState>((ref) {
-  final syncService = ref.watch(syncServiceProvider);
-  return SyncController(syncService);
-});
+final syncControllerProvider = StateNotifierProvider<SyncController, SyncState>(
+  (ref) {
+    final syncService = ref.watch(syncServiceProvider);
+    return SyncController(syncService);
+  },
+);
 
 // ============================================
 // CONVENIENCE PROVIDERS
@@ -552,6 +547,6 @@ final autoSyncProvider = FutureProvider<void>((ref) async {
 final needsSyncProvider = FutureProvider<bool>((ref) async {
   final syncService = ref.watch(syncServiceProvider);
   if (syncService == null) return false;
-  
+
   return await syncService.hasUnsyncedData();
 });

@@ -2,499 +2,14 @@ import '../domain/post.dart';
 import '../domain/comment.dart';
 import '../domain/user_profile.dart';
 import '../domain/topic.dart';
+import '../domain/follow.dart';
 
 /// Repositório Mock para desenvolvimento e testes
 /// Retorna dados fictícios realistas com karma, badges, imagens, tags e views
 class MockCommunityData {
-  static final List<Post> _mockPosts = [
-    // 📌 PINNED POST
-    Post(
-      id: 'post_pinned_1',
-      userId: 'user_admin',
-      userName: 'Odyssey Team',
-      userPhotoUrl: 'https://i.pravatar.cc/150?u=odyssey',
-      userLevel: 50,
-      content:
-          '📢 ANÚNCIO IMPORTANTE\n\nBem-vindos à Comunidade Odyssey! 🚀\n\nRegras básicas:\n• Respeite todos os membros\n• Compartilhe suas experiências\n• Ajude quem precisa\n• Sem spam ou autopromoção\n\nDúvidas? Pergunte! 💬',
-      type: PostType.text,
-      upvotes: 892,
-      downvotes: 2,
-      viewCount: 15234,
-      commentCount: 156,
-      authorKarma: 99999,
-      authorFlair: 'Admin',
-      authorBadge: 'official',
-      tags: ['anúncio', 'regras', 'comunidade'],
-      createdAt: DateTime.now().subtract(const Duration(days: 30)),
-      updatedAt: DateTime.now().subtract(const Duration(hours: 1)),
-      categories: [CommunityTopic.general.name],
-      metadata: {'isPinned': true},
-    ),
-    Post(
-      id: 'post_1',
-      userId: 'user_1',
-      userName: 'Ana Silva',
-      userPhotoUrl: 'https://i.pravatar.cc/150?u=ana',
-      userLevel: 12,
-      content:
-          'Bom dia, pessoal! 👋 Acabei de completar minha primeira semana usando o Odyssey e já sinto uma diferença enorme na minha produtividade. O timer Pomodoro tem me ajudado muito a manter o foco! #produtividade #foco #metas',
-      type: PostType.text,
-      upvotes: 127,
-      downvotes: 3,
-      viewCount: 892,
-      commentCount: 23,
-      authorKarma: 3247,
-      authorFlair: 'Mentora',
-      authorBadge: 'karma_1000',
-      tags: ['produtividade', 'foco', 'metas'],
-      createdAt: DateTime.now().subtract(const Duration(hours: 2)),
-      updatedAt: DateTime.now().subtract(const Duration(hours: 2)),
-      categories: [
-        CommunityTopic.productivity.name,
-        CommunityTopic.general.name,
-      ],
-    ),
-    Post(
-      id: 'post_2',
-      userId: 'user_2',
-      userName: 'Carlos Mendes',
-      userPhotoUrl: 'https://i.pravatar.cc/150?u=carlos',
-      userLevel: 8,
-      content:
-          'Alguém mais aqui luta com ansiedade antes de tarefas importantes? Descobri que fazer 5 minutos de respiração consciente antes ajuda MUITO. Compartilho essa dica com vocês! 🧘‍♂️ #meditação #ansiedade #mindfulness',
-      type: PostType.insight,
-      upvotes: 234,
-      downvotes: 5,
-      viewCount: 1543,
-      commentCount: 45,
-      authorKarma: 1856,
-      authorFlair: 'Guia',
-      authorBadge: 'mindfulness_guru',
-      tags: ['meditação', 'ansiedade', 'mindfulness'],
-      imageUrls: [
-        'https://images.unsplash.com/photo-1506126613408-eca07ce68773?w=400',
-      ],
-      createdAt: DateTime.now().subtract(const Duration(hours: 5)),
-      updatedAt: DateTime.now().subtract(const Duration(hours: 5)),
-      categories: [CommunityTopic.mindfulness.name, CommunityTopic.tips.name],
-    ),
-    Post(
-      id: 'post_3',
-      userId: 'user_3',
-      userName: 'Marina Costa',
-      userPhotoUrl: 'https://i.pravatar.cc/150?u=marina',
-      userLevel: 15,
-      content:
-          '🏆 CONQUISTA DESBLOQUEADA! Acabei de atingir 100 horas de foco total! Quando comecei, mal conseguia 25 minutos sem me distrair. A jornada vale a pena, pessoal! #conquistas #foco #vitória',
-      type: PostType.achievement,
-      upvotes: 456,
-      downvotes: 2,
-      viewCount: 2876,
-      commentCount: 67,
-      authorKarma: 8934,
-      authorFlair: 'Sábia',
-      authorBadge: 'karma_1000',
-      tags: ['conquistas', 'foco', 'vitória'],
-      createdAt: DateTime.now().subtract(const Duration(hours: 8)),
-      updatedAt: DateTime.now().subtract(const Duration(hours: 8)),
-      categories: [
-        CommunityTopic.achievements.name,
-        CommunityTopic.motivation.name,
-      ],
-      metadata: {'hours': 100, 'achievement': 'focus_master'},
-    ),
-    Post(
-      id: 'post_4',
-      userId: 'user_4',
-      userName: 'Pedro Oliveira',
-      userPhotoUrl: 'https://i.pravatar.cc/150?u=pedro',
-      userLevel: 5,
-      content:
-          'Hoje está sendo um dia difícil... Não consegui manter minha streak de hábitos. Mas tudo bem, amanhã recomeço. Alguém tem palavras de encorajamento? 💙 #apoio #saúdemental',
-      type: PostType.mood,
-      upvotes: 189,
-      downvotes: 0,
-      viewCount: 756,
-      commentCount: 89,
-      authorKarma: 542,
-      authorFlair: 'Guia',
-      authorBadge: 'supporter',
-      tags: ['apoio', 'saúdemental'],
-      createdAt: DateTime.now().subtract(const Duration(hours: 12)),
-      updatedAt: DateTime.now().subtract(const Duration(hours: 12)),
-      categories: [CommunityTopic.support.name, CommunityTopic.wellness.name],
-      metadata: {
-        'moodLabel': 'Dia Difícil',
-        'moodEmoji': '😢',
-        'mood': 'struggling',
-      },
-    ),
-    Post(
-      id: 'post_5',
-      userId: 'user_5',
-      userName: 'Julia Santos',
-      userPhotoUrl: 'https://i.pravatar.cc/150?u=julia',
-      userLevel: 10,
-      content:
-          'Dica de ouro: Criei uma playlist específica para cada tipo de tarefa. Música instrumental para estudar, lo-fi para trabalho criativo, e energética para exercícios. Mudou meu jogo! 🎧 #dicas #produtividade #rotina',
-      type: PostType.text,
-      upvotes: 312,
-      downvotes: 8,
-      viewCount: 2103,
-      commentCount: 34,
-      authorKarma: 2156,
-      authorFlair: 'Mentora',
-      authorBadge: 'productivity_master',
-      tags: ['dicas', 'produtividade', 'rotina'],
-      imageUrls: [
-        'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400',
-        'https://images.unsplash.com/photo-1511379938547-c1f69419868d?w=400',
-      ],
-      createdAt: DateTime.now().subtract(const Duration(days: 1)),
-      updatedAt: DateTime.now().subtract(const Duration(days: 1)),
-      categories: [CommunityTopic.tips.name, CommunityTopic.productivity.name],
-    ),
-    Post(
-      id: 'post_6',
-      userId: 'user_6',
-      userName: 'Rafael Lima',
-      userPhotoUrl: 'https://i.pravatar.cc/150?u=rafael',
-      userLevel: 7,
-      content:
-          'Meditei por 20 minutos hoje sem me distrair nem uma vez! Pequenas vitórias importam. Há um mês, eu mal conseguia 2 minutos. Progresso é progresso! 🌟 #mindfulness #progresso',
-      type: PostType.achievement,
-      upvotes: 156,
-      downvotes: 1,
-      viewCount: 534,
-      commentCount: 28,
-      authorKarma: 789,
-      authorFlair: 'Guia',
-      authorBadge: 'streak_7',
-      tags: ['mindfulness', 'progresso'],
-      createdAt: DateTime.now().subtract(const Duration(days: 1, hours: 6)),
-      updatedAt: DateTime.now().subtract(const Duration(days: 1, hours: 6)),
-      categories: [
-        CommunityTopic.mindfulness.name,
-        CommunityTopic.achievements.name,
-      ],
-    ),
-    Post(
-      id: 'post_7',
-      userId: 'user_7',
-      userName: 'Beatriz Alves',
-      userPhotoUrl: 'https://i.pravatar.cc/150?u=beatriz',
-      userLevel: 13,
-      content:
-          'Lembrete importante: Não se compare com os outros. Cada um tem seu próprio ritmo e jornada. Você está exatamente onde precisa estar. Continue! 💚 #motivação #inspiração #apoio',
-      type: PostType.insight,
-      upvotes: 567,
-      downvotes: 4,
-      viewCount: 3421,
-      commentCount: 78,
-      authorKarma: 5643,
-      authorFlair: 'Sábia',
-      authorBadge: 'top_contributor',
-      tags: ['motivação', 'inspiração', 'apoio'],
-      createdAt: DateTime.now().subtract(const Duration(days: 2)),
-      updatedAt: DateTime.now().subtract(const Duration(days: 2)),
-      categories: [CommunityTopic.motivation.name, CommunityTopic.support.name],
-    ),
-    Post(
-      id: 'post_8',
-      userId: 'user_8',
-      userName: 'Lucas Ferreira',
-      userPhotoUrl: 'https://i.pravatar.cc/150?u=lucas',
-      userLevel: 9,
-      content:
-          'Alguém mais usa a técnica 2-2-2? 2 horas de foco profundo, 2 horas de tarefas leves, 2 horas de aprendizado. Tem funcionado muito bem para mim! #produtividade #dicas #foco',
-      type: PostType.text,
-      upvotes: 203,
-      downvotes: 12,
-      viewCount: 1234,
-      commentCount: 56,
-      authorKarma: 1432,
-      authorFlair: 'Mentor',
-      authorBadge: 'writer_10',
-      tags: ['produtividade', 'dicas', 'foco'],
-      createdAt: DateTime.now().subtract(const Duration(days: 2, hours: 8)),
-      updatedAt: DateTime.now().subtract(const Duration(days: 2, hours: 8)),
-      categories: [CommunityTopic.productivity.name, CommunityTopic.tips.name],
-    ),
-    // NEW POSTS
-    Post(
-      id: 'post_9',
-      userId: 'user_9',
-      userName: 'Fernanda Dias',
-      userPhotoUrl: 'https://i.pravatar.cc/150?u=fernanda',
-      userLevel: 18,
-      content:
-          '📚 Terminei de ler "Atomic Habits" e PRECISO compartilhar: A chave é focar em sistemas, não em metas. O processo > resultado. Quem mais leu? O que acharam? #leitura #hábitos #crescimento',
-      type: PostType.insight,
-      upvotes: 423,
-      downvotes: 3,
-      viewCount: 2890,
-      commentCount: 92,
-      authorKarma: 7823,
-      authorFlair: 'Sábia',
-      authorBadge: 'book_lover',
-      tags: ['leitura', 'hábitos', 'crescimento'],
-      createdAt: DateTime.now().subtract(const Duration(hours: 4)),
-      updatedAt: DateTime.now().subtract(const Duration(hours: 4)),
-      categories: [CommunityTopic.tips.name, CommunityTopic.general.name],
-    ),
-    Post(
-      id: 'post_10',
-      userId: 'user_10',
-      userName: 'Thiago Rocha',
-      userPhotoUrl: 'https://i.pravatar.cc/150?u=thiago',
-      userLevel: 6,
-      content:
-          'Primeira semana acordando às 5h da manhã! ☀️ No início foi difícil, mas agora já estou curtindo o silêncio matinal. Alguém mais é do club das 5? #rotina #morningperson #desafio',
-      type: PostType.text,
-      upvotes: 89,
-      downvotes: 15,
-      viewCount: 567,
-      commentCount: 34,
-      authorKarma: 432,
-      authorFlair: 'Aprendiz',
-      tags: ['rotina', 'morningperson', 'desafio'],
-      createdAt: DateTime.now().subtract(const Duration(hours: 3)),
-      updatedAt: DateTime.now().subtract(const Duration(hours: 3)),
-      categories: [
-        CommunityTopic.productivity.name,
-        CommunityTopic.wellness.name,
-      ],
-    ),
-    Post(
-      id: 'post_11',
-      userId: 'user_11',
-      userName: 'Isabela Nunes',
-      userPhotoUrl: 'https://i.pravatar.cc/150?u=isabela',
-      userLevel: 14,
-      content:
-          '🎯 30 dias completando TODOS os hábitos! Streak perfeita! O segredo? Comecei com apenas 3 micro-hábitos e fui adicionando gradualmente. Menos é mais no começo! #streak #hábitos #vitória',
-      type: PostType.achievement,
-      upvotes: 678,
-      downvotes: 1,
-      viewCount: 4532,
-      commentCount: 123,
-      authorKarma: 6234,
-      authorFlair: 'Mestra',
-      authorBadge: 'streak_30',
-      tags: ['streak', 'hábitos', 'vitória'],
-      imageUrls: [
-        'https://images.unsplash.com/photo-1484480974693-6ca0a78fb36b?w=400',
-      ],
-      createdAt: DateTime.now().subtract(const Duration(hours: 6)),
-      updatedAt: DateTime.now().subtract(const Duration(hours: 6)),
-      categories: [
-        CommunityTopic.achievements.name,
-        CommunityTopic.motivation.name,
-      ],
-    ),
-    Post(
-      id: 'post_12',
-      userId: 'user_12',
-      userName: 'Gabriel Martins',
-      userPhotoUrl: 'https://i.pravatar.cc/150?u=gabriel',
-      userLevel: 11,
-      content:
-          'Aqui vai uma confissão: Tenho procrastinado o dia todo. Às vezes acontece, né? Amanhã eu volto mais forte. Vocês também têm dias assim? #honestidade #procrastinação #humano',
-      type: PostType.mood,
-      upvotes: 234,
-      downvotes: 0,
-      viewCount: 987,
-      commentCount: 156,
-      authorKarma: 2341,
-      authorFlair: 'Mentor',
-      tags: ['honestidade', 'procrastinação', 'humano'],
-      createdAt: DateTime.now().subtract(const Duration(hours: 1)),
-      updatedAt: DateTime.now().subtract(const Duration(hours: 1)),
-      categories: [CommunityTopic.support.name, CommunityTopic.general.name],
-      metadata: {'moodLabel': 'Procrastinando', 'moodEmoji': '😅'},
-    ),
-    Post(
-      id: 'post_13',
-      userId: 'user_13',
-      userName: 'Camila Souza',
-      userPhotoUrl: 'https://i.pravatar.cc/150?u=camila',
-      userLevel: 16,
-      content:
-          '✨ DICA DE ORGANIZAÇÃO ✨\n\nUsem a "Regra dos 2 minutos": se uma tarefa leva menos de 2 minutos, faça AGORA. Isso elimina a maioria das pequenas pendências que nos drenam!\n\n#produtividade #gtd #organização',
-      type: PostType.insight,
-      upvotes: 512,
-      downvotes: 7,
-      viewCount: 3210,
-      commentCount: 67,
-      authorKarma: 7890,
-      authorFlair: 'Sábia',
-      authorBadge: 'tip_master',
-      tags: ['produtividade', 'gtd', 'organização'],
-      createdAt: DateTime.now().subtract(const Duration(hours: 10)),
-      updatedAt: DateTime.now().subtract(const Duration(hours: 10)),
-      categories: [CommunityTopic.tips.name, CommunityTopic.productivity.name],
-    ),
-    Post(
-      id: 'post_14',
-      userId: 'user_14',
-      userName: 'Diego Andrade',
-      userPhotoUrl: 'https://i.pravatar.cc/150?u=diego',
-      userLevel: 4,
-      content:
-          'Sou novo aqui! 👋 Vim tentar melhorar meus hábitos de estudo. Alguém tem dicas para quem está começando? Aceito todas as sugestões! #novato #estudos #ajuda',
-      type: PostType.text,
-      upvotes: 56,
-      downvotes: 0,
-      viewCount: 234,
-      commentCount: 45,
-      authorKarma: 123,
-      authorFlair: 'Iniciante',
-      tags: ['novato', 'estudos', 'ajuda'],
-      createdAt: DateTime.now().subtract(const Duration(minutes: 45)),
-      updatedAt: DateTime.now().subtract(const Duration(minutes: 45)),
-      categories: [CommunityTopic.general.name, CommunityTopic.support.name],
-    ),
-    Post(
-      id: 'post_15',
-      userId: 'user_15',
-      userName: 'Larissa Pinto',
-      userPhotoUrl: 'https://i.pravatar.cc/150?u=larissa',
-      userLevel: 20,
-      content:
-          '🧘‍♀️ 1000 minutos de meditação acumulados no app!\n\nO que mudou na minha vida:\n• Menos ansiedade\n• Melhor foco\n• Sono mais tranquilo\n• Mais paciência\n\nMeditação realmente transforma! #meditação #milestone #transformação',
-      type: PostType.achievement,
-      upvotes: 789,
-      downvotes: 2,
-      viewCount: 5678,
-      commentCount: 134,
-      authorKarma: 12345,
-      authorFlair: 'Iluminada',
-      authorBadge: 'meditation_master',
-      tags: ['meditação', 'milestone', 'transformação'],
-      imageUrls: [
-        'https://images.unsplash.com/photo-1545389336-cf090694435e?w=400',
-      ],
-      createdAt: DateTime.now().subtract(const Duration(days: 1, hours: 2)),
-      updatedAt: DateTime.now().subtract(const Duration(days: 1, hours: 2)),
-      categories: [
-        CommunityTopic.achievements.name,
-        CommunityTopic.mindfulness.name,
-      ],
-    ),
-    Post(
-      id: 'post_16',
-      userId: 'user_16',
-      userName: 'Renato Vieira',
-      userPhotoUrl: 'https://i.pravatar.cc/150?u=renato',
-      userLevel: 8,
-      content:
-          'Pergunta séria: Vocês usam mais a técnica Pomodoro tradicional (25/5) ou adaptam para intervalos maiores? Eu prefiro 50/10, mas quero saber o que funciona pra vocês! 🍅⏱️',
-      type: PostType.text,
-      upvotes: 145,
-      downvotes: 3,
-      viewCount: 876,
-      commentCount: 89,
-      authorKarma: 987,
-      authorFlair: 'Guia',
-      tags: ['pomodoro', 'produtividade', 'enquete'],
-      createdAt: DateTime.now().subtract(const Duration(hours: 7)),
-      updatedAt: DateTime.now().subtract(const Duration(hours: 7)),
-      categories: [CommunityTopic.productivity.name, CommunityTopic.tips.name],
-    ),
-    Post(
-      id: 'post_17',
-      userId: 'user_17',
-      userName: 'Vanessa Moreira',
-      userPhotoUrl: 'https://i.pravatar.cc/150?u=vanessa',
-      userLevel: 12,
-      content:
-          'Precisando de apoio hoje 💔 Perdi um prazo importante no trabalho porque subestimei o tempo necessário. Como vocês lidam com a frustração de não atingir uma meta?',
-      type: PostType.mood,
-      upvotes: 167,
-      downvotes: 0,
-      viewCount: 654,
-      commentCount: 112,
-      authorKarma: 2876,
-      authorFlair: 'Mentora',
-      tags: ['apoio', 'frustração', 'crescimento'],
-      createdAt: DateTime.now().subtract(const Duration(hours: 2, minutes: 30)),
-      updatedAt: DateTime.now().subtract(const Duration(hours: 2, minutes: 30)),
-      categories: [CommunityTopic.support.name, CommunityTopic.wellness.name],
-      metadata: {'moodLabel': 'Frustrada', 'moodEmoji': '💔'},
-    ),
-    Post(
-      id: 'post_18',
-      userId: 'user_18',
-      userName: 'André Costa',
-      userPhotoUrl: 'https://i.pravatar.cc/150?u=andre',
-      userLevel: 19,
-      content:
-          '💪 Guia completo: Como construir uma rotina matinal imbatível!\n\n1. Durma cedo (antes das 23h)\n2. Acorde no primeiro alarme\n3. Nada de celular por 30min\n4. Hidrate-se imediatamente\n5. 10min de movimento\n6. Visualize o dia\n\nTestar por 21 dias! #rotina #morning #guia',
-      type: PostType.insight,
-      upvotes: 834,
-      downvotes: 12,
-      viewCount: 7654,
-      commentCount: 145,
-      authorKarma: 11234,
-      authorFlair: 'Sábio',
-      authorBadge: 'guide_creator',
-      tags: ['rotina', 'morning', 'guia'],
-      createdAt: DateTime.now().subtract(const Duration(days: 3)),
-      updatedAt: DateTime.now().subtract(const Duration(days: 3)),
-      categories: [CommunityTopic.tips.name, CommunityTopic.productivity.name],
-    ),
-    Post(
-      id: 'post_19',
-      userId: 'user_19',
-      userName: 'Priscila Ramos',
-      userPhotoUrl: 'https://i.pravatar.cc/150?u=priscila',
-      userLevel: 7,
-      content:
-          'Foto do meu setup de estudos! 📚💻 Minimalista e funcional. Mesa limpa = mente clara. O que vocês acham? Aceito sugestões! #setup #estudos #organização',
-      type: PostType.image,
-      upvotes: 278,
-      downvotes: 5,
-      viewCount: 1890,
-      commentCount: 56,
-      authorKarma: 876,
-      authorFlair: 'Guia',
-      tags: ['setup', 'estudos', 'organização'],
-      imageUrls: [
-        'https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=400',
-        'https://images.unsplash.com/photo-1593642632559-0c6d3fc62b89?w=400',
-      ],
-      createdAt: DateTime.now().subtract(const Duration(hours: 14)),
-      updatedAt: DateTime.now().subtract(const Duration(hours: 14)),
-      categories: [
-        CommunityTopic.productivity.name,
-        CommunityTopic.general.name,
-      ],
-    ),
-    Post(
-      id: 'post_20',
-      userId: 'user_20',
-      userName: 'Marcelo Dias',
-      userPhotoUrl: 'https://i.pravatar.cc/150?u=marcelo',
-      userLevel: 22,
-      content:
-          '🔥 500 DIAS DE STREAK! 🔥\n\nNunca pensei que conseguiria! Começou como um experimento e virou um estilo de vida. O segredo? Ser consistente, não perfeito. Aparecer todo dia, mesmo quando não estou motivado.\n\n#streak #epic #milestone #nuncarenunciar',
-      type: PostType.achievement,
-      upvotes: 1234,
-      downvotes: 3,
-      viewCount: 12345,
-      commentCount: 234,
-      authorKarma: 25678,
-      authorFlair: 'Lenda',
-      authorBadge: 'streak_champion',
-      tags: ['streak', 'epic', 'milestone', 'nuncarenunciar'],
-      createdAt: DateTime.now().subtract(const Duration(days: 1, hours: 18)),
-      updatedAt: DateTime.now().subtract(const Duration(days: 1, hours: 18)),
-      categories: [
-        CommunityTopic.achievements.name,
-        CommunityTopic.motivation.name,
-      ],
-    ),
-  ];
+  // ===========================================================================
+  // USERS (26 Profiles)
+  // ===========================================================================
 
   static final List<PublicUserProfile> _mockUsers = [
     // ADMIN
@@ -503,130 +18,125 @@ class MockCommunityData {
       displayName: 'Odyssey Team',
       photoUrl: 'https://i.pravatar.cc/150?u=odyssey',
       level: 50,
-      totalXP: 999999,
-      badges: ['official', 'admin', 'founder'],
+      totalXP: 100000,
+      badges: ['admin', 'founder'],
       bio: 'Equipe oficial do Odyssey 🚀 | Estamos aqui para ajudar!',
       createdAt: DateTime.now().subtract(const Duration(days: 365)),
       lastActive: DateTime.now(),
     ),
+    // USERS 1-25
     PublicUserProfile(
       userId: 'user_1',
+      displayName: 'Maria Santos',
+      photoUrl: 'https://i.pravatar.cc/150?u=maria',
+      level: 15,
+      totalXP: 4500,
+      badges: ['creator', 'popular'],
+      bio: 'Apaixonada por mindfulness e produtividade 🌸',
+      createdAt: DateTime.now().subtract(const Duration(days: 120)),
+      lastActive: DateTime.now(),
+    ),
+    PublicUserProfile(
+      userId: 'user_2',
+      displayName: 'Lucas Ferreira',
+      photoUrl: 'https://i.pravatar.cc/150?u=lucas',
+      level: 8,
+      totalXP: 1200,
+      badges: ['early_bird'],
+      bio: 'Buscando equilíbrio dia após dia.',
+      createdAt: DateTime.now().subtract(const Duration(days: 45)),
+      lastActive: DateTime.now().subtract(const Duration(minutes: 15)),
+    ),
+    PublicUserProfile(
+      userId: 'user_3',
       displayName: 'Ana Silva',
       photoUrl: 'https://i.pravatar.cc/150?u=ana',
       level: 12,
       totalXP: 3200,
-      badges: ['early_bird', 'focus_master', 'karma_1000'],
-      bio: 'Apaixonada por produtividade e mindfulness 🌸 | 3.2k karma',
-      createdAt: DateTime.now().subtract(const Duration(days: 45)),
+      badges: ['streak_master_30'],
+      bio: 'Yoga | Meditação | Leitura 📚',
+      createdAt: DateTime.now().subtract(const Duration(days: 90)),
+      lastActive: DateTime.now().subtract(const Duration(minutes: 45)),
+    ),
+    PublicUserProfile(
+      userId: 'user_4',
+      displayName: 'Pedro Oliveira',
+      photoUrl: 'https://i.pravatar.cc/150?u=pedro',
+      level: 5,
+      totalXP: 542,
+      badges: ['supporter'],
+      bio: 'Começando a jornada de autoconhecimento.',
+      createdAt: DateTime.now().subtract(const Duration(days: 20)),
       lastActive: DateTime.now().subtract(const Duration(hours: 1)),
     ),
     PublicUserProfile(
-      userId: 'user_2',
-      displayName: 'Carlos Mendes',
-      photoUrl: 'https://i.pravatar.cc/150?u=carlos',
-      level: 8,
-      totalXP: 1850,
-      badges: ['meditation_guru', 'mindfulness_guru'],
-      bio: 'Praticante de meditação e respiração consciente | 1.8k karma',
-      createdAt: DateTime.now().subtract(const Duration(days: 30)),
-      lastActive: DateTime.now().subtract(const Duration(hours: 3)),
-    ),
-    PublicUserProfile(
-      userId: 'user_3',
-      displayName: 'Marina Costa',
-      photoUrl: 'https://i.pravatar.cc/150?u=marina',
-      level: 15,
-      totalXP: 4500,
-      badges: [
-        'focus_master',
-        'streak_keeper',
-        'achievement_hunter',
-        'karma_1000',
-        'top_contributor',
-      ],
-      bio: 'Desenvolvedora | 100h+ de foco | 8.9k karma | Sempre aprendendo',
-      createdAt: DateTime.now().subtract(const Duration(days: 90)),
-      lastActive: DateTime.now().subtract(const Duration(minutes: 30)),
-    ),
-    PublicUserProfile(
-      userId: 'user_7',
-      displayName: 'Beatriz Alves',
-      photoUrl: 'https://i.pravatar.cc/150?u=beatriz',
-      level: 13,
-      totalXP: 3800,
-      badges: ['top_contributor', 'karma_1000', 'supporter'],
-      bio: 'Ajudando pessoas a serem melhores ❤️ | 5.6k karma',
-      createdAt: DateTime.now().subtract(const Duration(days: 120)),
+      userId: 'user_5',
+      displayName: 'Julia Santos',
+      photoUrl: 'https://i.pravatar.cc/150?u=julia',
+      level: 20,
+      totalXP: 8900,
+      badges: ['mentor', 'top_contributor'],
+      bio: 'Psicóloga e entusiasta de tecnologia.',
+      createdAt: DateTime.now().subtract(const Duration(days: 200)),
       lastActive: DateTime.now().subtract(const Duration(hours: 2)),
     ),
     PublicUserProfile(
-      userId: 'user_9',
-      displayName: 'Fernanda Dias',
-      photoUrl: 'https://i.pravatar.cc/150?u=fernanda',
-      level: 18,
-      totalXP: 5600,
-      badges: ['book_lover', 'wise_owl', 'karma_5000'],
-      bio: 'Leitora ávida | Growth mindset | 7.8k karma',
-      createdAt: DateTime.now().subtract(const Duration(days: 200)),
+      userId: 'user_6',
+      displayName: 'Marcos Souza',
+      photoUrl: 'https://i.pravatar.cc/150?u=marcos',
+      level: 10,
+      totalXP: 2100,
+      badges: ['focus_master'],
+      bio: 'Foco total! 🎯',
+      createdAt: DateTime.now().subtract(const Duration(days: 60)),
       lastActive: DateTime.now().subtract(const Duration(hours: 4)),
     ),
     PublicUserProfile(
-      userId: 'user_11',
-      displayName: 'Isabela Nunes',
-      photoUrl: 'https://i.pravatar.cc/150?u=isabela',
+      userId: 'user_7',
+      displayName: 'Beatriz Costa',
+      photoUrl: 'https://i.pravatar.cc/150?u=beatriz',
       level: 14,
-      totalXP: 4200,
-      badges: ['streak_30', 'consistency_queen', 'habit_master'],
-      bio: '🎯 30+ dias de streak | Micro-hábitos | 6.2k karma',
-      createdAt: DateTime.now().subtract(const Duration(days: 75)),
-      lastActive: DateTime.now().subtract(const Duration(minutes: 45)),
+      totalXP: 3800,
+      badges: ['night_owl'],
+      bio: 'Estudante de medicina | Sobrevivendo aos plantões',
+      createdAt: DateTime.now().subtract(const Duration(days: 110)),
+      lastActive: DateTime.now().subtract(const Duration(minutes: 5)),
     ),
     PublicUserProfile(
-      userId: 'user_15',
-      displayName: 'Larissa Pinto',
-      photoUrl: 'https://i.pravatar.cc/150?u=larissa',
-      level: 20,
-      totalXP: 7800,
-      badges: ['meditation_master', 'zen_master', 'karma_10000'],
-      bio: '🧘‍♀️ 1000+ min meditação | Paz interior | 12k karma',
-      createdAt: DateTime.now().subtract(const Duration(days: 180)),
-      lastActive: DateTime.now().subtract(const Duration(hours: 1)),
-    ),
-    PublicUserProfile(
-      userId: 'user_18',
-      displayName: 'André Costa',
-      photoUrl: 'https://i.pravatar.cc/150?u=andre',
-      level: 19,
-      totalXP: 6900,
-      badges: ['guide_creator', 'helpful_hero', 'karma_10000'],
-      bio: '💪 Criador de guias | Morning routine | 11k karma',
-      createdAt: DateTime.now().subtract(const Duration(days: 150)),
+      userId: 'user_8',
+      displayName: 'Fernanda Lima',
+      photoUrl: 'https://i.pravatar.cc/150?u=fernanda',
+      level: 7,
+      totalXP: 980,
+      badges: ['newcomer'],
+      bio: 'Amante da natureza 🌿',
+      createdAt: DateTime.now().subtract(const Duration(days: 30)),
       lastActive: DateTime.now().subtract(const Duration(hours: 5)),
     ),
     PublicUserProfile(
-      userId: 'user_20',
-      displayName: 'Marcelo Dias',
-      photoUrl: 'https://i.pravatar.cc/150?u=marcelo',
-      level: 22,
-      totalXP: 12000,
-      badges: ['streak_champion', 'legendary', 'karma_25000', 'og_member'],
-      bio: '🔥 500+ dias de streak | Lenda viva | 25k karma',
-      createdAt: DateTime.now().subtract(const Duration(days: 550)),
-      lastActive: DateTime.now().subtract(const Duration(minutes: 15)),
-    ),
-    PublicUserProfile(
-      userId: 'user_14',
-      displayName: 'Diego Andrade',
-      photoUrl: 'https://i.pravatar.cc/150?u=diego',
-      level: 4,
-      totalXP: 450,
-      badges: ['newcomer'],
-      bio: 'Novo por aqui! Buscando melhorar meus estudos 📚',
-      createdAt: DateTime.now().subtract(const Duration(days: 3)),
-      lastActive: DateTime.now().subtract(const Duration(minutes: 45)),
+      userId: 'user_9',
+      displayName: 'Ricardo Almeida',
+      photoUrl: 'https://i.pravatar.cc/150?u=ricardo',
+      level: 18,
+      totalXP: 6700,
+      badges: ['streak_master_100', 'motivator'],
+      bio: '100 dias seguidos de meditação! 🧘‍♂️',
+      createdAt: DateTime.now().subtract(const Duration(days: 150)),
+      lastActive: DateTime.now().subtract(const Duration(hours: 1)),
     ),
     PublicUserProfile(
       userId: 'user_10',
+      displayName: 'Camila Rodrigues',
+      photoUrl: 'https://i.pravatar.cc/150?u=camila',
+      level: 16,
+      totalXP: 5120,
+      badges: ['productivity_guru'],
+      bio: 'GTD & Bullet Journal lover 📝',
+      createdAt: DateTime.now().subtract(const Duration(days: 130)),
+      lastActive: DateTime.now().subtract(const Duration(minutes: 20)),
+    ),
+    PublicUserProfile(
+      userId: 'user_11',
       displayName: 'Thiago Rocha',
       photoUrl: 'https://i.pravatar.cc/150?u=thiago',
       level: 6,
@@ -648,6 +158,50 @@ class MockCommunityData {
       lastActive: DateTime.now().subtract(const Duration(hours: 1)),
     ),
     PublicUserProfile(
+      userId: 'user_13',
+      displayName: 'Mariana Costa',
+      photoUrl: 'https://i.pravatar.cc/150?u=mariana',
+      level: 9,
+      totalXP: 1500,
+      badges: ['bookworm'],
+      bio: 'Lendo 1 livro por semana 📖',
+      createdAt: DateTime.now().subtract(const Duration(days: 50)),
+      lastActive: DateTime.now().subtract(const Duration(hours: 6)),
+    ),
+    PublicUserProfile(
+      userId: 'user_14',
+      displayName: 'Rafael Lima',
+      photoUrl: 'https://i.pravatar.cc/150?u=rafael',
+      level: 13,
+      totalXP: 3500,
+      badges: ['gym_rat'],
+      bio: 'Crossfit e alimentação saudável 💪',
+      createdAt: DateTime.now().subtract(const Duration(days: 100)),
+      lastActive: DateTime.now().subtract(const Duration(minutes: 10)),
+    ),
+    PublicUserProfile(
+      userId: 'user_15',
+      displayName: 'Bruno Santos',
+      photoUrl: 'https://i.pravatar.cc/150?u=bruno',
+      level: 4,
+      totalXP: 400,
+      badges: ['newcomer'],
+      bio: 'Novo por aqui!',
+      createdAt: DateTime.now().subtract(const Duration(days: 10)),
+      lastActive: DateTime.now().subtract(const Duration(hours: 12)),
+    ),
+    PublicUserProfile(
+      userId: 'user_16',
+      displayName: 'Patricia Silva',
+      photoUrl: 'https://i.pravatar.cc/150?u=patricia',
+      level: 19,
+      totalXP: 7800,
+      badges: ['meditator_expert'],
+      bio: 'Instrutora de Mindfulness',
+      createdAt: DateTime.now().subtract(const Duration(days: 180)),
+      lastActive: DateTime.now().subtract(const Duration(hours: 1)),
+    ),
+    PublicUserProfile(
       userId: 'user_17',
       displayName: 'Vanessa Moreira',
       photoUrl: 'https://i.pravatar.cc/150?u=vanessa',
@@ -658,49 +212,237 @@ class MockCommunityData {
       createdAt: DateTime.now().subtract(const Duration(days: 80)),
       lastActive: DateTime.now().subtract(const Duration(hours: 2)),
     ),
+    PublicUserProfile(
+      userId: 'user_18',
+      displayName: 'Rodrigo Ferreira',
+      photoUrl: 'https://i.pravatar.cc/150?u=rodrigo',
+      level: 7,
+      totalXP: 950,
+      badges: ['gamer'],
+      bio: 'Conciliando jogos e estudos 🎮',
+      createdAt: DateTime.now().subtract(const Duration(days: 35)),
+      lastActive: DateTime.now().subtract(const Duration(hours: 4)),
+    ),
+    PublicUserProfile(
+      userId: 'user_19',
+      displayName: 'Aline Oliveira',
+      photoUrl: 'https://i.pravatar.cc/150?u=aline',
+      level: 10,
+      totalXP: 2200,
+      badges: ['artist'],
+      bio: 'Arte como terapia 🎨',
+      createdAt: DateTime.now().subtract(const Duration(days: 65)),
+      lastActive: DateTime.now().subtract(const Duration(hours: 5)),
+    ),
+    PublicUserProfile(
+      userId: 'user_20',
+      displayName: 'Gustavo Souza',
+      photoUrl: 'https://i.pravatar.cc/150?u=gustavo',
+      level: 14,
+      totalXP: 4100,
+      badges: ['developer'],
+      bio: 'Dev Flutter | Coding Life 💻',
+      createdAt: DateTime.now().subtract(const Duration(days: 115)),
+      lastActive: DateTime.now().subtract(const Duration(minutes: 50)),
+    ),
+    PublicUserProfile(
+      userId: 'user_21',
+      displayName: 'Leticia Almeida',
+      photoUrl: 'https://i.pravatar.cc/150?u=leticia',
+      level: 5,
+      totalXP: 600,
+      badges: ['student'],
+      bio: 'Estudante de Psicologia',
+      createdAt: DateTime.now().subtract(const Duration(days: 25)),
+      lastActive: DateTime.now().subtract(const Duration(hours: 8)),
+    ),
+    PublicUserProfile(
+      userId: 'user_22',
+      displayName: 'Felipe Rodrigues',
+      photoUrl: 'https://i.pravatar.cc/150?u=felipe',
+      level: 17,
+      totalXP: 6200,
+      badges: ['runner'],
+      bio: 'Maratonista em construção 🏃‍♂️',
+      createdAt: DateTime.now().subtract(const Duration(days: 140)),
+      lastActive: DateTime.now().subtract(const Duration(hours: 1)),
+    ),
+    PublicUserProfile(
+      userId: 'user_23',
+      displayName: 'Juliana Rocha',
+      photoUrl: 'https://i.pravatar.cc/150?u=juliana',
+      level: 8,
+      totalXP: 1300,
+      badges: ['cat_lover'],
+      bio: 'Mãe de 3 gatos 🐱',
+      createdAt: DateTime.now().subtract(const Duration(days: 40)),
+      lastActive: DateTime.now().subtract(const Duration(hours: 2)),
+    ),
+    PublicUserProfile(
+      userId: 'user_24',
+      displayName: 'Daniel Martins',
+      photoUrl: 'https://i.pravatar.cc/150?u=daniel',
+      level: 11,
+      totalXP: 2900,
+      badges: ['musician'],
+      bio: 'Música cura a alma 🎵',
+      createdAt: DateTime.now().subtract(const Duration(days: 75)),
+      lastActive: DateTime.now().subtract(const Duration(hours: 3)),
+    ),
+    PublicUserProfile(
+      userId: 'user_25',
+      displayName: 'Roberta Costa',
+      photoUrl: 'https://i.pravatar.cc/150?u=roberta',
+      level: 6,
+      totalXP: 750,
+      badges: ['traveler'],
+      bio: 'Planejando a próxima viagem ✈️',
+      createdAt: DateTime.now().subtract(const Duration(days: 18)),
+      lastActive: DateTime.now().subtract(const Duration(hours: 9)),
+    ),
   ];
 
-  /// Retorna lista de posts mock
-  static List<Post> getPosts({int limit = 20}) {
-    return _mockPosts.take(limit).toList();
-  }
+  // ===========================================================================
+  // FOLLOW STATS
+  // ===========================================================================
 
-  /// Retorna um post específico
-  static Post? getPost(String postId) {
-    try {
-      return _mockPosts.firstWhere((p) => p.id == postId);
-    } catch (_) {
-      return null;
-    }
-  }
+  static final Map<String, FollowStats> _mockFollowStats = {
+    'user_admin': const FollowStats(
+      userId: 'user_admin',
+      followersCount: 15420,
+      followingCount: 0,
+    ),
+    'user_1': const FollowStats(
+      userId: 'user_1',
+      followersCount: 1250,
+      followingCount: 45,
+    ),
+    'user_2': const FollowStats(
+      userId: 'user_2',
+      followersCount: 89,
+      followingCount: 120,
+    ),
+    'user_3': const FollowStats(
+      userId: 'user_3',
+      followersCount: 342,
+      followingCount: 150,
+    ),
+    'user_4': const FollowStats(
+      userId: 'user_4',
+      followersCount: 23,
+      followingCount: 67,
+    ),
+    'user_5': const FollowStats(
+      userId: 'user_5',
+      followersCount: 2450,
+      followingCount: 300,
+    ),
+    'user_6': const FollowStats(
+      userId: 'user_6',
+      followersCount: 156,
+      followingCount: 89,
+    ),
+    'user_7': const FollowStats(
+      userId: 'user_7',
+      followersCount: 567,
+      followingCount: 230,
+    ),
+    'user_8': const FollowStats(
+      userId: 'user_8',
+      followersCount: 45,
+      followingCount: 100,
+    ),
+    'user_9': const FollowStats(
+      userId: 'user_9',
+      followersCount: 1200,
+      followingCount: 50,
+    ),
+    'user_10': const FollowStats(
+      userId: 'user_10',
+      followersCount: 890,
+      followingCount: 400,
+    ),
+    'user_11': const FollowStats(
+      userId: 'user_11',
+      followersCount: 67,
+      followingCount: 80,
+    ),
+    'user_12': const FollowStats(
+      userId: 'user_12',
+      followersCount: 340,
+      followingCount: 210,
+    ),
+    'user_13': const FollowStats(
+      userId: 'user_13',
+      followersCount: 120,
+      followingCount: 90,
+    ),
+    'user_14': const FollowStats(
+      userId: 'user_14',
+      followersCount: 450,
+      followingCount: 300,
+    ),
+    'user_15': const FollowStats(
+      userId: 'user_15',
+      followersCount: 12,
+      followingCount: 50,
+    ),
+    'user_16': const FollowStats(
+      userId: 'user_16',
+      followersCount: 1890,
+      followingCount: 150,
+    ),
+    'user_17': const FollowStats(
+      userId: 'user_17',
+      followersCount: 560,
+      followingCount: 400,
+    ),
+    'user_18': const FollowStats(
+      userId: 'user_18',
+      followersCount: 78,
+      followingCount: 60,
+    ),
+    'user_19': const FollowStats(
+      userId: 'user_19',
+      followersCount: 230,
+      followingCount: 180,
+    ),
+    'user_20': const FollowStats(
+      userId: 'user_20',
+      followersCount: 670,
+      followingCount: 340,
+    ),
+    'user_21': const FollowStats(
+      userId: 'user_21',
+      followersCount: 45,
+      followingCount: 90,
+    ),
+    'user_22': const FollowStats(
+      userId: 'user_22',
+      followersCount: 980,
+      followingCount: 200,
+    ),
+    'user_23': const FollowStats(
+      userId: 'user_23',
+      followersCount: 156,
+      followingCount: 300,
+    ),
+    'user_24': const FollowStats(
+      userId: 'user_24',
+      followersCount: 340,
+      followingCount: 250,
+    ),
+    'user_25': const FollowStats(
+      userId: 'user_25',
+      followersCount: 67,
+      followingCount: 120,
+    ),
+  };
 
-  /// Retorna posts filtrados por tópico
-  static List<Post> getPostsByTopic(CommunityTopic topic, {int limit = 20}) {
-    return _mockPosts
-        .where((p) => p.categories.contains(topic.name))
-        .take(limit)
-        .toList();
-  }
+  // ===========================================================================
+  // METHODS
+  // ===========================================================================
 
-  /// Retorna posts de um usuário
-  static List<Post> getPostsByUser(String userId, {int limit = 20}) {
-    return _mockPosts.where((p) => p.userId == userId).take(limit).toList();
-  }
-
-  /// Busca posts por query
-  static List<Post> searchPosts(String query) {
-    final lowerQuery = query.toLowerCase();
-    return _mockPosts
-        .where(
-          (p) =>
-              p.content.toLowerCase().contains(lowerQuery) ||
-              p.userName.toLowerCase().contains(lowerQuery) ||
-              p.tags.any((t) => t.toLowerCase().contains(lowerQuery)),
-        )
-        .toList();
-  }
-
-  /// Retorna perfil de usuário
   static PublicUserProfile? getUserProfile(String userId) {
     try {
       return _mockUsers.firstWhere((u) => u.userId == userId);
@@ -709,7 +451,6 @@ class MockCommunityData {
     }
   }
 
-  /// Busca usuários
   static List<PublicUserProfile> searchUsers(String query) {
     final lowerQuery = query.toLowerCase();
     return _mockUsers
@@ -717,14 +458,203 @@ class MockCommunityData {
         .toList();
   }
 
-  /// Retorna posts em destaque (trending)
+  static FollowStats getFollowStats(String userId) {
+    return _mockFollowStats[userId] ?? FollowStats(userId: userId);
+  }
+
+  // ===========================================================================
+  // POSTS
+  // ===========================================================================
+
+  static final List<Post> _mockPosts = [
+    // 📌 PINNED POST
+    Post(
+      id: 'post_pinned_1',
+      userId: 'user_admin',
+      userName: 'Odyssey Team',
+      userPhotoUrl: 'https://i.pravatar.cc/150?u=odyssey',
+      userLevel: 50,
+      content:
+          '📢 ANÚNCIO IMPORTANTE\n\nBem-vindos à Comunidade Odyssey! 🚀\n\nRegras básicas:\n• Respeite todos os membros\n• Compartilhe suas experiências\n• Ajude quem precisa\n• Sem spam ou autopromoção\n\nDúvidas? Pergunte! 💬',
+      type: PostType.text,
+      upvotes: 892,
+      downvotes: 2,
+      commentCount: 2,
+      viewCount: 15000,
+      createdAt: DateTime.now().subtract(const Duration(days: 30)),
+      updatedAt: DateTime.now().subtract(const Duration(days: 30)),
+      metadata: {'isPinned': true},
+      tags: ['anuncio', 'regras', 'comunidade'],
+      categories: [CommunityTopic.general.name],
+    ),
+    // MOOD POST (Ok)
+    Post(
+      id: 'post_mood_ok',
+      userId: 'user_1',
+      userName: 'Maria Santos',
+      userPhotoUrl: 'https://i.pravatar.cc/150?u=maria',
+      userLevel: 15,
+      content: 'Tudo tranquilo por aqui.',
+      type: PostType.mood,
+      upvotes: 12,
+      downvotes: 0,
+      commentCount: 1,
+      viewCount: 150,
+      createdAt: DateTime.now().subtract(const Duration(minutes: 5)),
+      updatedAt: DateTime.now().subtract(const Duration(minutes: 5)),
+      metadata: {'moodLabel': 'Ok', 'moodEmoji': '😐'},
+      categories: [CommunityTopic.general.name],
+    ),
+    // MOOD POST (Bem)
+    Post(
+      id: 'post_mood_bem',
+      userId: 'user_2',
+      userName: 'Lucas Ferreira',
+      userPhotoUrl: 'https://i.pravatar.cc/150?u=lucas',
+      userLevel: 8,
+      content: 'Dia produtivo!',
+      type: PostType.mood,
+      upvotes: 24,
+      downvotes: 1,
+      commentCount: 5,
+      viewCount: 300,
+      createdAt: DateTime.now().subtract(const Duration(minutes: 30)),
+      updatedAt: DateTime.now().subtract(const Duration(minutes: 30)),
+      metadata: {'moodLabel': 'Bem', 'moodEmoji': '🙂'},
+      categories: [CommunityTopic.productivity.name],
+    ),
+    // IMAGE POST
+    Post(
+      id: 'post_img_1',
+      userId: 'user_5',
+      userName: 'Julia Santos',
+      userPhotoUrl: 'https://i.pravatar.cc/150?u=julia',
+      userLevel: 20,
+      content: 'Cantinho de estudos organizado! 📚✨',
+      type: PostType.image,
+      imageUrls: [
+        'https://images.unsplash.com/photo-1499750310159-5b5fafef6c9e',
+      ],
+      upvotes: 156,
+      downvotes: 2,
+      commentCount: 0,
+      viewCount: 2400,
+      createdAt: DateTime.now().subtract(const Duration(hours: 2)),
+      updatedAt: DateTime.now().subtract(const Duration(hours: 2)),
+      tags: ['estudos', 'setup', 'produtividade'],
+      categories: [CommunityTopic.productivity.name],
+    ),
+    // TEXT POST with High Engagement
+    Post(
+      id: 'post_text_1',
+      userId: 'user_16',
+      userName: 'Patricia Silva',
+      userPhotoUrl: 'https://i.pravatar.cc/150?u=patricia',
+      userLevel: 19,
+      content:
+          'A meditação mudou minha vida nos últimos 6 meses. Quem aqui também pratica diariamente?',
+      type: PostType.text,
+      upvotes: 340,
+      downvotes: 5,
+      commentCount: 2,
+      viewCount: 5600,
+      createdAt: DateTime.now().subtract(const Duration(hours: 5)),
+      updatedAt: DateTime.now().subtract(const Duration(hours: 5)),
+      tags: ['meditação', 'mindfulness'],
+      categories: [CommunityTopic.mindfulness.name],
+    ),
+    // RANDOM POSTS
+    Post(
+      id: 'post_rand_1',
+      userId: 'user_20',
+      userName: 'Gustavo Souza',
+      userPhotoUrl: 'https://i.pravatar.cc/150?u=gustavo',
+      userLevel: 14,
+      content: 'Finalizei meu app! 🚀',
+      type: PostType.image,
+      imageUrls: ['https://images.unsplash.com/photo-1551650975-87deedd944c3'],
+      upvotes: 560,
+      downvotes: 10,
+      commentCount: 1,
+      viewCount: 8900,
+      createdAt: DateTime.now().subtract(const Duration(hours: 8)),
+      updatedAt: DateTime.now().subtract(const Duration(hours: 8)),
+      tags: ['dev', 'flutter', 'conquista'],
+      categories: [CommunityTopic.achievements.name],
+    ),
+    Post(
+      id: 'post_rand_2',
+      userId: 'user_13',
+      userName: 'Mariana Costa',
+      userPhotoUrl: 'https://i.pravatar.cc/150?u=mariana',
+      userLevel: 9,
+      content: 'Lendo "Hábitos Atômicos". Recomendo muito!',
+      type: PostType.text,
+      upvotes: 89,
+      downvotes: 0,
+      commentCount: 0,
+      viewCount: 1200,
+      createdAt: DateTime.now().subtract(const Duration(hours: 12)),
+      updatedAt: DateTime.now().subtract(const Duration(hours: 12)),
+      tags: ['leitura', 'livros'],
+      categories: [CommunityTopic.productivity.name],
+    ),
+    Post(
+      id: 'post_rand_3',
+      userId: 'user_22',
+      userName: 'Felipe Rodrigues',
+      userPhotoUrl: 'https://i.pravatar.cc/150?u=felipe',
+      userLevel: 17,
+      content: '10km hoje de manhã! 🏃‍♂️💨',
+      type: PostType.mood,
+      upvotes: 120,
+      downvotes: 1,
+      commentCount: 0,
+      viewCount: 1500,
+      metadata: {'moodLabel': 'Energético', 'moodEmoji': '⚡'},
+      createdAt: DateTime.now().subtract(const Duration(hours: 1)),
+      updatedAt: DateTime.now().subtract(const Duration(hours: 1)),
+      categories: [CommunityTopic.general.name, CommunityTopic.motivation.name],
+    ),
+  ];
+
+  static List<Post> getPosts({int limit = 20}) {
+    return _mockPosts.take(limit).toList();
+  }
+
+  static Post? getPost(String postId) {
+    try {
+      return _mockPosts.firstWhere((p) => p.id == postId);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static List<Post> getPostsByTopic(CommunityTopic topic, {int limit = 20}) {
+    return _mockPosts
+        .where((p) => p.categories.contains(topic.name))
+        .take(limit)
+        .toList();
+  }
+
+  static List<Post> searchPosts(String query) {
+    final lower = query.toLowerCase();
+    return _mockPosts
+        .where(
+          (p) =>
+              p.content.toLowerCase().contains(lower) ||
+              p.tags.any((t) => t.toLowerCase().contains(lower)) ||
+              p.userName.toLowerCase().contains(lower),
+        )
+        .toList();
+  }
+
   static List<Post> getTrendingPosts({int limit = 5}) {
     final sorted = List<Post>.from(_mockPosts);
     sorted.sort((a, b) => b.engagement.compareTo(a.engagement));
     return sorted.take(limit).toList();
   }
 
-  /// Retorna tags populares
   static List<String> getTrendingTags({int limit = 10}) {
     final tagCount = <String, int>{};
     for (final post in _mockPosts) {
@@ -737,78 +667,79 @@ class MockCommunityData {
     return sorted.take(limit).map((e) => e.key).toList();
   }
 
-  /// Comentários mock para os posts
+  // ===========================================================================
+  // COMMENTS
+  // ===========================================================================
+
   static final Map<String, List<Comment>> _mockComments = {
-    'post_1': [
+    'post_pinned_1': [
       Comment(
-        id: 'comment_1_1',
-        postId: 'post_1',
-        userId: 'user_2',
-        userName: 'Lucas Ferreira',
-        userPhotoUrl: 'https://i.pravatar.cc/150?u=lucas',
-        content:
-            'Parabéns pela conquista! 🎉 Como você conseguiu manter a consistência?',
-        createdAt: DateTime.now().subtract(const Duration(hours: 1)),
-      ),
-      Comment(
-        id: 'comment_1_2',
-        postId: 'post_1',
-        userId: 'user_3',
-        userName: 'Ana Silva',
-        userPhotoUrl: 'https://i.pravatar.cc/150?u=ana',
-        content: 'Inspirador demais! Vou tentar implementar também.',
-        createdAt: DateTime.now().subtract(const Duration(hours: 2)),
-      ),
-      Comment(
-        id: 'comment_1_3',
-        postId: 'post_1',
-        userId: 'user_4',
-        userName: 'Pedro Oliveira',
-        userPhotoUrl: 'https://i.pravatar.cc/150?u=pedro',
-        content: 'Qual app você usa para tracking? Quero começar também!',
-        createdAt: DateTime.now().subtract(const Duration(hours: 3)),
-      ),
-    ],
-    'post_4': [
-      Comment(
-        id: 'comment_4_1',
-        postId: 'post_4',
+        id: 'c_p1_1',
+        postId: 'post_pinned_1',
         userId: 'user_1',
         userName: 'Maria Santos',
         userPhotoUrl: 'https://i.pravatar.cc/150?u=maria',
-        content:
-            'Força! 💙 Todos temos dias assim. O importante é não desistir.',
-        createdAt: DateTime.now().subtract(const Duration(hours: 1)),
+        content: 'Ótima iniciativa!',
+        createdAt: DateTime.now().subtract(const Duration(days: 29)),
       ),
       Comment(
-        id: 'comment_4_2',
-        postId: 'post_4',
+        id: 'c_p1_2',
+        postId: 'post_pinned_1',
+        userId: 'user_2',
+        userName: 'Lucas Ferreira',
+        userPhotoUrl: 'https://i.pravatar.cc/150?u=lucas',
+        content: 'Ansioso para interagir com a comunidade.',
+        createdAt: DateTime.now().subtract(const Duration(days: 28)),
+      ),
+    ],
+    'post_mood_ok': [
+      Comment(
+        id: 'c_ok_1',
+        postId: 'post_mood_ok',
+        userId: 'user_3',
+        userName: 'Ana Silva',
+        userPhotoUrl: 'https://i.pravatar.cc/150?u=ana',
+        content: 'Isso aí, um dia de cada vez.',
+        createdAt: DateTime.now().subtract(const Duration(minutes: 2)),
+      ),
+    ],
+    'post_text_1': [
+      Comment(
+        id: 'c_t1_1',
+        postId: 'post_text_1',
+        userId: 'user_20',
+        userName: 'Gustavo Souza',
+        userPhotoUrl: 'https://i.pravatar.cc/150?u=gustavo',
+        content: 'Pratico há 2 anos e recomendo!',
+        createdAt: DateTime.now().subtract(const Duration(hours: 4)),
+      ),
+      Comment(
+        id: 'c_t1_2',
+        postId: 'post_text_1',
         userId: 'user_5',
         userName: 'Julia Santos',
         userPhotoUrl: 'https://i.pravatar.cc/150?u=julia',
-        content: 'Amanhã é um novo dia! Você consegue! 🌟',
-        createdAt: DateTime.now().subtract(const Duration(hours: 2)),
+        content: 'Qual app você usa?',
+        createdAt: DateTime.now().subtract(const Duration(hours: 3)),
       ),
     ],
-    'post_12': [
+    'post_rand_1': [
       Comment(
-        id: 'comment_12_1',
-        postId: 'post_12',
-        userId: 'user_8',
-        userName: 'Fernanda Lima',
-        userPhotoUrl: 'https://i.pravatar.cc/150?u=fernanda',
-        content: 'Eu também! Às vezes precisa só descansar mesmo.',
-        createdAt: DateTime.now().subtract(const Duration(minutes: 30)),
+        id: 'c_r1_1',
+        postId: 'post_rand_1',
+        userId: 'user_12',
+        userName: 'Gabriel Martins',
+        userPhotoUrl: 'https://i.pravatar.cc/150?u=gabriel',
+        content: 'Parabéns mano! Ficou show.',
+        createdAt: DateTime.now().subtract(const Duration(hours: 7)),
       ),
     ],
   };
 
-  /// Retorna comentários de um post
   static List<Comment> getComments(String postId) {
     return _mockComments[postId] ?? [];
   }
 
-  /// Adiciona um comentário
   static Comment addComment(
     String postId,
     String content,

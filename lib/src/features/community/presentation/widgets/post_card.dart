@@ -7,6 +7,7 @@ import '../../domain/post.dart';
 import '../../domain/topic.dart';
 import '../../domain/karma.dart';
 import '../screens/post_detail_screen.dart';
+import '../screens/public_profile_screen.dart';
 import 'user_profile_popup.dart';
 
 /// Helper class para dados do mood
@@ -145,6 +146,18 @@ class _PostCardState extends State<PostCard>
     );
   }
 
+  void _navigateToProfile(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => PublicProfileScreen(
+          userId: widget.post.userId,
+          userName: widget.post.userName,
+        ),
+      ),
+    );
+  }
+
   Widget _buildHeader(BuildContext context, ColorScheme colors) {
     // Pega o primeiro tópico
     final topicName = widget.post.categories.isNotEmpty
@@ -176,53 +189,59 @@ class _PostCardState extends State<PostCard>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Nome + Flair/Badge
-                Row(
-                  children: [
-                    Flexible(
-                      child: Text(
-                        widget.post.userName,
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: colors.onSurface,
+                GestureDetector(
+                  onTap: () => _navigateToProfile(context),
+                  child: Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          widget.post.userName,
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: colors.onSurface,
+                          ),
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        overflow: TextOverflow.ellipsis,
                       ),
-                    ),
-                    const SizedBox(width: 6),
-                    // Flair or Pinned Badge
-                    if (widget.post.authorFlair != null || widget.post.isPinned)
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Color(karmaTier.colorValue).withOpacity(0.15),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              widget.post.isPinned ? '📌' : karmaTier.emoji,
-                              style: const TextStyle(fontSize: 10),
-                            ),
-                            const SizedBox(width: 3),
-                            Text(
-                              widget.post.isPinned
-                                  ? 'Fixado'
-                                  : (widget.post.authorFlair ?? ''),
-                              style: TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w600,
-                                color: Color(karmaTier.colorValue),
+                      const SizedBox(width: 6),
+                      // Flair or Pinned Badge
+                      if (widget.post.authorFlair != null ||
+                          widget.post.isPinned)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Color(
+                              karmaTier.colorValue,
+                            ).withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                widget.post.isPinned ? '📌' : karmaTier.emoji,
+                                style: const TextStyle(fontSize: 10),
                               ),
-                            ),
-                          ],
+                              const SizedBox(width: 3),
+                              Text(
+                                widget.post.isPinned
+                                    ? 'Fixado'
+                                    : (widget.post.authorFlair ?? ''),
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(karmaTier.colorValue),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                  ],
+                    ],
+                  ),
                 ),
                 const SizedBox(height: 2),
                 // Topic + Time
@@ -300,12 +319,7 @@ class _PostCardState extends State<PostCard>
             );
           },
           onViewProfile: () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Abrindo perfil de ${widget.post.userName}'),
-                duration: const Duration(seconds: 1),
-              ),
-            );
+            _navigateToProfile(context);
           },
         );
       },
@@ -514,34 +528,50 @@ class _PostCardState extends State<PostCard>
   _MoodData _getMoodData(String moodLabel) {
     final label = moodLabel.toLowerCase();
 
-    if (label.contains('incrível') ||
+    // Mapeamento exato dos moods do CreatePostScreen
+    if (label == 'ótimo' || label == 'otimo') {
+      return const _MoodData(emoji: '😊', color: Color(0xFF4CAF50)); // Green
+    } else if (label == 'bem') {
+      return const _MoodData(
+        emoji: '🙂',
+        color: Color(0xFF7C4DFF),
+      ); // Deep Purple
+    } else if (label == 'ok') {
+      return const _MoodData(emoji: '😐', color: Color(0xFFFFC107)); // Amber
+    } else if (label == 'mal') {
+      return const _MoodData(emoji: '😔', color: Color(0xFFFF9800)); // Orange
+    } else if (label == 'péssimo' || label == 'pessimo') {
+      return const _MoodData(emoji: '😢', color: Color(0xFFF44336)); // Red
+    }
+    // Mapeamentos adicionais para compatibilidade
+    else if (label.contains('incrível') ||
         label.contains('incrivel') ||
         label == 'radiante') {
-      return _MoodData(emoji: '🌟', color: const Color(0xFFFFD700));
+      return const _MoodData(emoji: '🌟', color: Color(0xFFFFD700));
     } else if (label.contains('feliz') || label == 'alegre') {
-      return _MoodData(emoji: '😊', color: const Color(0xFF4CAF50));
-    } else if (label.contains('bem') || label == 'tranquilo') {
-      return _MoodData(emoji: '😌', color: const Color(0xFF81C784));
+      return const _MoodData(emoji: '😊', color: Color(0xFF4CAF50));
+    } else if (label.contains('tranquilo')) {
+      return const _MoodData(emoji: '😌', color: Color(0xFF81C784));
     } else if (label.contains('neutro') || label == 'calmo') {
-      return _MoodData(emoji: '😐', color: const Color(0xFF90A4AE));
+      return const _MoodData(emoji: '😐', color: Color(0xFF90A4AE));
     } else if (label.contains('ansioso') || label.contains('preocupado')) {
-      return _MoodData(emoji: '😰', color: const Color(0xFFFFB74D));
+      return const _MoodData(emoji: '😰', color: Color(0xFFFFB74D));
     } else if (label.contains('triste') ||
         label.contains('struggling') ||
         label.contains('difícil')) {
-      return _MoodData(emoji: '😢', color: const Color(0xFF64B5F6));
+      return const _MoodData(emoji: '😢', color: Color(0xFF64B5F6));
     } else if (label.contains('estressado') || label.contains('irritado')) {
-      return _MoodData(emoji: '😤', color: const Color(0xFFE57373));
+      return const _MoodData(emoji: '😤', color: Color(0xFFE57373));
     } else if (label.contains('cansado') || label.contains('exausto')) {
-      return _MoodData(emoji: '😴', color: const Color(0xFF9575CD));
+      return const _MoodData(emoji: '😴', color: Color(0xFF9575CD));
     } else if (label.contains('energético') || label.contains('energizado')) {
-      return _MoodData(emoji: '⚡', color: const Color(0xFFFFCA28));
+      return const _MoodData(emoji: '⚡', color: Color(0xFFFFCA28));
     } else if (label.contains('grato') || label.contains('agradecido')) {
-      return _MoodData(emoji: '🙏', color: const Color(0xFFE91E63));
+      return const _MoodData(emoji: '🙏', color: Color(0xFFE91E63));
     }
 
     // Default
-    return _MoodData(emoji: '💭', color: const Color(0xFF81B29A));
+    return const _MoodData(emoji: '💭', color: Color(0xFF81B29A));
   }
 
   Widget _buildImagePreview(BuildContext context) {

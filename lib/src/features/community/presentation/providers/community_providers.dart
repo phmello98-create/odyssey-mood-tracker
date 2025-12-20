@@ -271,9 +271,8 @@ final followStatsProvider = FutureProvider.family<FollowStats, String>((
 ) {
   final isOffline = ref.watch(isOfflineModeProvider);
   if (isOffline) {
-    return Future.value(
-      FollowStats(userId: userId, followersCount: 0, followingCount: 0),
-    );
+    final mockRepo = ref.watch(mockCommunityRepositoryProvider);
+    return mockRepo.getFollowStats(userId);
   }
   final repo = ref.watch(followRepositoryProvider);
   if (repo == null) {

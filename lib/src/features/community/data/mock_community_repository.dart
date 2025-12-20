@@ -2,6 +2,7 @@ import 'dart:io';
 import '../domain/post.dart';
 import '../domain/post_dto.dart';
 import '../domain/user_profile.dart';
+import '../domain/follow.dart';
 import 'mock_community_data.dart';
 
 /// Mock Repository para desenvolvimento offline (Linux, etc.)
@@ -28,8 +29,12 @@ class MockCommunityRepository {
   }
 
   /// Stream do feed de posts
-  Stream<List<Post>> watchFeed({int limit = 20}) {
-    return Stream.periodic(const Duration(seconds: 1), (_) async {
+  Stream<List<Post>> watchFeed({int limit = 20}) async* {
+    // Emite imediatamente
+    yield await getFeed(limit: limit);
+
+    // Depois atualiza periodicamente a cada 5 segundos
+    yield* Stream.periodic(const Duration(seconds: 5), (_) async {
       return await getFeed(limit: limit);
     }).asyncMap((future) => future);
   }
@@ -170,6 +175,11 @@ class MockCommunityRepository {
   /// Busca usuários por nome
   Future<List<PublicUserProfile>> searchUsers(String query) async {
     return MockCommunityData.searchUsers(query);
+  }
+
+  /// Busca estatísticas de seguidores
+  Future<FollowStats> getFollowStats(String userId) async {
+    return MockCommunityData.getFollowStats(userId);
   }
 
   /// Verifica se estamos em modo offline (Linux)

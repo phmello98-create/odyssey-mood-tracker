@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:awesome_notifications/awesome_notifications.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -26,29 +27,34 @@ import 'package:just_audio_media_kit/just_audio_media_kit.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Inicializar MediaKit para Linux/outras plataformas (suporte a streaming de áudio)
-  // Configurar para evitar ytdl_hook (youtube-dl) em streams de rádio
-  // IMPORTANTE: Configurar propriedades estáticas ANTES de ensureInitialized()
-  JustAudioMediaKit.protocolWhitelist = const [
-    'http',
-    'https',
-    'file',
-    'rtsp',
-    'rtmp',
-  ];
-  JustAudioMediaKit.bufferSize = 8 * 1024 * 1024; // 8MB buffer para streams
-  JustAudioMediaKit.ensureInitialized();
+  // Inicializar MediaKit Apenas para Linux/Windows (suporte a streaming de áudio)
+  // No Android/iOS, o just_audio usa implementações nativas (ExoPlayer/AVPlayer)
+  if (!Platform.isAndroid && !Platform.isIOS) {
+    // Configurar para evitar ytdl_hook (youtube-dl) em streams de rádio
+    // IMPORTANTE: Configurar propriedades estáticas ANTES de ensureInitialized()
+    JustAudioMediaKit.protocolWhitelist = const [
+      'http',
+      'https',
+      'file',
+      'rtsp',
+      'rtmp',
+    ];
+    JustAudioMediaKit.bufferSize = 8 * 1024 * 1024; // 8MB buffer para streams
+    JustAudioMediaKit.ensureInitialized();
+    debugPrint('🎵 JustAudioMediaKit inicializado (Linux/Desktop)');
+  }
 
   // Inicializar Firebase PRIMEIRO (antes de qualquer outro serviço que dependa dele)
   // Nota: Firebase pode não estar disponível em todas as plataformas (ex: Linux)
   try {
+    // Timeout para evitar hang infinito em inicialização
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
-    );
+    ).timeout(const Duration(seconds: 5));
     debugPrint('🔥 Firebase inicializado no main()');
   } catch (e) {
-    // Firebase não suportado nesta plataforma (ex: Linux) - continuar sem Firebase
-    debugPrint('⚠️ Firebase não disponível nesta plataforma: $e');
+    // Firebase não suportado nesta plataforma (ex: Linux) ou erro de conexão
+    debugPrint('⚠️ Firebase não disponível ou falhou: $e');
   }
 
   // Inicializar SharedPreferences antes do runApp
