@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:timeago/timeago.dart' as timeago;
@@ -6,6 +8,14 @@ import '../../domain/topic.dart';
 import '../../domain/karma.dart';
 import '../screens/post_detail_screen.dart';
 import 'user_profile_popup.dart';
+
+/// Helper class para dados do mood
+class _MoodData {
+  final String emoji;
+  final Color color;
+
+  const _MoodData({required this.emoji, required this.color});
+}
 
 /// Card de post rico estilo Reddit
 /// Com votos, karma, badges, imagens, tags
@@ -393,6 +403,34 @@ class _PostCardState extends State<PostCard>
   }
 
   Widget _buildContent(BuildContext context, ColorScheme colors) {
+    // Mostra o mood card se houver moodLabel no metadata (qualquer tipo de post)
+    final hasMood =
+        widget.post.metadata != null &&
+        (widget.post.metadata!['moodLabel'] != null ||
+            widget.post.metadata!['mood'] != null);
+
+    if (hasMood) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Mood Card Visual
+          _buildMoodCard(context, colors),
+          const SizedBox(height: 12),
+          // Texto do post
+          Text(
+            widget.post.content,
+            style: TextStyle(
+              fontSize: 14,
+              height: 1.5,
+              color: colors.onSurface,
+            ),
+            maxLines: 5,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      );
+    }
+
     return Text(
       widget.post.content,
       style: TextStyle(fontSize: 14, height: 1.5, color: colors.onSurface),
@@ -401,7 +439,115 @@ class _PostCardState extends State<PostCard>
     );
   }
 
+  Widget _buildMoodCard(BuildContext context, ColorScheme colors) {
+    final metadata = widget.post.metadata;
+    final moodLabel =
+        metadata?['moodLabel'] as String? ?? metadata?['mood'] as String?;
+    final moodEmoji = metadata?['moodEmoji'] as String?;
+
+    if (moodLabel == null) return const SizedBox.shrink();
+
+    // Mapeamento de moods para cores e assets
+    final moodData = _getMoodData(moodLabel);
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            moodData.color.withOpacity(0.15),
+            moodData.color.withOpacity(0.05),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: moodData.color.withOpacity(0.3), width: 1),
+      ),
+      child: Row(
+        children: [
+          // Ícone/Emoji do mood em um container circular
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: moodData.color.withOpacity(0.2),
+            ),
+            child: Center(
+              child: Text(
+                moodEmoji ?? moodData.emoji,
+                style: const TextStyle(fontSize: 24),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          // Label do mood
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Estou me sentindo',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: colors.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  moodLabel,
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: moodData.color,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  _MoodData _getMoodData(String moodLabel) {
+    final label = moodLabel.toLowerCase();
+
+    if (label.contains('incrível') ||
+        label.contains('incrivel') ||
+        label == 'radiante') {
+      return _MoodData(emoji: '🌟', color: const Color(0xFFFFD700));
+    } else if (label.contains('feliz') || label == 'alegre') {
+      return _MoodData(emoji: '😊', color: const Color(0xFF4CAF50));
+    } else if (label.contains('bem') || label == 'tranquilo') {
+      return _MoodData(emoji: '😌', color: const Color(0xFF81C784));
+    } else if (label.contains('neutro') || label == 'calmo') {
+      return _MoodData(emoji: '😐', color: const Color(0xFF90A4AE));
+    } else if (label.contains('ansioso') || label.contains('preocupado')) {
+      return _MoodData(emoji: '😰', color: const Color(0xFFFFB74D));
+    } else if (label.contains('triste') ||
+        label.contains('struggling') ||
+        label.contains('difícil')) {
+      return _MoodData(emoji: '😢', color: const Color(0xFF64B5F6));
+    } else if (label.contains('estressado') || label.contains('irritado')) {
+      return _MoodData(emoji: '😤', color: const Color(0xFFE57373));
+    } else if (label.contains('cansado') || label.contains('exausto')) {
+      return _MoodData(emoji: '😴', color: const Color(0xFF9575CD));
+    } else if (label.contains('energético') || label.contains('energizado')) {
+      return _MoodData(emoji: '⚡', color: const Color(0xFFFFCA28));
+    } else if (label.contains('grato') || label.contains('agradecido')) {
+      return _MoodData(emoji: '🙏', color: const Color(0xFFE91E63));
+    }
+
+    // Default
+    return _MoodData(emoji: '💭', color: const Color(0xFF81B29A));
+  }
+
   Widget _buildImagePreview(BuildContext context) {
+    final imageUrl = widget.post.imageUrls.first;
+    final isLocalFile = imageUrl.startsWith('file://');
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       height: 180,
@@ -414,21 +560,31 @@ class _PostCardState extends State<PostCard>
         child: Stack(
           fit: StackFit.expand,
           children: [
-            Image.network(
-              widget.post.imageUrls.first,
-              fit: BoxFit.cover,
-              loadingBuilder: (context, child, loadingProgress) {
-                if (loadingProgress == null) return child;
-                return Container(
-                  color: Colors.grey.shade300,
-                  child: const Center(child: CircularProgressIndicator()),
-                );
-              },
-              errorBuilder: (_, __, ___) => Container(
-                color: Colors.grey.shade300,
-                child: const Icon(Icons.broken_image_rounded, size: 40),
-              ),
-            ),
+            // Imagem - local ou de rede
+            isLocalFile
+                ? Image.file(
+                    File(imageUrl.replaceFirst('file://', '')),
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => Container(
+                      color: Colors.grey.shade300,
+                      child: const Icon(Icons.broken_image_rounded, size: 40),
+                    ),
+                  )
+                : Image.network(
+                    imageUrl,
+                    fit: BoxFit.cover,
+                    loadingBuilder: (context, child, loadingProgress) {
+                      if (loadingProgress == null) return child;
+                      return Container(
+                        color: Colors.grey.shade300,
+                        child: const Center(child: CircularProgressIndicator()),
+                      );
+                    },
+                    errorBuilder: (_, __, ___) => Container(
+                      color: Colors.grey.shade300,
+                      child: const Icon(Icons.broken_image_rounded, size: 40),
+                    ),
+                  ),
             // Gallery indicator
             if (widget.post.isGallery)
               Positioned(

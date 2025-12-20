@@ -888,7 +888,14 @@ class _FollowButton extends ConsumerWidget {
   Future<void> _handleFollow(WidgetRef ref, BuildContext context) async {
     HapticFeedback.lightImpact();
     try {
+      final isOffline = ref.read(isOfflineModeProvider);
+      if (isOffline) {
+        // Em modo offline, apenas simula
+        ref.invalidate(isFollowingProvider(userId));
+        return;
+      }
       final followRepo = ref.read(followRepositoryProvider);
+      if (followRepo == null) return;
       await followRepo.followUser(userId);
       ref.invalidate(isFollowingProvider(userId));
     } catch (e) {
@@ -903,7 +910,14 @@ class _FollowButton extends ConsumerWidget {
   Future<void> _handleUnfollow(WidgetRef ref, BuildContext context) async {
     HapticFeedback.lightImpact();
     try {
+      final isOffline = ref.read(isOfflineModeProvider);
+      if (isOffline) {
+        // Em modo offline, apenas simula
+        ref.invalidate(isFollowingProvider(userId));
+        return;
+      }
       final followRepo = ref.read(followRepositoryProvider);
+      if (followRepo == null) return;
       await followRepo.unfollowUser(userId);
       ref.invalidate(isFollowingProvider(userId));
     } catch (e) {

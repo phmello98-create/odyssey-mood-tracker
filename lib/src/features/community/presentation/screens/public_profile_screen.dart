@@ -414,7 +414,15 @@ class _PublicProfileScreenState extends ConsumerState<PublicProfileScreen>
   Future<void> _handleFollow() async {
     HapticFeedback.lightImpact();
     try {
+      final isOffline = ref.read(isOfflineModeProvider);
+      if (isOffline) {
+        // Em modo offline, apenas simula
+        ref.invalidate(isFollowingProvider(widget.userId));
+        ref.invalidate(followStatsProvider(widget.userId));
+        return;
+      }
       final repo = ref.read(followRepositoryProvider);
+      if (repo == null) return;
       await repo.followUser(widget.userId);
       ref.invalidate(isFollowingProvider(widget.userId));
       ref.invalidate(followStatsProvider(widget.userId));
@@ -430,7 +438,15 @@ class _PublicProfileScreenState extends ConsumerState<PublicProfileScreen>
   Future<void> _handleUnfollow() async {
     HapticFeedback.lightImpact();
     try {
+      final isOffline = ref.read(isOfflineModeProvider);
+      if (isOffline) {
+        // Em modo offline, apenas simula
+        ref.invalidate(isFollowingProvider(widget.userId));
+        ref.invalidate(followStatsProvider(widget.userId));
+        return;
+      }
       final repo = ref.read(followRepositoryProvider);
+      if (repo == null) return;
       await repo.unfollowUser(widget.userId);
       ref.invalidate(isFollowingProvider(widget.userId));
       ref.invalidate(followStatsProvider(widget.userId));

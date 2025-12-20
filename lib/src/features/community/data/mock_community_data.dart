@@ -1,4 +1,5 @@
 import '../domain/post.dart';
+import '../domain/comment.dart';
 import '../domain/user_profile.dart';
 import '../domain/topic.dart';
 
@@ -122,7 +123,11 @@ class MockCommunityData {
       createdAt: DateTime.now().subtract(const Duration(hours: 12)),
       updatedAt: DateTime.now().subtract(const Duration(hours: 12)),
       categories: [CommunityTopic.support.name, CommunityTopic.wellness.name],
-      metadata: {'mood': 'struggling'},
+      metadata: {
+        'moodLabel': 'Dia Difícil',
+        'moodEmoji': '😢',
+        'mood': 'struggling',
+      },
     ),
     Post(
       id: 'post_5',
@@ -306,6 +311,7 @@ class MockCommunityData {
       createdAt: DateTime.now().subtract(const Duration(hours: 1)),
       updatedAt: DateTime.now().subtract(const Duration(hours: 1)),
       categories: [CommunityTopic.support.name, CommunityTopic.general.name],
+      metadata: {'moodLabel': 'Procrastinando', 'moodEmoji': '😅'},
     ),
     Post(
       id: 'post_13',
@@ -414,6 +420,7 @@ class MockCommunityData {
       createdAt: DateTime.now().subtract(const Duration(hours: 2, minutes: 30)),
       updatedAt: DateTime.now().subtract(const Duration(hours: 2, minutes: 30)),
       categories: [CommunityTopic.support.name, CommunityTopic.wellness.name],
+      metadata: {'moodLabel': 'Frustrada', 'moodEmoji': '💔'},
     ),
     Post(
       id: 'post_18',
@@ -728,5 +735,101 @@ class MockCommunityData {
     final sorted = tagCount.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
     return sorted.take(limit).map((e) => e.key).toList();
+  }
+
+  /// Comentários mock para os posts
+  static final Map<String, List<Comment>> _mockComments = {
+    'post_1': [
+      Comment(
+        id: 'comment_1_1',
+        postId: 'post_1',
+        userId: 'user_2',
+        userName: 'Lucas Ferreira',
+        userPhotoUrl: 'https://i.pravatar.cc/150?u=lucas',
+        content:
+            'Parabéns pela conquista! 🎉 Como você conseguiu manter a consistência?',
+        createdAt: DateTime.now().subtract(const Duration(hours: 1)),
+      ),
+      Comment(
+        id: 'comment_1_2',
+        postId: 'post_1',
+        userId: 'user_3',
+        userName: 'Ana Silva',
+        userPhotoUrl: 'https://i.pravatar.cc/150?u=ana',
+        content: 'Inspirador demais! Vou tentar implementar também.',
+        createdAt: DateTime.now().subtract(const Duration(hours: 2)),
+      ),
+      Comment(
+        id: 'comment_1_3',
+        postId: 'post_1',
+        userId: 'user_4',
+        userName: 'Pedro Oliveira',
+        userPhotoUrl: 'https://i.pravatar.cc/150?u=pedro',
+        content: 'Qual app você usa para tracking? Quero começar também!',
+        createdAt: DateTime.now().subtract(const Duration(hours: 3)),
+      ),
+    ],
+    'post_4': [
+      Comment(
+        id: 'comment_4_1',
+        postId: 'post_4',
+        userId: 'user_1',
+        userName: 'Maria Santos',
+        userPhotoUrl: 'https://i.pravatar.cc/150?u=maria',
+        content:
+            'Força! 💙 Todos temos dias assim. O importante é não desistir.',
+        createdAt: DateTime.now().subtract(const Duration(hours: 1)),
+      ),
+      Comment(
+        id: 'comment_4_2',
+        postId: 'post_4',
+        userId: 'user_5',
+        userName: 'Julia Santos',
+        userPhotoUrl: 'https://i.pravatar.cc/150?u=julia',
+        content: 'Amanhã é um novo dia! Você consegue! 🌟',
+        createdAt: DateTime.now().subtract(const Duration(hours: 2)),
+      ),
+    ],
+    'post_12': [
+      Comment(
+        id: 'comment_12_1',
+        postId: 'post_12',
+        userId: 'user_8',
+        userName: 'Fernanda Lima',
+        userPhotoUrl: 'https://i.pravatar.cc/150?u=fernanda',
+        content: 'Eu também! Às vezes precisa só descansar mesmo.',
+        createdAt: DateTime.now().subtract(const Duration(minutes: 30)),
+      ),
+    ],
+  };
+
+  /// Retorna comentários de um post
+  static List<Comment> getComments(String postId) {
+    return _mockComments[postId] ?? [];
+  }
+
+  /// Adiciona um comentário
+  static Comment addComment(
+    String postId,
+    String content,
+    String userId,
+    String userName,
+  ) {
+    final comment = Comment(
+      id: 'local_comment_${DateTime.now().millisecondsSinceEpoch}',
+      postId: postId,
+      userId: userId,
+      userName: userName,
+      content: content,
+      createdAt: DateTime.now(),
+    );
+
+    if (_mockComments.containsKey(postId)) {
+      _mockComments[postId]!.insert(0, comment);
+    } else {
+      _mockComments[postId] = [comment];
+    }
+
+    return comment;
   }
 }

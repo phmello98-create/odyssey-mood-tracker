@@ -56,7 +56,24 @@ class _ReportSheetState extends ConsumerState<ReportSheet> {
     HapticFeedback.lightImpact();
 
     try {
+      final isOffline = ref.read(isOfflineModeProvider);
+
+      if (isOffline) {
+        // Em modo offline, simula envio
+        if (mounted) {
+          Navigator.pop(context, true);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Denúncia salva localmente!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+        return;
+      }
+
       final repo = ref.read(reportRepositoryProvider);
+      if (repo == null) throw Exception('Repositório não disponível');
       await repo.createReport(
         CreateReportDto(
           reportedContentId: widget.contentId,

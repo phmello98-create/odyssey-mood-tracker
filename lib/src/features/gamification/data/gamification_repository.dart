@@ -312,6 +312,13 @@ class GamificationRepository {
     await saveStats(stats);
   }
 
+  /// Limpa todas as metas pessoais
+  Future<void> clearAllGoals() async {
+    var stats = getStats();
+    stats = stats.copyWith(personalGoals: []);
+    await saveStats(stats);
+  }
+
   /// Atualiza o humor atual
   Future<void> updateCurrentMood(String emoji, double moodValue) async {
     var stats = getStats();

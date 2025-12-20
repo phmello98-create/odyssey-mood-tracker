@@ -63,6 +63,7 @@ import 'package:odyssey/src/features/community/presentation/screens/community_sc
 import 'package:odyssey/src/features/community/presentation/screens/create_post_screen.dart';
 import 'package:odyssey/src/features/community/presentation/providers/community_providers.dart';
 import 'package:odyssey/src/features/community/domain/post.dart';
+import 'package:odyssey/src/features/community/domain/topic.dart';
 import 'package:odyssey/src/features/community/presentation/widgets/user_avatar.dart';
 import 'package:odyssey/src/features/settings/presentation/settings_screen.dart';
 
@@ -1373,35 +1374,42 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               ),
             ],
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
+          // Botão de compartilhar na comunidade
           Row(
+            mainAxisAlignment: MainAxisAlignment.end,
             children: [
-              Icon(
-                Icons.favorite_border,
-                size: 20,
-                color: colors.onSurfaceVariant,
-              ),
-              const SizedBox(width: 4),
-              Text(
-                '48',
-                style: TextStyle(color: colors.onSurfaceVariant, fontSize: 12),
-              ),
-              const SizedBox(width: 20),
-              Icon(
-                Icons.chat_bubble_outline,
-                size: 20,
-                color: colors.onSurfaceVariant,
-              ),
-              const SizedBox(width: 4),
-              Text(
-                '12',
-                style: TextStyle(color: colors.onSurfaceVariant, fontSize: 12),
-              ),
-              const Spacer(),
-              Icon(
-                Icons.share_outlined,
-                size: 20,
-                color: colors.onSurfaceVariant,
+              GestureDetector(
+                onTap: () => _showShareMoodSplash(context),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: colors.primary.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.share_outlined,
+                        size: 16,
+                        color: colors.primary,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Compartilhar com a comunidade',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          color: colors.primary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ],
           ),
@@ -1410,55 +1418,205 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     );
   }
 
-  Widget _buildMoodButton(String svgPath, String label, Color color) {
-    return MotionButton(
-      pressedScale: 0.9,
-      motion: AppMotion.button,
-      onTap: () {
-        soundService.playMoodSelect();
-        showModalBottomSheet(
-          useSafeArea: true,
-          isScrollControlled: true,
-          context: context,
-          backgroundColor: Colors.transparent,
-          builder: (context) => DraggableScrollableSheet(
-            initialChildSize: 0.85,
-            minChildSize: 0.5,
-            maxChildSize: 0.95,
-            builder: (context, scrollController) =>
-                const AddMoodRecordForm(recordToEdit: null),
-          ),
-        );
+  /// Mostra splash animado e navega para criar post de humor
+  void _showShareMoodSplash(
+    BuildContext context, {
+    String? moodLabel,
+    String? moodEmoji,
+  }) {
+    HapticFeedback.lightImpact();
+
+    // Mostrar overlay animado
+    showGeneralDialog(
+      context: context,
+      barrierDismissible: false,
+      barrierColor: Colors.black54,
+      transitionDuration: const Duration(milliseconds: 300),
+      pageBuilder: (context, anim1, anim2) {
+        return const SizedBox.shrink();
       },
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 42,
-            height: 42,
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.12),
-              borderRadius: BorderRadius.circular(12),
+      transitionBuilder: (context, anim1, anim2, child) {
+        final colors = Theme.of(context).colorScheme;
+
+        return FadeTransition(
+          opacity: anim1,
+          child: ScaleTransition(
+            scale: Tween<double>(begin: 0.8, end: 1.0).animate(
+              CurvedAnimation(parent: anim1, curve: Curves.easeOutBack),
             ),
             child: Center(
-              child: SvgPicture.asset(
-                svgPath,
-                width: 24,
-                height: 24,
-                colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
+              child: Container(
+                margin: const EdgeInsets.all(32),
+                padding: const EdgeInsets.all(32),
+                decoration: BoxDecoration(
+                  color: colors.surface,
+                  borderRadius: BorderRadius.circular(24),
+                  boxShadow: [
+                    BoxShadow(
+                      color: colors.primary.withOpacity(0.2),
+                      blurRadius: 30,
+                      spreadRadius: 5,
+                    ),
+                  ],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Ícone animado
+                    TweenAnimationBuilder<double>(
+                      tween: Tween(begin: 0, end: 1),
+                      duration: const Duration(milliseconds: 600),
+                      curve: Curves.elasticOut,
+                      builder: (context, value, child) {
+                        return Transform.scale(
+                          scale: value,
+                          child: Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [
+                                  colors.primary,
+                                  colors.primary.withOpacity(0.7),
+                                ],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.favorite_rounded,
+                              color: Colors.white,
+                              size: 32,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 20),
+                    Text(
+                      moodEmoji != null
+                          ? 'Compartilhando $moodEmoji'
+                          : 'Compartilhando com a comunidade',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: colors.onSurface,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Sua experiência pode inspirar outros! ✨',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: colors.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    // Loading indicator
+                    SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: colors.primary,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 10,
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-              fontWeight: FontWeight.w500,
+        );
+      },
+    );
+
+    // Aguardar um momento e depois navegar
+    Future.delayed(const Duration(milliseconds: 1200), () {
+      if (mounted) {
+        Navigator.of(context).pop(); // Fecha o splash
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => CreatePostScreen(
+              initialType: PostType.mood,
+              initialTopic: CommunityTopic.wellness,
+              initialContent: '',
+              selectedMoodLabel: moodLabel,
+              selectedMoodEmoji: moodEmoji,
             ),
           ),
-        ],
+        );
+      }
+    });
+  }
+
+  Widget _buildMoodButton(String svgPath, String label, Color color) {
+    // Mapeamento de labels para emojis
+    const moodEmojis = {
+      'Ótimo': '😊',
+      'Bem': '🙂',
+      'Ok': '😐',
+      'Mal': '😔',
+      'Péssimo': '😢',
+    };
+    final emoji = moodEmojis[label] ?? '😊';
+
+    return GestureDetector(
+      onLongPress: () {
+        // Long press para compartilhar diretamente
+        HapticFeedback.mediumImpact();
+        _showShareMoodSplash(context, moodLabel: label, moodEmoji: emoji);
+      },
+      child: MotionButton(
+        pressedScale: 0.9,
+        motion: AppMotion.button,
+        onTap: () {
+          soundService.playMoodSelect();
+          showModalBottomSheet(
+            useSafeArea: true,
+            isScrollControlled: true,
+            context: context,
+            backgroundColor: Colors.transparent,
+            builder: (context) => DraggableScrollableSheet(
+              initialChildSize: 0.85,
+              minChildSize: 0.5,
+              maxChildSize: 0.95,
+              builder: (context, scrollController) =>
+                  const AddMoodRecordForm(recordToEdit: null),
+            ),
+          );
+        },
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Center(
+                child: SvgPicture.asset(
+                  svgPath,
+                  width: 24,
+                  height: 24,
+                  colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
+                ),
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 10,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

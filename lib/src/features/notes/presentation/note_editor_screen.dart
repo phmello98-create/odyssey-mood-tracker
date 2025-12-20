@@ -18,17 +18,14 @@ class NoteEditorScreen extends ConsumerStatefulWidget {
   final String? noteId;
   final Map<String, dynamic>? initialData;
 
-  const NoteEditorScreen({
-    super.key,
-    this.noteId,
-    this.initialData,
-  });
+  const NoteEditorScreen({super.key, this.noteId, this.initialData});
 
   @override
   ConsumerState<NoteEditorScreen> createState() => _NoteEditorScreenState();
 }
 
-class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> with WidgetsBindingObserver {
+class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen>
+    with WidgetsBindingObserver {
   late EditorState _editorState;
   late TextEditingController _titleController;
   SyncedNotesRepository? _notesRepo;
@@ -46,14 +43,17 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> with Widget
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _titleController = TextEditingController(text: widget.initialData?['title'] ?? '');
+    _titleController = TextEditingController(
+      text: widget.initialData?['title'] ?? '',
+    );
     _previousTitleLength = _titleController.text.length;
     _isPinned = widget.initialData?['isPinned'] ?? false;
-    _currentNoteId = widget.noteId; // Inicializa com o noteId passado (pode ser null para nova nota)
+    _currentNoteId = widget
+        .noteId; // Inicializa com o noteId passado (pode ser null para nova nota)
     _titleController.addListener(_onTitleChanged);
     _scrollController.addListener(_onScroll);
     _initEditor();
-    
+
     // Auto-save a cada 30 segundos
     _autoSaveTimer = Timer.periodic(const Duration(seconds: 30), (_) {
       if (_hasChanges) {
@@ -69,14 +69,14 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> with Widget
 
   void _onTitleChanged() {
     final currentLength = _titleController.text.length;
-    
+
     if (currentLength > _previousTitleLength) {
       soundService.playSndType();
     } else if (currentLength < _previousTitleLength) {
       soundService.playSndType();
       HapticFeedback.selectionClick();
     }
-    
+
     _previousTitleLength = currentLength;
   }
 
@@ -85,20 +85,20 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> with Widget
         .map((node) => node.delta?.toPlainText() ?? '')
         .join('\n');
     final currentLength = plainText.length;
-    
+
     if (currentLength > _previousContentLength) {
       soundService.playSndType();
     } else if (currentLength < _previousContentLength) {
       soundService.playSndType();
       HapticFeedback.selectionClick();
     }
-    
+
     _previousContentLength = currentLength;
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.paused || 
+    if (state == AppLifecycleState.paused ||
         state == AppLifecycleState.inactive ||
         state == AppLifecycleState.detached) {
       // App indo para background - auto-save
@@ -132,7 +132,8 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> with Widget
         final plainContent = noteData['content'] ?? '';
         if (plainContent.isNotEmpty) {
           _editorState = EditorState(
-            document: Document.blank()..insert([0], [paragraphNode(text: plainContent)]),
+            document: Document.blank()
+              ..insert([0], [paragraphNode(text: plainContent)]),
           );
         } else {
           _editorState = EditorState.blank(withInitialText: true);
@@ -143,7 +144,8 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> with Widget
       final plainContent = noteData['content'] as String;
       if (plainContent.isNotEmpty) {
         _editorState = EditorState(
-          document: Document.blank()..insert([0], [paragraphNode(text: plainContent)]),
+          document: Document.blank()
+            ..insert([0], [paragraphNode(text: plainContent)]),
         );
       } else {
         _editorState = EditorState.blank(withInitialText: true);
@@ -159,13 +161,13 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> with Widget
         setState(() => _hasChanges = true);
       }
     });
-    
+
     // Inicializar o comprimento inicial do conteúdo
     final initialPlainText = _editorState.document.root.children
         .map((node) => node.delta?.toPlainText() ?? '')
         .join('\n');
     _previousContentLength = initialPlainText.length;
-    
+
     // Listen for title changes
     _titleController.addListener(() {
       if (!_hasChanges) {
@@ -180,7 +182,8 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> with Widget
   Future<void> _autoSaveNote() async {
     final now = DateTime.now();
     // Evitar salvar múltiplas vezes em menos de 10 segundos
-    if (_lastAutoSave != null && now.difference(_lastAutoSave!) < const Duration(seconds: 10)) {
+    if (_lastAutoSave != null &&
+        now.difference(_lastAutoSave!) < const Duration(seconds: 10)) {
       return;
     }
     _lastAutoSave = now;
@@ -188,7 +191,7 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> with Widget
     try {
       final title = _titleController.text.trim();
       final document = _editorState.document;
-      
+
       final plainText = document.root.children
           .map((node) => node.delta?.toPlainText() ?? '')
           .join('\n')
@@ -200,7 +203,7 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> with Widget
 
       // Se não tem ID ainda, cria um novo e salva para reutilizar
       _currentNoteId ??= DateTime.now().millisecondsSinceEpoch.toString();
-      
+
       final jsonContent = jsonEncode(document.toJson());
 
       final noteData = {
@@ -209,7 +212,9 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> with Widget
         'content': plainText,
         'jsonContent': jsonContent,
         'isPinned': _isPinned,
-        'createdAt': widget.initialData?['createdAt'] ?? DateTime.now().toIso8601String(),
+        'createdAt':
+            widget.initialData?['createdAt'] ??
+            DateTime.now().toIso8601String(),
         'updatedAt': DateTime.now().toIso8601String(),
       };
 
@@ -222,7 +227,7 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> with Widget
 
       debugPrint('[NoteEditor] Note auto-saved: $_currentNoteId');
       setState(() => _hasChanges = false);
-      
+
       // Limpar da recuperação de emergência
       ref.read(appLifecycleServiceProvider).clearUnsavedNote();
     } catch (e) {
@@ -248,7 +253,7 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> with Widget
   void _saveNote() {
     final title = _titleController.text.trim();
     final document = _editorState.document;
-    
+
     // Get plain text for preview
     final plainText = document.root.children
         .map((node) => node.delta?.toPlainText() ?? '')
@@ -262,7 +267,7 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> with Widget
 
     // Se não tem ID ainda, cria um novo e salva para reutilizar
     _currentNoteId ??= DateTime.now().millisecondsSinceEpoch.toString();
-    
+
     final jsonContent = jsonEncode(document.toJson());
 
     final noteData = {
@@ -271,7 +276,8 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> with Widget
       'content': plainText,
       'jsonContent': jsonContent,
       'isPinned': _isPinned,
-      'createdAt': widget.initialData?['createdAt'] ?? DateTime.now().toIso8601String(),
+      'createdAt':
+          widget.initialData?['createdAt'] ?? DateTime.now().toIso8601String(),
       'updatedAt': DateTime.now().toIso8601String(),
     };
 
@@ -280,7 +286,9 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> with Widget
     } else {
       _notesRepo!.addNote(noteData);
       // Track first note creation for onboarding
-      ref.read(interactiveOnboardingProvider.notifier).completeFirstStep('create_note');
+      ref
+          .read(interactiveOnboardingProvider.notifier)
+          .completeFirstStep('create_note');
     }
 
     // Análise de sentimento em background (não bloqueia o save)
@@ -296,7 +304,11 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> with Widget
   }
 
   /// Analisa a nota em background após salvar
-  Future<void> _analyzeNoteInBackground(String noteId, String content, String title) async {
+  Future<void> _analyzeNoteInBackground(
+    String noteId,
+    String content,
+    String title,
+  ) async {
     try {
       final intelligenceService = ref.read(noteIntelligenceServiceProvider);
       await intelligenceService.initialize();
@@ -306,7 +318,9 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> with Widget
         title: title.isNotEmpty ? title : null,
       );
       if (result != null) {
-        debugPrint('[NoteEditor] Sentiment analysis: ${result.sentiment?.label} (${result.sentiment?.score})');
+        debugPrint(
+          '[NoteEditor] Sentiment analysis: ${result.sentiment?.label} (${result.sentiment?.score})',
+        );
       }
     } catch (e) {
       debugPrint('[NoteEditor] Background analysis error: $e');
@@ -337,9 +351,15 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> with Widget
               Navigator.pop(context); // Close dialog
               Navigator.pop(context); // Close editor
               HapticFeedback.heavyImpact();
-              FeedbackService.showSuccess(context, 'Nota excluída', icon: Icons.delete);
+              FeedbackService.showSuccess(
+                context,
+                'Nota excluída',
+                icon: Icons.delete,
+              );
             },
-            style: ElevatedButton.styleFrom(backgroundColor: Theme.of(context).colorScheme.error),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+            ),
             child: Text(AppLocalizations.of(context)!.delete),
           ),
         ],
@@ -356,8 +376,9 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> with Widget
       );
     }
 
+    final colors = Theme.of(context).colorScheme;
     return Scaffold(
-      backgroundColor: UltravioletColors.background,
+      backgroundColor: colors.surface,
       appBar: AppBar(
         backgroundColor: Theme.of(context).colorScheme.surface,
         elevation: 0,
@@ -372,7 +393,9 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> with Widget
           },
         ),
         title: Text(
-          widget.noteId != null ? AppLocalizations.of(context)!.editNote : AppLocalizations.of(context)!.newNote,
+          widget.noteId != null
+              ? AppLocalizations.of(context)!.editNote
+              : AppLocalizations.of(context)!.newNote,
           style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 18),
         ),
         actions: [
@@ -386,7 +409,10 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> with Widget
           if (widget.noteId != null)
             IconButton(
               onPressed: _deleteNote,
-              icon: Icon(Icons.delete_outline, color: Theme.of(context).colorScheme.error),
+              icon: Icon(
+                Icons.delete_outline,
+                color: Theme.of(context).colorScheme.error,
+              ),
             ),
           TextButton.icon(
             onPressed: _saveNote,
@@ -417,7 +443,9 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> with Widget
                     decoration: InputDecoration(
                       hintText: 'Escolha um título',
                       hintStyle: TextStyle(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
                         fontSize: 22,
                         fontWeight: FontWeight.w600,
                       ),
@@ -434,11 +462,11 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> with Widget
                     },
                   ),
                 ),
-                
+
                 // Editor
                 Expanded(
                   child: Container(
-                    color: UltravioletColors.background,
+                    color: colors.surface,
                     child: AppFlowyEditor(
                       editorState: _editorState,
                       editorScrollController: EditorScrollController(
@@ -455,7 +483,7 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> with Widget
               ],
             ),
           ),
-          
+
           // Custom Toolbar at bottom
           _buildCustomToolbar(),
         ],
@@ -491,9 +519,9 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> with Widget
             children: [
               Text(
                 isBackground ? 'Cor de destaque' : 'Cor do texto',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 24),
               Wrap(
@@ -502,14 +530,23 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> with Widget
                 alignment: WrapAlignment.start,
                 children: colors.map((color) {
                   final colorValue = color['value'];
-                  final colorInt = colorValue != null ? int.parse(colorValue) : null;
-                  final displayColor = colorInt != null ? Color(colorInt) : Theme.of(context).colorScheme.onSurface;
-                  
+                  final colorInt = colorValue != null
+                      ? int.parse(colorValue)
+                      : null;
+                  final displayColor = colorInt != null
+                      ? Color(colorInt)
+                      : Theme.of(context).colorScheme.onSurface;
+
                   return GestureDetector(
                     onTap: () {
                       Navigator.pop(context);
                       if (isBackground) {
-                        _applyHighlightColor(colorValue != null ? '0x4d${colorValue.substring(4)}' : 'clear', savedSelection);
+                        _applyHighlightColor(
+                          colorValue != null
+                              ? '0x4d${colorValue.substring(4)}'
+                              : 'clear',
+                          savedSelection,
+                        );
                       } else {
                         _applyTextColor(colorValue ?? 'clear', savedSelection);
                       }
@@ -521,17 +558,27 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> with Widget
                           width: 48,
                           height: 48,
                           decoration: BoxDecoration(
-                            color: isBackground 
-                                ? (colorInt != null ? Color(colorInt).withValues(alpha: 0.3) : Colors.transparent)
+                            color: isBackground
+                                ? (colorInt != null
+                                      ? Color(colorInt).withValues(alpha: 0.3)
+                                      : Colors.transparent)
                                 : displayColor,
                             shape: BoxShape.circle,
                             border: Border.all(
-                              color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.3),
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.outline.withValues(alpha: 0.3),
                               width: 1,
                             ),
                           ),
                           child: colorValue == null
-                              ? Icon(Icons.format_clear, color: Theme.of(context).colorScheme.onSurfaceVariant, size: 20)
+                              ? Icon(
+                                  Icons.format_clear,
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurfaceVariant,
+                                  size: 20,
+                                )
                               : null,
                         ),
                         const SizedBox(height: 8),
@@ -539,7 +586,9 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> with Widget
                           color['name']!,
                           style: TextStyle(
                             fontSize: 12,
-                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurfaceVariant,
                           ),
                         ),
                       ],
@@ -561,7 +610,9 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> with Widget
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
         border: Border(
-          top: BorderSide(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.1)),
+          top: BorderSide(
+            color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.1),
+          ),
         ),
         boxShadow: [
           BoxShadow(
@@ -578,36 +629,87 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> with Widget
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 8),
               children: [
-                _buildToolbarButton(Icons.format_bold, 'Negrito', () => _toggleFormat(AppFlowyRichTextKeys.bold)),
-                _buildToolbarButton(Icons.format_italic, 'Itálico', () => _toggleFormat(AppFlowyRichTextKeys.italic)),
-                _buildToolbarButton(Icons.format_underlined, 'Sublinhado', () => _toggleFormat(AppFlowyRichTextKeys.underline)),
-                
-                Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
-                  width: 1,
-                  color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
+                _buildToolbarButton(
+                  Icons.format_bold,
+                  'Negrito',
+                  () => _toggleFormat(AppFlowyRichTextKeys.bold),
                 ),
-                
-                _buildToolbarButton(Icons.format_color_text, 'Cor do texto', () => _showColorPicker(false, _editorState.selection)),
-                _buildToolbarButton(Icons.format_color_fill, 'Cor de fundo', () => _showColorPicker(true, _editorState.selection)),
-                
-                Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
-                  width: 1,
-                  color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
+                _buildToolbarButton(
+                  Icons.format_italic,
+                  'Itálico',
+                  () => _toggleFormat(AppFlowyRichTextKeys.italic),
                 ),
-                
-                _buildToolbarButton(Icons.format_list_bulleted, 'Lista', () => _insertBlock('bulleted_list')),
-                _buildToolbarButton(Icons.check_box_outlined, 'Checklist', () => _insertBlock('todo_list')),
-                
-                Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
-                  width: 1,
-                  color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
+                _buildToolbarButton(
+                  Icons.format_underlined,
+                  'Sublinhado',
+                  () => _toggleFormat(AppFlowyRichTextKeys.underline),
                 ),
-                
-                _buildToolbarButton(Icons.format_quote, 'Citação', () => _insertBlock('quote')),
-                _buildToolbarButton(Icons.code, 'Código', () => _toggleFormat(AppFlowyRichTextKeys.code)),
+
+                Container(
+                  margin: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 12,
+                  ),
+                  width: 1,
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.outline.withValues(alpha: 0.2),
+                ),
+
+                _buildToolbarButton(
+                  Icons.format_color_text,
+                  'Cor do texto',
+                  () => _showColorPicker(false, _editorState.selection),
+                ),
+                _buildToolbarButton(
+                  Icons.format_color_fill,
+                  'Cor de fundo',
+                  () => _showColorPicker(true, _editorState.selection),
+                ),
+
+                Container(
+                  margin: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 12,
+                  ),
+                  width: 1,
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.outline.withValues(alpha: 0.2),
+                ),
+
+                _buildToolbarButton(
+                  Icons.format_list_bulleted,
+                  'Lista',
+                  () => _insertBlock('bulleted_list'),
+                ),
+                _buildToolbarButton(
+                  Icons.check_box_outlined,
+                  'Checklist',
+                  () => _insertBlock('todo_list'),
+                ),
+
+                Container(
+                  margin: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 12,
+                  ),
+                  width: 1,
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.outline.withValues(alpha: 0.2),
+                ),
+
+                _buildToolbarButton(
+                  Icons.format_quote,
+                  'Citação',
+                  () => _insertBlock('quote'),
+                ),
+                _buildToolbarButton(
+                  Icons.code,
+                  'Código',
+                  () => _toggleFormat(AppFlowyRichTextKeys.code),
+                ),
               ],
             ),
           ),
@@ -617,7 +719,11 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> with Widget
           Container(
             decoration: BoxDecoration(
               border: Border(
-                left: BorderSide(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.1)),
+                left: BorderSide(
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.outline.withValues(alpha: 0.1),
+                ),
               ),
             ),
             child: IconButton(
@@ -638,11 +744,11 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> with Widget
         // Insert text at current cursor position
         final selection = _editorState.selection;
         if (selection == null) return;
-        
+
         // Get the node at the cursor position
         final node = _editorState.getNodeAtPath(selection.start.path);
         if (node == null) return;
-        
+
         final transaction = _editorState.transaction;
         transaction.insertText(node, selection.start.offset, text);
         _editorState.apply(transaction);
@@ -651,7 +757,11 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> with Widget
     );
   }
 
-  Widget _buildToolbarButton(IconData icon, String tooltip, VoidCallback onPressed) {
+  Widget _buildToolbarButton(
+    IconData icon,
+    String tooltip,
+    VoidCallback onPressed,
+  ) {
     return Tooltip(
       message: tooltip,
       child: IconButton(
@@ -681,19 +791,21 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> with Widget
     final selection = savedSelection ?? _editorState.selection;
     if (selection == null) return;
     _editorState.formatDelta(selection, {
-      AppFlowyRichTextKeys.backgroundColor: colorHex == 'clear' ? null : colorHex,
+      AppFlowyRichTextKeys.backgroundColor: colorHex == 'clear'
+          ? null
+          : colorHex,
     });
   }
 
   void _insertBlock(String type) {
     final selection = _editorState.selection;
     if (selection == null) return;
-    
+
     final node = _editorState.getNodeAtPath(selection.start.path);
     if (node == null) return;
 
     final transaction = _editorState.transaction;
-    
+
     // Criar novo nó do tipo correto
     Node newNode;
     switch (type) {
@@ -715,7 +827,7 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> with Widget
       default:
         newNode = paragraphNode(delta: node.delta);
     }
-    
+
     // Substituir o nó atual pelo novo
     transaction.insertNode(selection.start.path, newNode);
     transaction.deleteNode(node);
@@ -729,11 +841,7 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> with Widget
       cursorColor: colors.primary,
       selectionColor: const Color(0x4da78bfa), // primary with 30% opacity
       textStyleConfiguration: TextStyleConfiguration(
-        text: TextStyle(
-          fontSize: 16,
-          color: colors.onSurface,
-          height: 1.6,
-        ),
+        text: TextStyle(fontSize: 16, color: colors.onSurface, height: 1.6),
         bold: const TextStyle(fontWeight: FontWeight.w700),
         italic: const TextStyle(fontStyle: FontStyle.italic),
         underline: const TextStyle(decoration: TextDecoration.underline),
@@ -754,11 +862,15 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> with Widget
 
   Map<String, BlockComponentBuilder> _buildBlockComponentBuilders() {
     final builders = standardBlockComponentBuilderMap;
-    
+
     // Customize heading style
     builders['heading'] = HeadingBlockComponentBuilder(
       textStyleBuilder: (level) => TextStyle(
-        fontSize: level == 1 ? 28 : level == 2 ? 24 : 20,
+        fontSize: level == 1
+            ? 28
+            : level == 2
+            ? 24
+            : 20,
         fontWeight: FontWeight.w700,
         color: Theme.of(context).colorScheme.onSurface,
         height: 1.4,
@@ -789,7 +901,10 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> with Widget
               Navigator.pop(context); // Close dialog
               Navigator.pop(context); // Close editor without saving
             },
-            child: Text(AppLocalizations.of(context)!.discard, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+            child: Text(
+              AppLocalizations.of(context)!.discard,
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
+            ),
           ),
           ElevatedButton(
             onPressed: () {

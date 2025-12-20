@@ -33,14 +33,26 @@ class _ReactionButtonState extends ConsumerState<ReactionButton> {
     HapticFeedback.lightImpact();
 
     try {
-      final repo = ref.read(communityRepositoryProvider);
+      final isOffline = ref.read(isOfflineModeProvider);
 
-      if (_hasReacted) {
-        await repo.removeReaction(widget.postId);
-        setState(() => _hasReacted = false);
+      if (isOffline) {
+        // Em modo offline, apenas simula localmente
+        setState(() => _hasReacted = !_hasReacted);
       } else {
-        await repo.addReaction(widget.postId, '❤️');
-        setState(() => _hasReacted = true);
+        final repo = ref.read(communityRepositoryProvider);
+        if (repo == null) {
+          // Fallback para modo offline
+          setState(() => _hasReacted = !_hasReacted);
+          return;
+        }
+
+        if (_hasReacted) {
+          await repo.removeReaction(widget.postId);
+          setState(() => _hasReacted = false);
+        } else {
+          await repo.addReaction(widget.postId, '❤️');
+          setState(() => _hasReacted = true);
+        }
       }
     } catch (e) {
       if (mounted) {

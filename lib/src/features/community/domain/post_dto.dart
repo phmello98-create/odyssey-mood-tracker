@@ -6,12 +6,14 @@ class CreatePostDto {
   final PostType type;
   final Map<String, dynamic>? metadata;
   final List<String> categories;
+  final List<String> localImagePaths; // Caminhos para imagens locais
 
   const CreatePostDto({
     required this.content,
     this.type = PostType.text,
     this.metadata,
     this.categories = const [],
+    this.localImagePaths = const [],
   });
 
   Map<String, dynamic> toJson() {
@@ -20,6 +22,7 @@ class CreatePostDto {
       'type': type.name,
       'metadata': metadata,
       'categories': categories,
+      'localImagePaths': localImagePaths,
     };
   }
 }

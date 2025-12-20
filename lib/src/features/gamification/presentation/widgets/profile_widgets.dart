@@ -652,7 +652,7 @@ class ProfileHeader extends StatelessWidget {
                 ),
               ),
               FractionallySizedBox(
-                widthFactor: progress,
+                widthFactor: progress.clamp(0.0, 1.0),
                 child: Container(
                   height: 5,
                   decoration: BoxDecoration(
@@ -859,6 +859,8 @@ class PersonalGoalsCard extends StatelessWidget {
   final VoidCallback onAddGoal;
   final VoidCallback? onViewAll;
   final void Function(PersonalGoal goal)? onGoalTap;
+  final void Function(PersonalGoal goal)? onIncrementGoal;
+  final void Function(PersonalGoal goal)? onDeleteGoal;
 
   const PersonalGoalsCard({
     super.key,
@@ -867,6 +869,8 @@ class PersonalGoalsCard extends StatelessWidget {
     required this.onAddGoal,
     this.onViewAll,
     this.onGoalTap,
+    this.onIncrementGoal,
+    this.onDeleteGoal,
   });
 
   @override
@@ -931,43 +935,24 @@ class PersonalGoalsCard extends StatelessWidget {
               (goal) => PremiumGoalCard(
                 goal: goal,
                 onIncrement: () {
-                  print(
-                    'DEBUG: Goal card increment clicked (but handler empty in overview)',
-                  );
+                  if (onIncrementGoal != null) {
+                    onIncrementGoal!(goal);
+                  }
                 },
                 onDelete: () {
-                  print(
-                    'DEBUG: Goal card delete clicked (but handler empty in overview)',
-                  );
+                  if (onDeleteGoal != null) {
+                    onDeleteGoal!(goal);
+                  }
                 },
-                showActions: false,
-                onTap: onGoalTap != null
-                    ? () {
-                        print(
-                          'DEBUG: PremiumGoalCard tapped for goal: ${goal.title}',
-                        );
-                        onGoalTap!(goal);
-                      }
-                    : () {
-                        print(
-                          'DEBUG: PremiumGoalCard tapped but onGoalTap is null',
-                        );
-                      },
+                showActions: onIncrementGoal != null,
+                onTap: onGoalTap != null ? () => onGoalTap!(goal) : null,
               ),
             ),
 
           if (activeGoals.isNotEmpty)
             Center(
               child: TextButton(
-                onPressed: () {
-                  print('DEBUG: Ver Todas as Metas button clicked');
-                  if (onViewAll != null) {
-                    print('DEBUG: onViewAll callback exists, calling it');
-                    onViewAll!();
-                  } else {
-                    print('DEBUG: onViewAll callback is null!');
-                  }
-                },
+                onPressed: onViewAll,
                 child: Text(
                   'Ver Todas as Metas',
                   style: TextStyle(
@@ -1003,190 +988,140 @@ class PremiumGoalCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     final goalColor = _getGoalColor(goal.type);
-    final percentage = (goal.progress * 100).round();
 
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 16),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: colors.surfaceContainerHighest.withValues(alpha: 0.3),
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(
-            color: isDark(context)
-                ? Colors.white.withValues(alpha: 0.05)
-                : colors.outline.withValues(alpha: 0.1),
-          ),
-        ),
-        child: Column(
-          children: [
-            Row(
-              children: [
-                // Icon with glow
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: goalColor.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Center(
-                    child: Text(
-                      _getGoalEmoji(goal.type),
-                      style: const TextStyle(fontSize: 24),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                // Title and Progress Text
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        goal.title,
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: colors.onSurface,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        _getGoalStatusText(goal),
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: colors.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                // Actions
-                if (showActions && !goal.isCompleted)
-                  Row(
-                    children: [
-                      _circleIconButton(
-                        goal.trackingType == 'checklist'
-                            ? Icons.check_rounded
-                            : Icons.add,
-                        goalColor,
-                        () {
-                          HapticFeedback.mediumImpact();
-                          onIncrement();
-                        },
-                        colors,
-                      ),
-                      const SizedBox(width: 8),
-                      _circleIconButton(
-                        Icons.delete_outline,
-                        colors.error,
-                        onDelete,
-                        colors,
-                      ),
-                    ],
-                  )
-                else if (goal.isCompleted)
-                  const Icon(
-                    Icons.check_circle,
-                    color: Color(0xFF51CF66),
-                    size: 28,
-                  ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            // Progress Bar (Gradient)
-            Stack(
-              children: [
-                Container(
-                  height: 8,
-                  decoration: BoxDecoration(
-                    color: colors.outlineVariant.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                ),
-                FractionallySizedBox(
-                  widthFactor: goal.progress,
-                  child: Container(
-                    height: 8,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [goalColor, goalColor.withValues(alpha: 0.7)],
-                      ),
-                      borderRadius: BorderRadius.circular(4),
-                      boxShadow: [
-                        BoxShadow(
-                          color: goalColor.withValues(alpha: 0.3),
-                          blurRadius: 4,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Progresso',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: colors.onSurfaceVariant,
-                  ),
-                ),
-                Text(
-                  '$percentage%',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                    color: goalColor,
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _circleIconButton(
-    IconData icon,
-    Color color,
-    VoidCallback onTap,
-    ColorScheme colors,
-  ) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.1),
-          shape: BoxShape.circle,
-        ),
-        child: Icon(icon, color: color, size: 20),
-      ),
-    );
-  }
-
-  bool isDark(BuildContext context) =>
-      Theme.of(context).brightness == Brightness.dark;
-
-  String _getGoalStatusText(PersonalGoal goal) {
-    if (goal.isCompleted) return 'Concluída';
-    switch (goal.trackingType) {
-      case 'checklist':
-        return 'Pendente';
-      case 'percentage':
-        return '${goal.currentValue}% de ${goal.targetValue}%';
-      case 'counter':
-      default:
-        return '${goal.currentValue} de ${goal.targetValue} concluídos';
+    // Cálculo 100% seguro do progresso
+    double safeProgress = 0.0;
+    if (goal.isCompleted) {
+      safeProgress = 1.0;
+    } else if (goal.targetValue > 0) {
+      safeProgress = (goal.currentValue / goal.targetValue).clamp(0.0, 1.0);
     }
+    final percentage = (safeProgress * 100).round();
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: colors.surfaceContainerHighest.withAlpha(80),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: colors.outline.withAlpha(20)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              // Icon
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: goalColor.withAlpha(30),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  _getGoalEmoji(goal.type),
+                  style: const TextStyle(fontSize: 18),
+                ),
+              ),
+              const SizedBox(width: 10),
+              // Title
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      goal.title,
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: colors.onSurface,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    Text(
+                      _getStatusText(),
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: colors.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // Buttons
+              if (showActions && !goal.isCompleted) ...[
+                _SimpleBtn(
+                  icon: goal.trackingType == 'checklist'
+                      ? Icons.check
+                      : Icons.add,
+                  color: goalColor,
+                  onTap: onIncrement,
+                ),
+                const SizedBox(width: 4),
+                _SimpleBtn(
+                  icon: Icons.delete_outline,
+                  color: colors.error,
+                  onTap: onDelete,
+                ),
+              ] else if (goal.isCompleted)
+                Icon(Icons.check_circle, color: Colors.green, size: 22),
+            ],
+          ),
+          const SizedBox(height: 10),
+          // Progress bar using simple Container
+          Container(
+            height: 5,
+            decoration: BoxDecoration(
+              color: colors.outlineVariant.withAlpha(50),
+              borderRadius: BorderRadius.circular(3),
+            ),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: FractionallySizedBox(
+                widthFactor: safeProgress,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: goalColor,
+                    borderRadius: BorderRadius.circular(3),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                '${goal.currentValue}/${goal.targetValue}',
+                style: TextStyle(fontSize: 9, color: colors.onSurfaceVariant),
+              ),
+              Text(
+                '$percentage%',
+                style: TextStyle(
+                  fontSize: 9,
+                  fontWeight: FontWeight.bold,
+                  color: goalColor,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _getStatusText() {
+    if (goal.isCompleted) return 'Concluída ✅';
+    if (goal.trackingType == 'checklist') return 'Pendente';
+    if (goal.trackingType == 'percentage')
+      return '${goal.currentValue.clamp(0, 100)}%';
+    return '${goal.currentValue}/${goal.targetValue}';
   }
 
   Color _getGoalColor(String type) {
@@ -1217,6 +1152,39 @@ class PremiumGoalCard extends StatelessWidget {
       default:
         return '🌟';
     }
+  }
+}
+
+class _SimpleBtn extends StatelessWidget {
+  final IconData icon;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _SimpleBtn({
+    required this.icon,
+    required this.color,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () {
+        HapticFeedback.lightImpact();
+        onTap();
+      },
+      child: Container(
+        width: 30,
+        height: 30,
+        decoration: BoxDecoration(
+          color: color.withAlpha(25),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        alignment: Alignment.center,
+        child: Icon(icon, color: color, size: 16),
+      ),
+    );
   }
 }
 
@@ -1476,7 +1444,7 @@ class LevelProgressCard extends StatelessWidget {
                 ),
               ),
               FractionallySizedBox(
-                widthFactor: progress,
+                widthFactor: progress.clamp(0.0, 1.0),
                 child: Container(
                   height: 12,
                   decoration: BoxDecoration(

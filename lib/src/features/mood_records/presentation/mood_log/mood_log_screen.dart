@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:intl/intl.dart';
 import 'package:odyssey/src/constants/app_theme.dart';
@@ -10,13 +11,16 @@ import 'package:odyssey/src/features/mood_records/presentation/mood_log/mood_log
 import 'package:odyssey/src/utils/icon_map.dart';
 import 'package:odyssey/src/utils/widgets/staggered_list_animation.dart';
 import 'package:odyssey/src/localization/app_localizations.dart';
-import 'package:odyssey/src/features/onboarding/services/showcase_service.dart' as showcase;
+import 'package:odyssey/src/features/onboarding/services/showcase_service.dart'
+    as showcase;
 
 class MoodRecordsScreen extends ConsumerStatefulWidget {
   const MoodRecordsScreen({super.key});
 
   static void showAddMoodRecordForm(
-      context, MapEntry<dynamic, MoodRecord>? recordToEdit) {
+    context,
+    MapEntry<dynamic, MoodRecord>? recordToEdit,
+  ) {
     showModalBottomSheet(
       useSafeArea: true,
       isScrollControlled: true,
@@ -26,7 +30,8 @@ class MoodRecordsScreen extends ConsumerStatefulWidget {
         initialChildSize: 0.9,
         minChildSize: 0.5,
         maxChildSize: 0.95,
-        builder: (context, scrollController) => AddMoodRecordForm(recordToEdit: recordToEdit),
+        builder: (context, scrollController) =>
+            AddMoodRecordForm(recordToEdit: recordToEdit),
       ),
     );
   }
@@ -37,7 +42,7 @@ class MoodRecordsScreen extends ConsumerStatefulWidget {
 
 class _MoodRecordsScreenState extends ConsumerState<MoodRecordsScreen> {
   DateTime _selectedDate = DateTime.now();
-  
+
   // Showcase keys
   final GlobalKey _showcaseMoodChart = GlobalKey();
   final GlobalKey _showcaseAddMood = GlobalKey();
@@ -48,7 +53,7 @@ class _MoodRecordsScreenState extends ConsumerState<MoodRecordsScreen> {
     super.initState();
     _initShowcase();
   }
-  
+
   @override
   void dispose() {
     showcase.ShowcaseService.unregisterScreen(showcase.ShowcaseTour.moodLog);
@@ -81,93 +86,108 @@ class _MoodRecordsScreenState extends ConsumerState<MoodRecordsScreen> {
         valueListenable: controller.repository.box.listenable(),
         builder: (context, box, _) {
           final allRecords = box.values.toList().cast<MoodRecord>();
-          
+
           final now = DateTime.now();
           final last7Days = List.generate(7, (i) {
             final d = now.subtract(Duration(days: 6 - i));
             return DateTime(d.year, d.month, d.day);
           });
-          
+
           double averageMood = 0;
           if (allRecords.isNotEmpty) {
-            averageMood = allRecords.map((e) => e.score).reduce((a, b) => a + b) / allRecords.length;
+            averageMood =
+                allRecords.map((e) => e.score).reduce((a, b) => a + b) /
+                allRecords.length;
           }
 
-          // Calcular estatísticas
-          final todayRecords = allRecords.where((r) => _isSameDay(r.date, now)).length;
-          final weekRecords = allRecords.where((r) => 
-            r.date.isAfter(now.subtract(const Duration(days: 7)))
-          ).length;
+          final todayRecords = allRecords
+              .where((r) => _isSameDay(r.date, now))
+              .length;
+          final weekRecords = allRecords
+              .where(
+                (r) => r.date.isAfter(now.subtract(const Duration(days: 7))),
+              )
+              .length;
+
+          final streak = _calculateStreak(allRecords);
 
           return Stack(
             children: [
               CustomScrollView(
+                physics: const BouncingScrollPhysics(
+                  parent: AlwaysScrollableScrollPhysics(),
+                ),
                 slivers: [
-                  // Header refinado
+                  // Header iOS style
                   SliverToBoxAdapter(
-                    child: _buildHeader(colors, allRecords.length, todayRecords),
+                    child: _buildIOSHeader(colors, streak, todayRecords),
                   ),
 
-                  // Stats Cards
+                  // Summary Card
                   SliverToBoxAdapter(
-                    child: _buildStatsRow(colors, averageMood, weekRecords, allRecords.length),
+                    child: _buildSummaryCard(
+                      colors,
+                      averageMood,
+                      weekRecords,
+                      allRecords.length,
+                    ),
                   ),
 
-                  // Gráfico refinado
+                  // Gráfico clean
                   SliverToBoxAdapter(
                     child: Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
-                      child: _buildChartSection(colors, allRecords, last7Days, averageMood),
+                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                      child: _buildCleanChart(
+                        colors,
+                        allRecords,
+                        last7Days,
+                        averageMood,
+                      ),
                     ),
                   ),
 
                   // Mood Distribution
                   SliverToBoxAdapter(
                     child: Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
                       child: _buildMoodDistribution(colors, allRecords),
                     ),
                   ),
 
-                  // Date Selector
+                  // Insights Section
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                      child: _buildInsightsSection(colors, allRecords),
+                    ),
+                  ),
+
+                  // Date Selector iOS style
                   SliverToBoxAdapter(
                     child: Padding(
                       padding: const EdgeInsets.only(top: 20),
-                      child: _buildDateSelector(colors),
+                      child: _buildIOSDateSelector(colors),
                     ),
                   ),
 
                   // Section Title
                   SliverToBoxAdapter(
                     child: Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-                      child: Row(
-                        children: [
-                          Icon(Icons.history_rounded, size: 20, color: colors.primary),
-                          const SizedBox(width: 8),
-                          Text(
-                            AppLocalizations.of(context)!.dailyRecords,
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w700,
-                              color: colors.onSurface,
-                            ),
-                          ),
-                        ],
-                      ),
+                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                      child: _buildSectionHeader(colors, l10n),
                     ),
                   ),
 
                   // Records List
                   SliverPadding(
-                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 120),
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
                     sliver: _buildRecordsList(allRecords, colors),
                   ),
                 ],
               ),
-              
-              // Botão de adicionar centralizado na parte inferior
-              _buildBottomAddButton(colors),
+
+              // Botão de adicionar discreto iOS style
+              _buildIOSAddButton(colors),
             ],
           );
         },
@@ -175,163 +195,209 @@ class _MoodRecordsScreenState extends ConsumerState<MoodRecordsScreen> {
     );
   }
 
-  Widget _buildHeader(ColorScheme colors, int totalRecords, int todayRecords) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(20, 60, 20, 20),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            colors.primaryContainer.withValues(alpha: 0.3),
-            colors.surface,
-          ],
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [colors.primary, colors.tertiary],
+  Widget _buildIOSHeader(ColorScheme colors, int streak, int todayRecords) {
+    return SafeArea(
+      bottom: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    AppLocalizations.of(context)!.moodDiary,
+                    style: TextStyle(
+                      fontSize: 32,
+                      fontWeight: FontWeight.w700,
+                      color: colors.onSurface,
+                      letterSpacing: -0.5,
+                    ),
                   ),
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: colors.primary.withValues(alpha: 0.3),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
+                  const SizedBox(height: 2),
+                  Text(
+                    AppLocalizations.of(context)!.emotionalJourney,
+                    style: TextStyle(
+                      fontSize: 15,
+                      color: colors.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (streak > 0)
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: colors.tertiary.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.local_fire_department_rounded,
+                      color: colors.tertiary,
+                      size: 18,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      '$streak dias',
+                      style: TextStyle(
+                        color: colors.tertiary,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ],
-                ),
-                child: const Icon(
-                  Icons.favorite_rounded,
-                  color: Colors.white,
-                  size: 24,
                 ),
               ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      AppLocalizations.of(context)!.moodDiary,
-                      style: TextStyle(
-                        fontSize: 26,
-                        fontWeight: FontWeight.w800,
-                        color: colors.onSurface,
-                        letterSpacing: -0.5,
-                      ),
-                    ),
-                    Text(
-                      AppLocalizations.of(context)!.emotionalJourney,
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: colors.onSurfaceVariant,
-                      ),
-                    ),
-                  ],
+            if (todayRecords > 0) ...[
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: colors.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  '$todayRecords hoje',
+                  style: TextStyle(
+                    color: colors.primary,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             ],
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildStatsRow(ColorScheme colors, double avgMood, int weekRecords, int totalRecords) {
-    final l10n = AppLocalizations.of(context)!;
+  Widget _buildSummaryCard(
+    ColorScheme colors,
+    double avgMood,
+    int weekRecords,
+    int totalRecords,
+  ) {
+    final moodColor = _getMoodColor(avgMood);
+
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
-      child: Row(
-        children: [
-          Expanded(
-            child: _buildStatCard(
-              colors: colors,
-              icon: Icons.auto_graph_rounded,
-              value: avgMood.toStringAsFixed(1),
-              label: l10n.priorityMedium,
-              color: _getMoodColor(avgMood),
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: colors.surfaceContainerHighest.withValues(alpha: 0.5),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Row(
+          children: [
+            // Ícone SVG do humor médio
+            Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                color: moodColor.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Center(
+                child: SvgPicture.asset(
+                  _getMoodSvgPath(avgMood.round()),
+                  width: 36,
+                  height: 36,
+                ),
+              ),
             ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: _buildStatCard(
-              colors: colors,
-              icon: Icons.calendar_today_rounded,
-              value: '$weekRecords',
-              label: l10n.thisWeekLabel,
-              color: colors.tertiary,
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _getMoodLabel(avgMood),
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: colors.onSurface,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Média: ${avgMood.toStringAsFixed(1)}',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: colors.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: _buildStatCard(
-              colors: colors,
-              icon: Icons.bar_chart_rounded,
-              value: '$totalRecords',
-              label: l10n.totalLabel,
-              color: colors.secondary,
+            // Stats
+            Row(
+              children: [
+                _buildCompactStat(
+                  value: '$weekRecords',
+                  label: 'Semana',
+                  colors: colors,
+                ),
+                const SizedBox(width: 16),
+                _buildCompactStat(
+                  value: '$totalRecords',
+                  label: 'Total',
+                  colors: colors,
+                ),
+              ],
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildStatCard({
-    required ColorScheme colors,
-    required IconData icon,
+  Widget _buildCompactStat({
     required String value,
     required String label,
-    required Color color,
+    required ColorScheme colors,
   }) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color.withValues(alpha: 0.2)),
-      ),
-      child: Column(
-        children: [
-          Icon(icon, color: color, size: 22),
-          const SizedBox(height: 8),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.w800,
-              color: color,
-            ),
+    return Column(
+      children: [
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+            color: colors.onSurface,
           ),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 11,
-              color: colors.onSurfaceVariant,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
-      ),
+        ),
+        Text(
+          label,
+          style: TextStyle(fontSize: 11, color: colors.onSurfaceVariant),
+        ),
+      ],
     );
   }
 
-  Widget _buildChartSection(ColorScheme colors, List<MoodRecord> allRecords, List<DateTime> days, double avgMood) {
+  Widget _buildCleanChart(
+    ColorScheme colors,
+    List<MoodRecord> allRecords,
+    List<DateTime> days,
+    double avgMood,
+  ) {
     final l10n = AppLocalizations.of(context)!;
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: colors.surfaceContainerHighest.withValues(alpha: 0.3),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: colors.outlineVariant.withValues(alpha: 0.3)),
+        color: colors.surfaceContainerHighest.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -339,50 +405,37 @@ class _MoodRecordsScreenState extends ConsumerState<MoodRecordsScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  Icon(Icons.show_chart_rounded, size: 20, color: colors.primary),
-                  const SizedBox(width: 8),
-                  Text(
-                    l10n.last7Days,
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: colors.onSurface,
-                    ),
-                  ),
-                ],
+              Text(
+                l10n.last7Days,
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: colors.onSurface,
+                ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: _getMoodColor(avgMood).withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
                 ),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.trending_up_rounded,
-                      size: 14,
-                      color: _getMoodColor(avgMood),
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      l10n.average(avgMood.toStringAsFixed(1)),
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: _getMoodColor(avgMood),
-                      ),
-                    ),
-                  ],
+                decoration: BoxDecoration(
+                  color: _getMoodColor(avgMood).withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  l10n.average(avgMood.toStringAsFixed(1)),
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: _getMoodColor(avgMood),
+                  ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 20),
           SizedBox(
-            height: 160,
+            height: 140,
             child: _MoodChart(records: allRecords, days: days, colors: colors),
           ),
         ],
@@ -408,150 +461,447 @@ class _MoodRecordsScreenState extends ConsumerState<MoodRecordsScreen> {
     };
 
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: colors.surfaceContainerHighest.withValues(alpha: 0.3),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: colors.outlineVariant.withValues(alpha: 0.3)),
+        color: colors.surfaceContainerHighest.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            AppLocalizations.of(context)!.moodDistribution,
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              color: colors.onSurface,
+            ),
+          ),
+          const SizedBox(height: 16),
+          ...(moodCounts.entries.toList()
+                ..sort((a, b) => b.key.compareTo(a.key)))
+              .map((entry) {
+                final percentage = (entry.value / records.length * 100);
+                final moodColor = moodColors[entry.key]!;
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: Row(
+                    children: [
+                      SvgPicture.asset(
+                        _getMoodSvgPath(entry.key),
+                        width: 22,
+                        height: 22,
+                      ),
+                      const SizedBox(width: 10),
+                      SizedBox(
+                        width: 50,
+                        child: Text(
+                          moodLabels[entry.key] ?? '',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                            color: colors.onSurface,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(4),
+                          child: LinearProgressIndicator(
+                            value: percentage / 100,
+                            backgroundColor: colors.surfaceContainerHighest,
+                            valueColor: AlwaysStoppedAnimation(moodColor),
+                            minHeight: 8,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      SizedBox(
+                        width: 36,
+                        child: Text(
+                          '${percentage.toStringAsFixed(0)}%',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: colors.onSurfaceVariant,
+                          ),
+                          textAlign: TextAlign.right,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              })
+              .toList(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInsightsSection(ColorScheme colors, List<MoodRecord> records) {
+    if (records.length < 3) return const SizedBox.shrink();
+
+    final now = DateTime.now();
+
+    // Calcular média da semana atual vs semana passada
+    final thisWeekRecords = records
+        .where((r) => r.date.isAfter(now.subtract(const Duration(days: 7))))
+        .toList();
+    final lastWeekRecords = records
+        .where(
+          (r) =>
+              r.date.isAfter(now.subtract(const Duration(days: 14))) &&
+              r.date.isBefore(now.subtract(const Duration(days: 7))),
+        )
+        .toList();
+
+    double? weekComparison;
+    if (thisWeekRecords.isNotEmpty && lastWeekRecords.isNotEmpty) {
+      final thisWeekAvg =
+          thisWeekRecords.map((r) => r.score).reduce((a, b) => a + b) /
+          thisWeekRecords.length;
+      final lastWeekAvg =
+          lastWeekRecords.map((r) => r.score).reduce((a, b) => a + b) /
+          lastWeekRecords.length;
+      weekComparison = thisWeekAvg - lastWeekAvg;
+    }
+
+    // Melhor dia da semana
+    final dayScores = <int, List<int>>{};
+    for (final record in records) {
+      final day = record.date.weekday;
+      dayScores.putIfAbsent(day, () => []).add(record.score);
+    }
+    int? bestDay;
+    double bestDayAvg = 0;
+    for (final entry in dayScores.entries) {
+      final avg = entry.value.reduce((a, b) => a + b) / entry.value.length;
+      if (avg > bestDayAvg) {
+        bestDayAvg = avg;
+        bestDay = entry.key;
+      }
+    }
+
+    // Horário mais frequente
+    final hourCounts = <int, int>{};
+    for (final record in records) {
+      final hour = record.date.hour;
+      hourCounts[hour] = (hourCounts[hour] ?? 0) + 1;
+    }
+    int? mostFrequentHour;
+    int maxCount = 0;
+    for (final entry in hourCounts.entries) {
+      if (entry.value > maxCount) {
+        maxCount = entry.value;
+        mostFrequentHour = entry.key;
+      }
+    }
+
+    // Atividades associadas a bom humor (score >= 4)
+    final goodMoodActivities = <String, int>{};
+    for (final record in records.where((r) => r.score >= 4)) {
+      for (final activity in record.activities) {
+        goodMoodActivities[activity.activityName] =
+            (goodMoodActivities[activity.activityName] ?? 0) + 1;
+      }
+    }
+    final topActivities = goodMoodActivities.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+
+    // Maior sequência histórica
+    int longestStreak = _calculateLongestStreak(records);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(Icons.insights, size: 18, color: colors.primary),
+            const SizedBox(width: 8),
+            Text(
+              'Insights',
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: colors.onSurface,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+
+        // Cards de insights em grid
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            // Comparação com semana anterior
+            if (weekComparison != null)
+              _buildInsightCard(
+                colors,
+                weekComparison > 0
+                    ? Icons.trending_up_rounded
+                    : weekComparison < 0
+                    ? Icons.trending_down_rounded
+                    : Icons.trending_flat_rounded,
+                weekComparison > 0
+                    ? 'Melhora'
+                    : weekComparison < 0
+                    ? 'Queda'
+                    : 'Estável',
+                weekComparison > 0
+                    ? '+${weekComparison.toStringAsFixed(1)} vs semana passada'
+                    : weekComparison < 0
+                    ? '${weekComparison.toStringAsFixed(1)} vs semana passada'
+                    : 'Igual à semana passada',
+                weekComparison > 0
+                    ? UltravioletColors.moodGreat
+                    : weekComparison < 0
+                    ? UltravioletColors.moodBad
+                    : colors.primary,
+              ),
+
+            // Melhor dia
+            if (bestDay != null)
+              _buildInsightCard(
+                colors,
+                Icons.calendar_today_rounded,
+                _getWeekdayFull(bestDay),
+                'Melhor dia (média ${bestDayAvg.toStringAsFixed(1)})',
+                UltravioletColors.moodGood,
+              ),
+
+            // Horário mais frequente
+            if (mostFrequentHour != null)
+              _buildInsightCard(
+                colors,
+                Icons.schedule_rounded,
+                _formatHour(mostFrequentHour),
+                'Hora mais frequente',
+                colors.tertiary,
+              ),
+
+            // Maior sequência
+            if (longestStreak > 1)
+              _buildInsightCard(
+                colors,
+                Icons.local_fire_department_rounded,
+                '$longestStreak dias',
+                'Maior sequência',
+                Colors.orange,
+              ),
+          ],
+        ),
+
+        // Atividades que melhoram o humor
+        if (topActivities.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: colors.surfaceContainerHighest.withValues(alpha: 0.5),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(
+                      Icons.thumb_up_rounded,
+                      size: 16,
+                      color: UltravioletColors.moodGreat,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Atividades que melhoram seu humor',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: colors.onSurface,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: topActivities.take(5).map((e) {
+                    return Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: UltravioletColors.moodGreat.withValues(
+                          alpha: 0.15,
+                        ),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            e.key,
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                              color: colors.onSurface,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 4,
+                              vertical: 1,
+                            ),
+                            decoration: BoxDecoration(
+                              color: UltravioletColors.moodGreat,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              '${e.value}x',
+                              style: const TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildInsightCard(
+    ColorScheme colors,
+    IconData icon,
+    String value,
+    String label,
+    Color color,
+  ) {
+    return Container(
+      width: (MediaQuery.of(context).size.width - 48) / 2,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(Icons.pie_chart_rounded, size: 20, color: colors.secondary),
-              const SizedBox(width: 8),
-              Text(
-                AppLocalizations.of(context)!.moodDistribution,
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: colors.onSurface,
+              Icon(icon, color: color, size: 18),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  value,
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: color,
+                  ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 16),
-          ...(moodCounts.entries.toList()
-            ..sort((a, b) => b.key.compareTo(a.key)))
-            .map((entry) {
-              final percentage = (entry.value / records.length * 100);
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 32,
-                      height: 32,
-                      decoration: BoxDecoration(
-                        color: moodColors[entry.key]!.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Center(
-                        child: Text(
-                          _getMoodEmoji(entry.key),
-                          style: const TextStyle(fontSize: 16),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                moodLabels[entry.key] ?? '',
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                  color: colors.onSurface,
-                                ),
-                              ),
-                              Text(
-                                '${percentage.toStringAsFixed(0)}%',
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w700,
-                                  color: moodColors[entry.key],
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 4),
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(4),
-                            child: LinearProgressIndicator(
-                              value: percentage / 100,
-                              backgroundColor: colors.surfaceContainerHighest,
-                              valueColor: AlwaysStoppedAnimation(moodColors[entry.key]),
-                              minHeight: 6,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }).toList(),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: TextStyle(fontSize: 11, color: colors.onSurfaceVariant),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildDateSelector(ColorScheme colors) {
+  int _calculateLongestStreak(List<MoodRecord> records) {
+    if (records.isEmpty) return 0;
+
+    final sortedDates =
+        records
+            .map((r) => DateTime(r.date.year, r.date.month, r.date.day))
+            .toSet()
+            .toList()
+          ..sort();
+
+    if (sortedDates.isEmpty) return 0;
+
+    int longest = 1;
+    int current = 1;
+
+    for (int i = 1; i < sortedDates.length; i++) {
+      final diff = sortedDates[i].difference(sortedDates[i - 1]).inDays;
+      if (diff == 1) {
+        current++;
+        longest = current > longest ? current : longest;
+      } else {
+        current = 1;
+      }
+    }
+
+    return longest;
+  }
+
+  String _getWeekdayFull(int weekday) {
+    const weekdays = [
+      'Segunda',
+      'Terça',
+      'Quarta',
+      'Quinta',
+      'Sexta',
+      'Sábado',
+      'Domingo',
+    ];
+    return weekdays[weekday - 1];
+  }
+
+  String _formatHour(int hour) {
+    if (hour < 6) return 'Madrugada';
+    if (hour < 12) return 'Manhã';
+    if (hour < 18) return 'Tarde';
+    return 'Noite';
+  }
+
+  Widget _buildIOSDateSelector(ColorScheme colors) {
     final today = DateTime.now();
-    
+
     return SizedBox(
-      height: 80,
+      height: 72,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        physics: const BouncingScrollPhysics(),
         itemCount: 14,
         itemBuilder: (context, index) {
           final date = today.subtract(Duration(days: 7 - index));
           final isSelected = _isSameDay(date, _selectedDate);
           final isToday = _isSameDay(date, today);
           final hasMoodRecord = _hasMoodRecordForDate(date);
-          
+
           return GestureDetector(
             onTap: () {
               HapticFeedback.selectionClick();
               setState(() => _selectedDate = date);
             },
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              width: 52,
-              margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+            child: Container(
+              width: 48,
+              margin: const EdgeInsets.symmetric(horizontal: 4),
               decoration: BoxDecoration(
-                gradient: isSelected
-                    ? LinearGradient(
-                        colors: [colors.primary, colors.tertiary],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      )
-                    : null,
-                color: isSelected 
-                    ? null 
-                    : isToday 
-                        ? colors.primary.withValues(alpha: 0.1)
-                        : colors.surfaceContainerHighest.withValues(alpha: 0.3),
-                borderRadius: BorderRadius.circular(16),
-                border: isToday && !isSelected
-                    ? Border.all(color: colors.primary.withValues(alpha: 0.5), width: 1.5)
-                    : null,
-                boxShadow: isSelected
-                    ? [
-                        BoxShadow(
-                          color: colors.primary.withValues(alpha: 0.4),
-                          blurRadius: 12,
-                          offset: const Offset(0, 4),
-                        ),
-                      ]
-                    : null,
+                color: isSelected ? colors.primary : Colors.transparent,
+                borderRadius: BorderRadius.circular(12),
               ),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -559,29 +909,35 @@ class _MoodRecordsScreenState extends ConsumerState<MoodRecordsScreen> {
                   Text(
                     _getWeekdayAbbr(date.weekday),
                     style: TextStyle(
-                      color: isSelected 
+                      color: isSelected
                           ? Colors.white.withValues(alpha: 0.8)
                           : colors.onSurfaceVariant,
                       fontSize: 11,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
-                  const SizedBox(height: 2),
+                  const SizedBox(height: 4),
                   Text(
                     '${date.day}',
                     style: TextStyle(
-                      color: isSelected ? Colors.white : colors.onSurface,
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
+                      color: isSelected
+                          ? Colors.white
+                          : isToday
+                          ? colors.primary
+                          : colors.onSurface,
+                      fontSize: 17,
+                      fontWeight: isSelected || isToday
+                          ? FontWeight.w700
+                          : FontWeight.w500,
                     ),
                   ),
                   const SizedBox(height: 4),
                   Container(
-                    width: 6,
-                    height: 6,
+                    width: 5,
+                    height: 5,
                     decoration: BoxDecoration(
                       color: hasMoodRecord
-                          ? (isSelected ? Colors.white : UltravioletColors.moodGood)
+                          ? (isSelected ? Colors.white : colors.primary)
                           : Colors.transparent,
                       shape: BoxShape.circle,
                     ),
@@ -595,101 +951,94 @@ class _MoodRecordsScreenState extends ConsumerState<MoodRecordsScreen> {
     );
   }
 
+  Widget _buildSectionHeader(ColorScheme colors, AppLocalizations l10n) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          l10n.dailyRecords,
+          style: TextStyle(
+            fontSize: 17,
+            fontWeight: FontWeight.w600,
+            color: colors.onSurface,
+          ),
+        ),
+        Text(
+          DateFormat("d MMM", 'pt_BR').format(_selectedDate),
+          style: TextStyle(fontSize: 14, color: colors.onSurfaceVariant),
+        ),
+      ],
+    );
+  }
+
   Widget _buildRecordsList(List<MoodRecord> allRecords, ColorScheme colors) {
     final filteredRecords = allRecords
         .where((record) => _isSameDay(record.date, _selectedDate))
         .toList();
 
     if (filteredRecords.isEmpty) {
-      return SliverToBoxAdapter(
-        child: _buildEmptyState(colors),
-      );
+      return SliverToBoxAdapter(child: _buildEmptyState(colors));
     }
 
     filteredRecords.sort((a, b) => b.date.compareTo(a.date));
 
     return SliverList(
-      delegate: SliverChildBuilderDelegate(
-        (context, index) {
-          final record = filteredRecords[index];
-          return StaggeredListAnimation(
-            index: index,
-            child: _buildMoodCard(record, index, colors),
-          );
-        },
-        childCount: filteredRecords.length,
-      ),
+      delegate: SliverChildBuilderDelegate((context, index) {
+        final record = filteredRecords[index];
+        return StaggeredListAnimation(
+          index: index,
+          child: _buildMoodCard(record, colors),
+        );
+      }, childCount: filteredRecords.length),
     );
   }
 
-  Widget _buildMoodCard(MoodRecord record, int index, ColorScheme colors) {
+  Widget _buildMoodCard(MoodRecord record, ColorScheme colors) {
     final moodColor = Color(record.color);
     final timeFormat = DateFormat('HH:mm');
-    
+    final score = record.score;
+
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: const EdgeInsets.only(bottom: 10),
+      decoration: BoxDecoration(
+        color: colors.surfaceContainerHighest.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(14),
+      ),
       child: Material(
-        color: colors.surface,
-        borderRadius: BorderRadius.circular(20),
+        color: Colors.transparent,
         child: InkWell(
           onTap: () {
             HapticFeedback.lightImpact();
-            final controller = ref.read(moodRecordScreenControllerProvider.notifier);
-            final entry = controller.repository.box.toMap().entries
-                .firstWhere((e) => e.value == record);
+            final controller = ref.read(
+              moodRecordScreenControllerProvider.notifier,
+            );
+            final entry = controller.repository.box.toMap().entries.firstWhere(
+              (e) => e.value == record,
+            );
             MoodRecordsScreen.showAddMoodRecordForm(context, entry);
           },
-          borderRadius: BorderRadius.circular(20),
-          child: Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: moodColor.withValues(alpha: 0.2),
-              ),
-            ),
+          borderRadius: BorderRadius.circular(14),
+          child: Padding(
+            padding: const EdgeInsets.all(14),
             child: Row(
               children: [
-                // Time column
-                Column(
-                  children: [
-                    Text(
-                      timeFormat.format(record.date),
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: colors.onSurfaceVariant,
-                      ),
+                // Ícone SVG com background
+                Container(
+                  width: 50,
+                  height: 50,
+                  decoration: BoxDecoration(
+                    color: moodColor.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Center(
+                    child: SvgPicture.asset(
+                      _getMoodSvgPath(score),
+                      width: 32,
+                      height: 32,
                     ),
-                    const SizedBox(height: 8),
-                    Container(
-                      width: 44,
-                      height: 44,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [moodColor, moodColor.withValues(alpha: 0.7)],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        borderRadius: BorderRadius.circular(14),
-                        boxShadow: [
-                          BoxShadow(
-                            color: moodColor.withValues(alpha: 0.4),
-                            blurRadius: 8,
-                            offset: const Offset(0, 3),
-                          ),
-                        ],
-                      ),
-                      child: Center(
-                        child: Text(
-                          _getMoodEmojiFromLabel(record.label),
-                          style: const TextStyle(fontSize: 22),
-                        ),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
-                const SizedBox(width: 16),
+                const SizedBox(width: 14),
                 // Content
                 Expanded(
                   child: Column(
@@ -697,68 +1046,116 @@ class _MoodRecordsScreenState extends ConsumerState<MoodRecordsScreen> {
                     children: [
                       Row(
                         children: [
+                          Text(
+                            record.label,
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: colors.onSurface,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          // Score badge
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
                             decoration: BoxDecoration(
                               color: moodColor.withValues(alpha: 0.15),
-                              borderRadius: BorderRadius.circular(10),
+                              borderRadius: BorderRadius.circular(6),
                             ),
                             child: Text(
-                              record.label,
+                              '$score/5',
                               style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w700,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
                                 color: moodColor,
                               ),
                             ),
                           ),
                           const Spacer(),
-                          Icon(
-                            Icons.chevron_right_rounded,
-                            color: colors.onSurfaceVariant.withValues(alpha: 0.5),
-                            size: 22,
+                          // Horário e data
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Text(
+                                timeFormat.format(record.date),
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                  color: colors.onSurface,
+                                ),
+                              ),
+                              Text(
+                                _getRelativeDate(record.date),
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: colors.onSurfaceVariant,
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
                       if (record.note != null && record.note!.isNotEmpty) ...[
-                        const SizedBox(height: 8),
-                        Text(
-                          record.note!,
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: colors.onSurfaceVariant,
-                            height: 1.4,
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
+                        const SizedBox(height: 6),
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.notes_outlined,
+                              size: 14,
+                              color: colors.onSurfaceVariant.withValues(
+                                alpha: 0.6,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Text(
+                                record.note!,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: colors.onSurfaceVariant,
+                                  height: 1.3,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                       if (record.activities.isNotEmpty) ...[
-                        const SizedBox(height: 10),
+                        const SizedBox(height: 8),
                         Wrap(
                           spacing: 6,
-                          runSpacing: 6,
-                          children: record.activities.take(3).map((activity) {
+                          runSpacing: 4,
+                          children: record.activities.take(4).map((activity) {
                             return Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
                               decoration: BoxDecoration(
-                                color: colors.surfaceContainerHighest.withValues(alpha: 0.5),
+                                color: moodColor.withValues(alpha: 0.08),
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   Icon(
-                                    OdysseyIcons.fromCodePoint(activity.iconCode),
-                                    size: 12,
-                                    color: colors.onSurfaceVariant,
+                                    OdysseyIcons.fromCodePoint(
+                                      activity.iconCode,
+                                    ),
+                                    size: 13,
+                                    color: moodColor,
                                   ),
                                   const SizedBox(width: 4),
                                   Text(
                                     activity.activityName,
                                     style: TextStyle(
-                                      fontSize: 11,
-                                      color: colors.onSurfaceVariant,
+                                      fontSize: 12,
+                                      color: colors.onSurface,
                                       fontWeight: FontWeight.w500,
                                     ),
                                   ),
@@ -771,6 +1168,12 @@ class _MoodRecordsScreenState extends ConsumerState<MoodRecordsScreen> {
                     ],
                   ),
                 ),
+                const SizedBox(width: 4),
+                Icon(
+                  Icons.chevron_right,
+                  color: colors.onSurfaceVariant.withValues(alpha: 0.3),
+                  size: 20,
+                ),
               ],
             ),
           ),
@@ -779,44 +1182,54 @@ class _MoodRecordsScreenState extends ConsumerState<MoodRecordsScreen> {
     );
   }
 
+  /// Retorna a data relativa (Hoje, Ontem, ou data formatada)
+  String _getRelativeDate(DateTime date) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final dateOnly = DateTime(date.year, date.month, date.day);
+
+    if (dateOnly == today) return 'Hoje';
+    if (dateOnly == today.subtract(const Duration(days: 1))) return 'Ontem';
+    if (date.isAfter(now.subtract(const Duration(days: 7)))) {
+      return DateFormat('EEEE', 'pt_BR').format(date);
+    }
+    return DateFormat('d MMM', 'pt_BR').format(date);
+  }
+
   Widget _buildEmptyState(ColorScheme colors) {
     final l10n = AppLocalizations.of(context)!;
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(40),
+        padding: const EdgeInsets.all(32),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              width: 80,
-              height: 80,
+              width: 64,
+              height: 64,
               decoration: BoxDecoration(
-                color: colors.primary.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(24),
+                color: colors.primary.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(16),
               ),
               child: Icon(
                 Icons.sentiment_satisfied_alt_rounded,
-                size: 40,
+                size: 32,
                 color: colors.primary,
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 16),
             Text(
               l10n.noRecords,
               style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w700,
+                fontSize: 17,
+                fontWeight: FontWeight.w600,
                 color: colors.onSurface,
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 4),
             Text(
               l10n.tapToRecordMood,
-              style: TextStyle(
-                fontSize: 14,
-                color: colors.onSurfaceVariant,
-                height: 1.5,
-              ),
+              style: TextStyle(fontSize: 14, color: colors.onSurfaceVariant),
               textAlign: TextAlign.center,
             ),
           ],
@@ -825,57 +1238,63 @@ class _MoodRecordsScreenState extends ConsumerState<MoodRecordsScreen> {
     );
   }
 
-  Widget _buildBottomAddButton(ColorScheme colors) {
+  Widget _buildIOSAddButton(ColorScheme colors) {
     return Positioned(
       bottom: 24,
-      left: 0,
-      right: 0,
-      child: Center(
-        child: GestureDetector(
-          onTap: () {
-            HapticFeedback.mediumImpact();
-            MoodRecordsScreen.showAddMoodRecordForm(context, null);
-          },
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [colors.primary, colors.tertiary],
-                begin: Alignment.centerLeft,
-                end: Alignment.centerRight,
-              ),
-              borderRadius: BorderRadius.circular(28),
-              boxShadow: [
-                BoxShadow(
-                  color: colors.primary.withValues(alpha: 0.4),
-                  blurRadius: 20,
-                  offset: const Offset(0, 8),
-                ),
-              ],
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(
-                  Icons.favorite_rounded,
-                  color: Colors.white,
-                  size: 22,
-                ),
-                const SizedBox(width: 10),
-                Text(
-                  AppLocalizations.of(context)!.recordMood,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ],
-            ),
+      right: 20,
+      child: GestureDetector(
+        onTap: () {
+          HapticFeedback.mediumImpact();
+          MoodRecordsScreen.showAddMoodRecordForm(context, null);
+        },
+        child: Container(
+          width: 56,
+          height: 56,
+          decoration: BoxDecoration(
+            color: colors.primary,
+            borderRadius: BorderRadius.circular(16),
           ),
+          child: const Icon(Icons.add, color: Colors.white, size: 28),
         ),
       ),
     );
+  }
+
+  int _calculateStreak(List<MoodRecord> records) {
+    if (records.isEmpty) return 0;
+
+    final sortedDates =
+        records
+            .map((r) => DateTime(r.date.year, r.date.month, r.date.day))
+            .toSet()
+            .toList()
+          ..sort((a, b) => b.compareTo(a));
+
+    if (sortedDates.isEmpty) return 0;
+
+    final today = DateTime.now();
+    final todayDate = DateTime(today.year, today.month, today.day);
+    final yesterday = todayDate.subtract(const Duration(days: 1));
+
+    if (!sortedDates.contains(todayDate) && !sortedDates.contains(yesterday)) {
+      return 0;
+    }
+
+    int streak = 0;
+    DateTime checkDate = sortedDates.contains(todayDate)
+        ? todayDate
+        : yesterday;
+
+    for (int i = 0; i < sortedDates.length; i++) {
+      if (sortedDates.contains(checkDate)) {
+        streak++;
+        checkDate = checkDate.subtract(const Duration(days: 1));
+      } else {
+        break;
+      }
+    }
+
+    return streak;
   }
 
   Color _getMoodColor(double score) {
@@ -886,17 +1305,29 @@ class _MoodRecordsScreenState extends ConsumerState<MoodRecordsScreen> {
     return UltravioletColors.moodTerrible;
   }
 
-  String _getMoodEmoji(int score) {
-    final emojis = {5: '😊', 4: '🙂', 3: '😐', 2: '😔', 1: '😢'};
-    return emojis[score] ?? '😐';
+  String _getMoodLabel(double score) {
+    if (score >= 4.5) return 'Você está ótimo!';
+    if (score >= 3.5) return 'Tudo bem!';
+    if (score >= 2.5) return 'Humor estável';
+    if (score >= 1.5) return 'Dia difícil';
+    return 'Momento delicado';
   }
 
-  String _getMoodEmojiFromLabel(String label) {
-    final moodEmojis = {
-      'Great': '😊', 'Good': '🙂', 'Okay': '😐', 'Bad': '😔', 'Terrible': '😢',
-      'Ótimo': '😊', 'Bem': '🙂', 'Ok': '😐', 'Triste': '😔', 'Mal': '😢',
-    };
-    return moodEmojis[label] ?? '😐';
+  /// Retorna o path do SVG do mood baseado no score
+  String _getMoodSvgPath(int score) {
+    switch (score) {
+      case 5:
+        return 'assets/emojis/noto_awesome.svg';
+      case 4:
+        return 'assets/emojis/noto_good.svg';
+      case 3:
+        return 'assets/emojis/noto_neutral.svg';
+      case 2:
+        return 'assets/emojis/noto_bad.svg';
+      case 1:
+      default:
+        return 'assets/emojis/noto_terrible.svg';
+    }
   }
 
   String _getWeekdayAbbr(int weekday) {
@@ -906,7 +1337,9 @@ class _MoodRecordsScreenState extends ConsumerState<MoodRecordsScreen> {
 
   bool _hasMoodRecordForDate(DateTime date) {
     final controller = ref.read(moodRecordScreenControllerProvider.notifier);
-    final allRecords = controller.repository.box.values.toList().cast<MoodRecord>();
+    final allRecords = controller.repository.box.values
+        .toList()
+        .cast<MoodRecord>();
     return allRecords.any((record) => _isSameDay(record.date, date));
   }
 
@@ -931,17 +1364,20 @@ class _MoodChart extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final width = constraints.maxWidth;
-        final height = constraints.maxHeight - 24;
+        final height = constraints.maxHeight - 20;
 
         final dailyMoods = days.map((day) {
-          final dayRecords = records.where((r) => 
-            r.date.year == day.year && 
-            r.date.month == day.month && 
-            r.date.day == day.day
-          ).toList();
-          
+          final dayRecords = records
+              .where(
+                (r) =>
+                    r.date.year == day.year &&
+                    r.date.month == day.month &&
+                    r.date.day == day.day,
+              )
+              .toList();
+
           if (dayRecords.isEmpty) return null;
-          
+
           final sum = dayRecords.map((r) => r.score).reduce((a, b) => a + b);
           return sum / dayRecords.length;
         }).toList();
@@ -954,10 +1390,7 @@ class _MoodChart extends StatelessWidget {
                 painter: _ChartPainter(
                   dailyMoods: dailyMoods,
                   color: colors.primary,
-                  gradientColors: [
-                    colors.primary.withValues(alpha: 0.4),
-                    colors.primary.withValues(alpha: 0.0),
-                  ],
+                  backgroundColor: colors.surfaceContainerHighest,
                 ),
               ),
             ),
@@ -969,7 +1402,7 @@ class _MoodChart extends StatelessWidget {
                   DateFormat('E', 'pt_BR').format(day)[0].toUpperCase(),
                   style: TextStyle(
                     fontSize: 11,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w500,
                     color: colors.onSurfaceVariant,
                   ),
                 );
@@ -985,21 +1418,28 @@ class _MoodChart extends StatelessWidget {
 class _ChartPainter extends CustomPainter {
   final List<double?> dailyMoods;
   final Color color;
-  final List<Color> gradientColors;
+  final Color backgroundColor;
 
   _ChartPainter({
     required this.dailyMoods,
     required this.color,
-    required this.gradientColors,
+    required this.backgroundColor,
   });
 
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()
+    final linePaint = Paint()
       ..color = color
-      ..strokeWidth = 3
+      ..strokeWidth = 2.5
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round;
+
+    final fillPaint = Paint()
+      ..shader = LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [color.withValues(alpha: 0.2), color.withValues(alpha: 0.02)],
+      ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
 
     final path = Path();
     final fillPath = Path();
@@ -1021,48 +1461,62 @@ class _ChartPainter extends CustomPainter {
       } else {
         final prevMood = _findPrevMood(i - 1);
         if (prevMood != null) {
-          final prevX = ((i - 1) * segmentWidth) + (segmentWidth / 2);
+          final prevIndex = _findPrevIndex(i - 1);
+          final prevX = (prevIndex * segmentWidth) + (segmentWidth / 2);
           final prevY = size.height - ((prevMood - 1) / 4 * size.height);
-          
+
           final controlPoint1X = prevX + (x - prevX) / 2;
           final controlPoint1Y = prevY;
           final controlPoint2X = prevX + (x - prevX) / 2;
           final controlPoint2Y = normalizedY;
 
-          path.cubicTo(controlPoint1X, controlPoint1Y, controlPoint2X, controlPoint2Y, x, normalizedY);
-          fillPath.cubicTo(controlPoint1X, controlPoint1Y, controlPoint2X, controlPoint2Y, x, normalizedY);
+          path.cubicTo(
+            controlPoint1X,
+            controlPoint1Y,
+            controlPoint2X,
+            controlPoint2Y,
+            x,
+            normalizedY,
+          );
+          fillPath.cubicTo(
+            controlPoint1X,
+            controlPoint1Y,
+            controlPoint2X,
+            controlPoint2Y,
+            x,
+            normalizedY,
+          );
         } else {
           path.lineTo(x, normalizedY);
           fillPath.lineTo(x, normalizedY);
         }
       }
-      
-      // Dot com glow
-      canvas.drawCircle(
-        Offset(x, normalizedY),
-        6,
-        Paint()
-          ..color = color.withValues(alpha: 0.3)
-          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4),
-      );
-      canvas.drawCircle(Offset(x, normalizedY), 5, Paint()..color = color);
-      canvas.drawCircle(Offset(x, normalizedY), 2.5, Paint()..color = Colors.white);
     }
-    
+
     if (!firstPoint) {
       final lastIndex = _findLastIndex();
       final lastX = (lastIndex * segmentWidth) + (segmentWidth / 2);
       fillPath.lineTo(lastX, size.height);
       fillPath.close();
 
-      final gradient = LinearGradient(
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-        colors: gradientColors,
-      ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
+      canvas.drawPath(fillPath, fillPaint);
+      canvas.drawPath(path, linePaint);
 
-      canvas.drawPath(fillPath, Paint()..shader = gradient);
-      canvas.drawPath(path, paint);
+      // Desenhar pontos
+      for (int i = 0; i < dailyMoods.length; i++) {
+        final mood = dailyMoods[i];
+        if (mood == null) continue;
+
+        final normalizedY = size.height - ((mood - 1) / 4 * size.height);
+        final x = (i * segmentWidth) + (segmentWidth / 2);
+
+        canvas.drawCircle(Offset(x, normalizedY), 4, Paint()..color = color);
+        canvas.drawCircle(
+          Offset(x, normalizedY),
+          2,
+          Paint()..color = Colors.white,
+        );
+      }
     }
   }
 
@@ -1072,7 +1526,14 @@ class _ChartPainter extends CustomPainter {
     }
     return null;
   }
-  
+
+  int _findPrevIndex(int index) {
+    for (int i = index; i >= 0; i--) {
+      if (dailyMoods[i] != null) return i;
+    }
+    return 0;
+  }
+
   int _findLastIndex() {
     for (int i = dailyMoods.length - 1; i >= 0; i--) {
       if (dailyMoods[i] != null) return i;

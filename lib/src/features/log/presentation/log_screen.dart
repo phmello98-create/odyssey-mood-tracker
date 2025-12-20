@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:intl/intl.dart';
 import 'package:odyssey/src/constants/app_theme.dart';
@@ -19,10 +20,12 @@ class LogScreen extends ConsumerStatefulWidget {
   ConsumerState<LogScreen> createState() => _LogScreenState();
 }
 
-class _LogScreenState extends ConsumerState<LogScreen> with SingleTickerProviderStateMixin {
+class _LogScreenState extends ConsumerState<LogScreen>
+    with SingleTickerProviderStateMixin {
   DateTime _selectedDate = DateTime.now();
   late TabController _viewTabController;
   bool _isListView = true;
+  bool _showMonthlyInsights = false;
   late ScrollController _calendarScrollController;
 
   @override
@@ -30,7 +33,7 @@ class _LogScreenState extends ConsumerState<LogScreen> with SingleTickerProvider
     super.initState();
     _viewTabController = TabController(length: 7, vsync: this); // 7 abas agora
     _calendarScrollController = ScrollController();
-    
+
     // Scroll para o dia atual depois do build
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _scrollToToday();
@@ -41,10 +44,15 @@ class _LogScreenState extends ConsumerState<LogScreen> with SingleTickerProvider
     // Calcula a posição do dia atual
     final today = DateTime.now();
     final firstDay = DateTime(_selectedDate.year, _selectedDate.month, 1);
-    final daysDiff = today.difference(firstDay).inDays + 7; // +7 porque mostramos 7 dias antes
+    final daysDiff =
+        today.difference(firstDay).inDays +
+        7; // +7 porque mostramos 7 dias antes
     const itemWidth = 60.0; // 52 + margins
-    final offset = (daysDiff * itemWidth) - (MediaQuery.of(context).size.width / 2) + (itemWidth / 2);
-    
+    final offset =
+        (daysDiff * itemWidth) -
+        (MediaQuery.of(context).size.width / 2) +
+        (itemWidth / 2);
+
     if (_calendarScrollController.hasClients) {
       _calendarScrollController.animateTo(
         offset.clamp(0.0, _calendarScrollController.position.maxScrollExtent),
@@ -70,111 +78,125 @@ class _LogScreenState extends ConsumerState<LogScreen> with SingleTickerProvider
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-            // Header
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 24, 20, 8),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        AppLocalizations.of(context)!.history,
-                        style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      Text(
-                        DateFormat('MMMM yyyy', 'pt_BR').format(_selectedDate),
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                  ),
-                  // View toggle
-                  Container(
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
-                      borderRadius: BorderRadius.circular(12),
+          // Header
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 24, 20, 8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      AppLocalizations.of(context)!.history,
+                      style: Theme.of(context).textTheme.headlineMedium
+                          ?.copyWith(fontWeight: FontWeight.w700),
                     ),
-                    child: Row(
-                      children: [
-                        _buildViewToggle(Icons.view_list, true),
-                        _buildViewToggle(Icons.grid_view, false),
-                      ],
+                    Text(
+                      DateFormat('MMMM yyyy', 'pt_BR').format(_selectedDate),
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
                     ),
-                  ),
-                ],
-              ),
-            ),
-
-            // Horizontal Calendar
-            SizedBox(
-              height: 100,
-              child: _buildHorizontalCalendar(),
-            ),
-
-            // Type filter tabs - Scrollable para caber todas
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-              child: Container(
-                height: 44,
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: TabBar(
-                  controller: _viewTabController,
-                  isScrollable: true,
-                  tabAlignment: TabAlignment.start,
-                  indicator: BoxDecoration(
-                    color: Theme.of(context).colorScheme.primary,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  indicatorSize: TabBarIndicatorSize.tab,
-                  indicatorPadding: const EdgeInsets.all(4),
-                  labelColor: Colors.white,
-                  unselectedLabelColor: Theme.of(context).colorScheme.onSurfaceVariant,
-                  labelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
-                  dividerColor: Colors.transparent,
-                  overlayColor: WidgetStateProperty.all(Colors.transparent),
-                  padding: const EdgeInsets.symmetric(horizontal: 4),
-                  tabs: [
-                    const Tab(text: 'Tudo'),
-                    const Tab(text: 'Humor'),
-                    Tab(text: AppLocalizations.of(context)!.habits),
-                    Tab(text: AppLocalizations.of(context)!.tasks),
-                    const Tab(text: 'Tempo'),
-                    const Tab(text: '📖 Leitura'),
-                    const Tab(text: '📝 Notas'),
                   ],
                 ),
-              ),
+                // View toggle
+                Container(
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surfaceContainerHighest
+                        .withValues(alpha: 0.3),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    children: [
+                      _buildViewToggle(Icons.view_list, true),
+                      _buildViewToggle(Icons.grid_view, false),
+                    ],
+                  ),
+                ),
+              ],
             ),
+          ),
 
-            // Stats do dia selecionado
-            _buildDayStats(moodRepo, timeRepo),
+          // Horizontal Calendar
+          SizedBox(height: 100, child: _buildHorizontalCalendar()),
 
-            // Content
-            Expanded(
-              child: TabBarView(
+          // Type filter tabs - Scrollable para caber todas
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+            child: Container(
+              height: 44,
+              decoration: BoxDecoration(
+                color: Theme.of(
+                  context,
+                ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: TabBar(
                 controller: _viewTabController,
-                children: [
-                  _buildAllRecordsView(moodRepo, timeRepo),
-                  _buildMoodRecordsView(moodRepo),
-                  _buildHabitsRecordsView(),
-                  _buildTasksRecordsView(),
-                  _buildTimeRecordsView(timeRepo),
-                  _buildReadingRecordsView(timeRepo),
-                  _buildNotesRecordsView(),
+                isScrollable: true,
+                tabAlignment: TabAlignment.start,
+                indicator: BoxDecoration(
+                  color: Theme.of(context).colorScheme.primary,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                indicatorSize: TabBarIndicatorSize.tab,
+                indicatorPadding: const EdgeInsets.all(4),
+                labelColor: Colors.white,
+                unselectedLabelColor: Theme.of(
+                  context,
+                ).colorScheme.onSurfaceVariant,
+                labelStyle: const TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 12,
+                ),
+                dividerColor: Colors.transparent,
+                overlayColor: WidgetStateProperty.all(Colors.transparent),
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                tabs: [
+                  const Tab(text: 'Tudo'),
+                  const Tab(text: 'Humor'),
+                  Tab(text: AppLocalizations.of(context)!.habits),
+                  Tab(text: AppLocalizations.of(context)!.tasks),
+                  const Tab(text: 'Tempo'),
+                  const Tab(text: '📖 Leitura'),
+                  const Tab(text: '📝 Notas'),
                 ],
               ),
             ),
-          ],
-        ),
-      );
+          ),
+
+          // Stats do dia + toggle insights
+          _buildDayStatsCompact(moodRepo, timeRepo),
+
+          // Monthly Insights (colapsável com animação)
+          AnimatedCrossFade(
+            duration: const Duration(milliseconds: 200),
+            crossFadeState: _showMonthlyInsights
+                ? CrossFadeState.showFirst
+                : CrossFadeState.showSecond,
+            firstChild: _buildMonthlyInsights(moodRepo, timeRepo),
+            secondChild: const SizedBox.shrink(),
+          ),
+
+          // Content
+          Expanded(
+            child: TabBarView(
+              controller: _viewTabController,
+              children: [
+                _buildAllRecordsView(moodRepo, timeRepo),
+                _buildMoodRecordsView(moodRepo),
+                _buildHabitsRecordsView(),
+                _buildTasksRecordsView(),
+                _buildTimeRecordsView(timeRepo),
+                _buildReadingRecordsView(timeRepo),
+                _buildNotesRecordsView(),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildViewToggle(IconData icon, bool isListView) {
@@ -187,192 +209,444 @@ class _LogScreenState extends ConsumerState<LogScreen> with SingleTickerProvider
       child: Container(
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          color: isSelected ? Theme.of(context).colorScheme.primary : Colors.transparent,
+          color: isSelected
+              ? Theme.of(context).colorScheme.primary
+              : Colors.transparent,
           borderRadius: BorderRadius.circular(10),
         ),
         child: Icon(
           icon,
           size: 20,
-          color: isSelected ? Colors.white : Theme.of(context).colorScheme.onSurfaceVariant,
+          color: isSelected
+              ? Colors.white
+              : Theme.of(context).colorScheme.onSurfaceVariant,
         ),
       ),
     );
   }
 
-  Widget _buildDayStats(MoodRecordRepository moodRepo, SyncedTimeTrackingRepository timeRepo) {
-    // Using key to force rebuild when date changes
-    return FutureBuilder<_DayStatsData>(
-      key: ValueKey(_selectedDate),
-      future: _calculateDayStats(moodRepo, timeRepo),
-      builder: (context, snapshot) {
-        final stats = snapshot.data ?? _DayStatsData(0, '-', Theme.of(context).colorScheme.onSurfaceVariant, Duration.zero);
-        
-        return Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
-          child: Row(
-            children: [
-              Expanded(
-                child: _buildMiniStat(
-                  '${stats.totalRecords}',
-                  'registros',
-                  Icons.timeline,
-                  Theme.of(context).colorScheme.primary,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _buildMiniStat(
-                  stats.avgMood,
-                  'humor médio',
-                  Icons.mood,
-                  stats.avgMoodColor,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _buildMiniStat(
-                  _formatTrackedTime(stats.totalTime),
-                  'tempo rastreado',
-                  Icons.timer,
-                  Theme.of(context).colorScheme.secondary,
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
+  Widget _buildDayStatsCompact(
+    MoodRecordRepository moodRepo,
+    SyncedTimeTrackingRepository timeRepo,
+  ) {
+    final colors = Theme.of(context).colorScheme;
 
-  Future<_DayStatsData> _calculateDayStats(MoodRecordRepository moodRepo, SyncedTimeTrackingRepository timeRepo) async {
-    int totalRecords = 0;
-    Duration totalTime = Duration.zero;
-    String avgMood = '-';
-    Color avgMoodColor = Theme.of(context).colorScheme.onSurfaceVariant;
-    
-    // Mood records
-    final moodRecords = moodRepo.box.values
-        .cast<MoodRecord>()
-        .where((r) => _isSameDay(r.date, _selectedDate))
-        .toList();
-    totalRecords += moodRecords.length;
-    
-    // Calculate average mood
-    if (moodRecords.isNotEmpty) {
-      final moodScores = {'Ótimo': 5, 'Great': 5, 'Bem': 4, 'Good': 4, 'Ok': 3, 'Okay': 3, 'Alright': 3, 'Mal': 2, 'Bad': 2, 'Triste': 2, 'Péssimo': 1, 'Terrible': 1};
-      final avgScore = moodRecords.map((m) => moodScores[m.label] ?? 3).reduce((a, b) => a + b) / moodRecords.length;
-      if (avgScore >= 4.5) { avgMood = '😊 Ótimo'; avgMoodColor = UltravioletColors.moodGreat; }
-      else if (avgScore >= 3.5) { avgMood = '🙂 Bem'; avgMoodColor = UltravioletColors.moodGood; }
-      else if (avgScore >= 2.5) { avgMood = '😐 Ok'; avgMoodColor = UltravioletColors.moodOkay; }
-      else if (avgScore >= 1.5) { avgMood = '😔 Mal'; avgMoodColor = UltravioletColors.moodBad; }
-      else { avgMood = '😢 Péssimo'; avgMoodColor = UltravioletColors.moodTerrible; }
-    }
-    
-    // Time records
-    final timeRecords = timeRepo.box.values
-        .cast<TimeTrackingRecord>()
-        .where((r) => _isSameDay(r.startTime, _selectedDate))
-        .toList();
-    totalRecords += timeRecords.length;
-    totalTime = timeRecords.fold<Duration>(
-      Duration.zero,
-      (sum, r) => sum + r.duration,
-    );
-    
-    // Habits completed
-    try {
-      final habitsBox = await Hive.openBox<Habit>('habits');
-      final completedHabits = habitsBox.values
-          .where((h) => h.isCompletedOn(_selectedDate))
-          .length;
-      totalRecords += completedHabits;
-    } catch (e) {
-      debugPrint('Error loading habits for stats: $e');
-    }
-    
-    // Tasks completed
-    try {
-      final tasksBox = await Hive.openBox('tasks');
-      final completedTasks = tasksBox.values.where((t) {
-        if (t is Map && t['completed'] == true && t['completedAt'] != null) {
-          final completedAt = DateTime.tryParse(t['completedAt']);
-          return completedAt != null && _isSameDay(completedAt, _selectedDate);
-        }
-        return false;
-      }).length;
-      totalRecords += completedTasks;
-    } catch (e) {
-      debugPrint('Error loading tasks for stats: $e');
-    }
-    
-    // Notes count
-    try {
-      final notesBox = await Hive.openBox('quick_notes');
-      final notesCount = notesBox.values.where((n) {
-        if (n is Map && n['createdAt'] != null) {
-          final createdAt = DateTime.tryParse(n['createdAt']);
-          return createdAt != null && _isSameDay(createdAt, _selectedDate);
-        }
-        return false;
-      }).length;
-      totalRecords += notesCount;
-    } catch (e) {
-      debugPrint('Error loading notes for stats: $e');
-    }
-    
-    return _DayStatsData(totalRecords, avgMood, avgMoodColor, totalTime);
-  }
-
-  Widget _buildMiniStat(String value, String label, IconData icon, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withValues(alpha: 0.2)),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.end,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, size: 14, color: color),
-              const SizedBox(width: 4),
-              Flexible(
-                child: Text(
-                  value,
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    color: color,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
+          // Botão para expandir insights
+          GestureDetector(
+            onTap: () {
+              HapticFeedback.selectionClick();
+              setState(() => _showMonthlyInsights = !_showMonthlyInsights);
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: _showMonthlyInsights
+                    ? colors.primary.withValues(alpha: 0.15)
+                    : colors.surfaceContainerHighest.withValues(alpha: 0.5),
+                borderRadius: BorderRadius.circular(8),
               ),
-            ],
-          ),
-          const SizedBox(height: 2),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 9,
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.insights_rounded,
+                    size: 14,
+                    color: _showMonthlyInsights
+                        ? colors.primary
+                        : colors.onSurfaceVariant,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Insights do mês',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: _showMonthlyInsights
+                          ? colors.primary
+                          : colors.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Icon(
+                    _showMonthlyInsights
+                        ? Icons.keyboard_arrow_up_rounded
+                        : Icons.keyboard_arrow_down_rounded,
+                    size: 16,
+                    color: _showMonthlyInsights
+                        ? colors.primary
+                        : colors.onSurfaceVariant,
+                  ),
+                ],
+              ),
             ),
-            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),
     );
   }
 
+  Widget _buildMonthlyInsights(
+    MoodRecordRepository moodRepo,
+    SyncedTimeTrackingRepository timeRepo,
+  ) {
+    return FutureBuilder<_MonthlyInsightsData>(
+      key: ValueKey('insights_${_selectedDate.month}_${_selectedDate.year}'),
+      future: _calculateMonthlyInsights(moodRepo, timeRepo),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+          return const SizedBox.shrink();
+        }
+
+        final data = snapshot.data!;
+        final colors = Theme.of(context).colorScheme;
+
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+          child: Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  colors.primary.withValues(alpha: 0.08),
+                  colors.tertiary.withValues(alpha: 0.05),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: colors.primary.withValues(alpha: 0.15)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(
+                      Icons.insights_rounded,
+                      size: 18,
+                      color: colors.primary,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Insights de ${DateFormat('MMMM', 'pt_BR').format(_selectedDate)}',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: colors.onSurface,
+                      ),
+                    ),
+                    const Spacer(),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        color: colors.primary.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        '${data.totalRecords} registros',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: colors.primary,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+
+                // Grid de insights
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    // Dia mais ativo
+                    if (data.mostActiveDay != null)
+                      _buildInsightChip(
+                        Icons.calendar_today_rounded,
+                        data.mostActiveDay!,
+                        'Dia mais ativo',
+                        colors.tertiary,
+                      ),
+
+                    // Melhor humor
+                    if (data.bestMoodDay != null)
+                      _buildInsightChip(
+                        Icons.sentiment_very_satisfied_rounded,
+                        data.bestMoodDay!,
+                        'Melhor humor',
+                        UltravioletColors.moodGreat,
+                      ),
+
+                    // Tempo total
+                    if (data.totalTime.inMinutes > 0)
+                      _buildInsightChip(
+                        Icons.timer_rounded,
+                        _formatDuration(data.totalTime),
+                        'Tempo rastreado',
+                        colors.secondary,
+                      ),
+
+                    // Hábitos completados
+                    if (data.habitsCompleted > 0)
+                      _buildInsightChip(
+                        Icons.check_circle_rounded,
+                        '${data.habitsCompleted}',
+                        'Hábitos feitos',
+                        Colors.green,
+                      ),
+
+                    // Taxa de humor positivo
+                    if (data.positiveMoodRate != null)
+                      _buildInsightChip(
+                        Icons.trending_up_rounded,
+                        '${data.positiveMoodRate!.toStringAsFixed(0)}%',
+                        'Humor positivo',
+                        data.positiveMoodRate! >= 50
+                            ? UltravioletColors.moodGood
+                            : UltravioletColors.moodBad,
+                      ),
+                  ],
+                ),
+
+                // Dica baseada nos dados
+                if (data.tip != null) ...[
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: colors.surface,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.lightbulb_outline_rounded,
+                          size: 16,
+                          color: Colors.amber.shade700,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            data.tip!,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: colors.onSurfaceVariant,
+                              height: 1.3,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildInsightChip(
+    IconData icon,
+    String value,
+    String label,
+    Color color,
+  ) {
+    final colors = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: color),
+          const SizedBox(width: 6),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                value,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: color,
+                ),
+              ),
+              Text(
+                label,
+                style: TextStyle(fontSize: 9, color: colors.onSurfaceVariant),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _formatDuration(Duration duration) {
+    final hours = duration.inHours;
+    final minutes = duration.inMinutes.remainder(60);
+    if (hours > 0) {
+      return '${hours}h ${minutes}min';
+    }
+    return '${minutes}min';
+  }
+
+  Future<_MonthlyInsightsData> _calculateMonthlyInsights(
+    MoodRecordRepository moodRepo,
+    SyncedTimeTrackingRepository timeRepo,
+  ) async {
+    final monthStart = DateTime(_selectedDate.year, _selectedDate.month, 1);
+    final monthEnd = DateTime(_selectedDate.year, _selectedDate.month + 1, 0);
+
+    int totalRecords = 0;
+    Duration totalTime = Duration.zero;
+    int habitsCompleted = 0;
+    String? mostActiveDay;
+    String? bestMoodDay;
+    double? positiveMoodRate;
+    String? tip;
+
+    // Mood records
+    final moodRecords = moodRepo.box.values
+        .cast<MoodRecord>()
+        .where(
+          (r) =>
+              r.date.isAfter(monthStart.subtract(const Duration(days: 1))) &&
+              r.date.isBefore(monthEnd.add(const Duration(days: 1))),
+        )
+        .toList();
+    totalRecords += moodRecords.length;
+
+    // Calcular taxa de humor positivo e melhor dia
+    if (moodRecords.isNotEmpty) {
+      final positiveCount = moodRecords.where((r) => r.score >= 4).length;
+      positiveMoodRate = (positiveCount / moodRecords.length) * 100;
+
+      // Agrupar por dia e encontrar melhor média
+      final dayMoods = <int, List<int>>{};
+      for (final record in moodRecords) {
+        final day = record.date.day;
+        dayMoods.putIfAbsent(day, () => []).add(record.score);
+      }
+
+      double bestAvg = 0;
+      int? bestDayNum;
+      for (final entry in dayMoods.entries) {
+        final avg = entry.value.reduce((a, b) => a + b) / entry.value.length;
+        if (avg > bestAvg) {
+          bestAvg = avg;
+          bestDayNum = entry.key;
+        }
+      }
+      if (bestDayNum != null) {
+        bestMoodDay = 'Dia $bestDayNum';
+      }
+    }
+
+    // Time records
+    final timeRecords = timeRepo.box.values
+        .cast<TimeTrackingRecord>()
+        .where(
+          (r) =>
+              r.startTime.isAfter(
+                monthStart.subtract(const Duration(days: 1)),
+              ) &&
+              r.startTime.isBefore(monthEnd.add(const Duration(days: 1))),
+        )
+        .toList();
+    totalRecords += timeRecords.length;
+    totalTime = timeRecords.fold<Duration>(
+      Duration.zero,
+      (sum, r) => sum + r.duration,
+    );
+
+    // Habits
+    try {
+      final habitsBox = await Hive.openBox<Habit>('habits');
+      final habits = habitsBox.values.toList();
+
+      for (
+        var day = monthStart;
+        !day.isAfter(monthEnd);
+        day = day.add(const Duration(days: 1))
+      ) {
+        for (final habit in habits) {
+          if (habit.isCompletedOn(day)) {
+            habitsCompleted++;
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('Error calculating habits: $e');
+    }
+
+    // Encontrar o dia com mais registros
+    final dayCounts = <int, int>{};
+    for (final record in moodRecords) {
+      final day = record.date.day;
+      dayCounts[day] = (dayCounts[day] ?? 0) + 1;
+    }
+    for (final record in timeRecords) {
+      final day = record.startTime.day;
+      dayCounts[day] = (dayCounts[day] ?? 0) + 1;
+    }
+
+    if (dayCounts.isNotEmpty) {
+      final maxEntry = dayCounts.entries.reduce(
+        (a, b) => a.value > b.value ? a : b,
+      );
+      mostActiveDay = 'Dia ${maxEntry.key} (${maxEntry.value} registros)';
+    }
+
+    // Gerar dica baseada nos dados
+    if (totalRecords < 5) {
+      tip = 'Continue registrando para ver mais insights sobre seus padrões!';
+    } else if (positiveMoodRate != null && positiveMoodRate < 40) {
+      tip =
+          'Tente identificar o que te deixa bem. Exercício e sono podem ajudar!';
+    } else if (positiveMoodRate != null && positiveMoodRate >= 70) {
+      tip = 'Excelente mês! Continue fazendo o que está funcionando. 🎉';
+    } else if (habitsCompleted > 20) {
+      tip =
+          'Ótima consistência com seus hábitos! A regularidade traz resultados.';
+    }
+
+    return _MonthlyInsightsData(
+      totalRecords: totalRecords,
+      totalTime: totalTime,
+      habitsCompleted: habitsCompleted,
+      mostActiveDay: mostActiveDay,
+      bestMoodDay: bestMoodDay,
+      positiveMoodRate: positiveMoodRate,
+      tip: tip,
+    );
+  }
+
   Widget _buildHorizontalCalendar() {
     final today = DateTime.now();
-    final daysInMonth = DateTime(_selectedDate.year, _selectedDate.month + 1, 0).day;
+    final daysInMonth = DateTime(
+      _selectedDate.year,
+      _selectedDate.month + 1,
+      0,
+    ).day;
     final colors = Theme.of(context).colorScheme;
     final moodRepo = ref.watch(moodRecordRepositoryProvider);
-    
+
     return ListView.builder(
       controller: _calendarScrollController,
       scrollDirection: Axis.horizontal,
@@ -381,16 +655,16 @@ class _LogScreenState extends ConsumerState<LogScreen> with SingleTickerProvider
       itemBuilder: (context, index) {
         final firstDay = DateTime(_selectedDate.year, _selectedDate.month, 1);
         final date = firstDay.add(Duration(days: index - 7));
-        
+
         final isSelected = _isSameDay(date, _selectedDate);
         final isToday = _isSameDay(date, today);
         final isCurrentMonth = date.month == _selectedDate.month;
         final isWeekend = date.weekday == 6 || date.weekday == 7;
-        
+
         // Verificar se tem registros nesse dia
-        final hasRecords = moodRepo.box.values
-            .cast<MoodRecord>()
-            .any((r) => _isSameDay(r.date, date));
+        final hasRecords = moodRepo.box.values.cast<MoodRecord>().any(
+          (r) => _isSameDay(r.date, date),
+        );
 
         return GestureDetector(
           onTap: () {
@@ -416,17 +690,17 @@ class _LogScreenState extends ConsumerState<LogScreen> with SingleTickerProvider
               color: isSelected
                   ? null
                   : isToday
-                      ? colors.primary.withValues(alpha: 0.08)
-                      : Colors.transparent,
+                  ? colors.primary.withValues(alpha: 0.08)
+                  : Colors.transparent,
               borderRadius: BorderRadius.circular(14),
               border: Border.all(
                 color: isSelected
                     ? Colors.transparent
                     : isToday
-                        ? colors.primary.withValues(alpha: 0.4)
-                        : isCurrentMonth
-                            ? colors.outline.withValues(alpha: 0.08)
-                            : Colors.transparent,
+                    ? colors.primary.withValues(alpha: 0.4)
+                    : isCurrentMonth
+                    ? colors.outline.withValues(alpha: 0.08)
+                    : Colors.transparent,
                 width: isToday && !isSelected ? 1.5 : 1,
               ),
               boxShadow: isSelected
@@ -440,7 +714,8 @@ class _LogScreenState extends ConsumerState<LogScreen> with SingleTickerProvider
                     ]
                   : null,
             ),
-            clipBehavior: Clip.antiAlias, // ← FIX: Previne vazamento do gradient
+            clipBehavior:
+                Clip.antiAlias, // ← FIX: Previne vazamento do gradient
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -451,10 +726,10 @@ class _LogScreenState extends ConsumerState<LogScreen> with SingleTickerProvider
                     color: isSelected
                         ? Colors.white.withValues(alpha: 0.85)
                         : isWeekend && isCurrentMonth
-                            ? colors.primary.withValues(alpha: 0.7)
-                            : isCurrentMonth
-                                ? colors.onSurfaceVariant.withValues(alpha: 0.7)
-                                : colors.onSurfaceVariant.withValues(alpha: 0.3),
+                        ? colors.primary.withValues(alpha: 0.7)
+                        : isCurrentMonth
+                        ? colors.onSurfaceVariant.withValues(alpha: 0.7)
+                        : colors.onSurfaceVariant.withValues(alpha: 0.3),
                     fontSize: 10,
                     fontWeight: FontWeight.w600,
                     letterSpacing: 0.3,
@@ -468,12 +743,14 @@ class _LogScreenState extends ConsumerState<LogScreen> with SingleTickerProvider
                     color: isSelected
                         ? Colors.white
                         : isToday
-                            ? colors.primary
-                            : isCurrentMonth
-                                ? colors.onSurface
-                                : colors.onSurface.withValues(alpha: 0.35),
+                        ? colors.primary
+                        : isCurrentMonth
+                        ? colors.onSurface
+                        : colors.onSurface.withValues(alpha: 0.35),
                     fontSize: isSelected ? 18 : 16,
-                    fontWeight: isSelected || isToday ? FontWeight.w800 : FontWeight.w600,
+                    fontWeight: isSelected || isToday
+                        ? FontWeight.w800
+                        : FontWeight.w600,
                     height: 1,
                   ),
                   child: Text('${date.day}'),
@@ -482,11 +759,16 @@ class _LogScreenState extends ConsumerState<LogScreen> with SingleTickerProvider
                 // Indicador de registros ou mês diferente
                 if (date.month != _selectedDate.month)
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
                     decoration: BoxDecoration(
-                      color: isSelected 
+                      color: isSelected
                           ? Colors.white.withValues(alpha: 0.2)
-                          : colors.surfaceContainerHighest.withValues(alpha: 0.5),
+                          : colors.surfaceContainerHighest.withValues(
+                              alpha: 0.5,
+                            ),
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: Text(
@@ -516,7 +798,9 @@ class _LogScreenState extends ConsumerState<LogScreen> with SingleTickerProvider
                               : colors.primary.withValues(alpha: 0.7),
                           boxShadow: [
                             BoxShadow(
-                              color: (isSelected ? Colors.white : colors.primary).withValues(alpha: 0.3),
+                              color:
+                                  (isSelected ? Colors.white : colors.primary)
+                                      .withValues(alpha: 0.3),
                               blurRadius: 4,
                             ),
                           ],
@@ -534,7 +818,10 @@ class _LogScreenState extends ConsumerState<LogScreen> with SingleTickerProvider
     );
   }
 
-  Widget _buildAllRecordsView(MoodRecordRepository moodRepo, SyncedTimeTrackingRepository timeRepo) {
+  Widget _buildAllRecordsView(
+    MoodRecordRepository moodRepo,
+    SyncedTimeTrackingRepository timeRepo,
+  ) {
     return ValueListenableBuilder(
       valueListenable: moodRepo.box.listenable(),
       builder: (context, moodBox, _) {
@@ -565,7 +852,7 @@ class _LogScreenState extends ConsumerState<LogScreen> with SingleTickerProvider
 
   Future<List<_LogItem>> _getAllRecordsForDate(Box moodBox, Box timeBox) async {
     final allItems = <_LogItem>[];
-    
+
     // Mood records
     final moodRecords = moodBox.values
         .cast<MoodRecord>()
@@ -574,7 +861,7 @@ class _LogScreenState extends ConsumerState<LogScreen> with SingleTickerProvider
     for (final m in moodRecords) {
       allItems.add(_LogItem(type: 'mood', date: m.date, data: m));
     }
-    
+
     // Time records
     final timeRecords = timeBox.values
         .cast<TimeTrackingRecord>()
@@ -583,26 +870,24 @@ class _LogScreenState extends ConsumerState<LogScreen> with SingleTickerProvider
     for (final t in timeRecords) {
       allItems.add(_LogItem(type: 'time', date: t.startTime, data: t));
     }
-    
+
     // Habits completions
     try {
       final habitsBox = await Hive.openBox<Habit>('habits');
       final habits = habitsBox.values.toList();
-      
+
       for (final habit in habits) {
         if (habit.isCompletedOn(_selectedDate)) {
           // Cria um registro de hábito completado
-          allItems.add(_LogItem(
-            type: 'habit',
-            date: _selectedDate,
-            data: habit,
-          ));
+          allItems.add(
+            _LogItem(type: 'habit', date: _selectedDate, data: habit),
+          );
         }
       }
     } catch (e) {
       debugPrint('Error loading habits: $e');
     }
-    
+
     // Tasks completed
     try {
       final tasksBox = await Hive.openBox('tasks');
@@ -613,19 +898,15 @@ class _LogScreenState extends ConsumerState<LogScreen> with SingleTickerProvider
         }
         return false;
       }).toList();
-      
+
       for (final task in tasks) {
         final completedAt = DateTime.parse(task['completedAt']);
-        allItems.add(_LogItem(
-          type: 'task',
-          date: completedAt,
-          data: task,
-        ));
+        allItems.add(_LogItem(type: 'task', date: completedAt, data: task));
       }
     } catch (e) {
       debugPrint('Error loading tasks: $e');
     }
-    
+
     // Pomodoro sessions
     try {
       final pomodoroBox = await Hive.openBox('pomodoro_sessions');
@@ -636,19 +917,17 @@ class _LogScreenState extends ConsumerState<LogScreen> with SingleTickerProvider
         }
         return false;
       }).toList();
-      
+
       for (final session in sessions) {
         final completedAt = DateTime.parse(session['completedAt']);
-        allItems.add(_LogItem(
-          type: 'pomodoro',
-          date: completedAt,
-          data: session,
-        ));
+        allItems.add(
+          _LogItem(type: 'pomodoro', date: completedAt, data: session),
+        );
       }
     } catch (e) {
       debugPrint('Error loading pomodoro sessions: $e');
     }
-    
+
     // Notes/Quick notes
     try {
       final notesBox = await Hive.openBox('quick_notes');
@@ -659,22 +938,18 @@ class _LogScreenState extends ConsumerState<LogScreen> with SingleTickerProvider
         }
         return false;
       }).toList();
-      
+
       for (final note in notes) {
         final createdAt = DateTime.parse(note['createdAt']);
-        allItems.add(_LogItem(
-          type: 'note',
-          date: createdAt,
-          data: note,
-        ));
+        allItems.add(_LogItem(type: 'note', date: createdAt, data: note));
       }
     } catch (e) {
       debugPrint('Error loading notes: $e');
     }
-    
+
     // Sort by date descending
     allItems.sort((a, b) => b.date.compareTo(a.date));
-    
+
     return allItems;
   }
 
@@ -686,14 +961,16 @@ class _LogScreenState extends ConsumerState<LogScreen> with SingleTickerProvider
             .cast<MoodRecord>()
             .where((r) => _isSameDay(r.date, _selectedDate))
             .toList();
-        
+
         records.sort((a, b) => b.date.compareTo(a.date));
 
         if (records.isEmpty) {
           return _buildEmptyState(message: 'Nenhum registro de humor');
         }
 
-        final items = records.map((r) => _LogItem(type: 'mood', date: r.date, data: r)).toList();
+        final items = records
+            .map((r) => _LogItem(type: 'mood', date: r.date, data: r))
+            .toList();
 
         if (_isListView) {
           return _buildListView(items);
@@ -711,7 +988,7 @@ class _LogScreenState extends ConsumerState<LogScreen> with SingleTickerProvider
         if (!snapshot.hasData) {
           return const Center(child: CircularProgressIndicator());
         }
-        
+
         final box = snapshot.data!;
         return ValueListenableBuilder(
           valueListenable: box.listenable(),
@@ -719,17 +996,17 @@ class _LogScreenState extends ConsumerState<LogScreen> with SingleTickerProvider
             final completedHabits = habitBox.values
                 .where((h) => h.isCompletedOn(_selectedDate))
                 .toList();
-            
+
             if (completedHabits.isEmpty) {
               return _buildEmptyState(message: 'Nenhum hábito completado');
             }
-            
-            final items = completedHabits.map((h) => _LogItem(
-              type: 'habit',
-              date: _selectedDate,
-              data: h,
-            )).toList();
-            
+
+            final items = completedHabits
+                .map(
+                  (h) => _LogItem(type: 'habit', date: _selectedDate, data: h),
+                )
+                .toList();
+
             if (_isListView) {
               return _buildListView(items);
             } else {
@@ -748,30 +1025,35 @@ class _LogScreenState extends ConsumerState<LogScreen> with SingleTickerProvider
         if (!snapshot.hasData) {
           return const Center(child: CircularProgressIndicator());
         }
-        
+
         final box = snapshot.data!;
         return ValueListenableBuilder(
           valueListenable: box.listenable(),
           builder: (context, taskBox, _) {
             final completedTasks = taskBox.values.where((t) {
-              if (t is Map && t['completed'] == true && t['completedAt'] != null) {
+              if (t is Map &&
+                  t['completed'] == true &&
+                  t['completedAt'] != null) {
                 final completedAt = DateTime.tryParse(t['completedAt']);
-                return completedAt != null && _isSameDay(completedAt, _selectedDate);
+                return completedAt != null &&
+                    _isSameDay(completedAt, _selectedDate);
               }
               return false;
             }).toList();
-            
+
             if (completedTasks.isEmpty) {
-              return _buildEmptyState(message: AppLocalizations.of(context)!.noTasksCompleted);
+              return _buildEmptyState(
+                message: AppLocalizations.of(context)!.noTasksCompleted,
+              );
             }
-            
+
             final items = completedTasks.map((t) {
               final completedAt = DateTime.parse(t['completedAt']);
               return _LogItem(type: 'task', date: completedAt, data: t);
             }).toList();
-            
+
             items.sort((a, b) => b.date.compareTo(a.date));
-            
+
             if (_isListView) {
               return _buildListView(items);
             } else {
@@ -791,14 +1073,16 @@ class _LogScreenState extends ConsumerState<LogScreen> with SingleTickerProvider
             .cast<TimeTrackingRecord>()
             .where((r) => _isSameDay(r.startTime, _selectedDate))
             .toList();
-        
+
         records.sort((a, b) => b.startTime.compareTo(a.startTime));
 
         if (records.isEmpty) {
           return _buildEmptyState(message: 'Nenhum registro de tempo');
         }
 
-        final items = records.map((r) => _LogItem(type: 'time', date: r.startTime, data: r)).toList();
+        final items = records
+            .map((r) => _LogItem(type: 'time', date: r.startTime, data: r))
+            .toList();
 
         if (_isListView) {
           return _buildListView(items);
@@ -816,18 +1100,22 @@ class _LogScreenState extends ConsumerState<LogScreen> with SingleTickerProvider
         // Filter only reading sessions (category == 'Leitura')
         final records = box.values
             .cast<TimeTrackingRecord>()
-            .where((r) => 
-                _isSameDay(r.startTime, _selectedDate) &&
-                r.category == 'Leitura')
+            .where(
+              (r) =>
+                  _isSameDay(r.startTime, _selectedDate) &&
+                  r.category == 'Leitura',
+            )
             .toList();
-        
+
         records.sort((a, b) => b.startTime.compareTo(a.startTime));
 
         if (records.isEmpty) {
           return _buildEmptyState(message: 'Nenhuma sessão de leitura');
         }
 
-        final items = records.map((r) => _LogItem(type: 'reading', date: r.startTime, data: r)).toList();
+        final items = records
+            .map((r) => _LogItem(type: 'reading', date: r.startTime, data: r))
+            .toList();
 
         if (_isListView) {
           return _buildListView(items);
@@ -845,7 +1133,7 @@ class _LogScreenState extends ConsumerState<LogScreen> with SingleTickerProvider
         if (!snapshot.hasData) {
           return const Center(child: CircularProgressIndicator());
         }
-        
+
         final box = snapshot.data!;
         return ValueListenableBuilder(
           valueListenable: box.listenable(),
@@ -853,22 +1141,23 @@ class _LogScreenState extends ConsumerState<LogScreen> with SingleTickerProvider
             final notes = notesBox.values.where((n) {
               if (n is Map && n['createdAt'] != null) {
                 final createdAt = DateTime.tryParse(n['createdAt']);
-                return createdAt != null && _isSameDay(createdAt, _selectedDate);
+                return createdAt != null &&
+                    _isSameDay(createdAt, _selectedDate);
               }
               return false;
             }).toList();
-            
+
             if (notes.isEmpty) {
               return _buildEmptyState(message: 'Nenhuma nota criada');
             }
-            
+
             final items = notes.map((n) {
               final createdAt = DateTime.parse(n['createdAt']);
               return _LogItem(type: 'note', date: createdAt, data: n);
             }).toList();
-            
+
             items.sort((a, b) => b.date.compareTo(a.date));
-            
+
             if (_isListView) {
               return _buildListView(items);
             } else {
@@ -893,10 +1182,7 @@ class _LogScreenState extends ConsumerState<LogScreen> with SingleTickerProvider
           builder: (context, value, child) {
             return Transform.translate(
               offset: Offset(0, 20 * (1 - value)),
-              child: Opacity(
-                opacity: value.clamp(0.0, 1.0),
-                child: child,
-              ),
+              child: Opacity(opacity: value.clamp(0.0, 1.0), child: child),
             );
           },
           child: _buildTimelineItem(item, index, items.length),
@@ -924,10 +1210,7 @@ class _LogScreenState extends ConsumerState<LogScreen> with SingleTickerProvider
           builder: (context, value, child) {
             return Transform.scale(
               scale: value.clamp(0.0, 1.0),
-              child: Opacity(
-                opacity: value.clamp(0.0, 1.0),
-                child: child,
-              ),
+              child: Opacity(opacity: value.clamp(0.0, 1.0), child: child),
             );
           },
           child: _buildGridCard(item),
@@ -949,7 +1232,11 @@ class _LogScreenState extends ConsumerState<LogScreen> with SingleTickerProvider
       case 'task':
         final task = item.data as Map;
         final priority = task['priority'] ?? 'medium';
-        color = priority == 'high' ? Colors.red : priority == 'low' ? Colors.green : Colors.orange;
+        color = priority == 'high'
+            ? Colors.red
+            : priority == 'low'
+            ? Colors.green
+            : Colors.orange;
         break;
       case 'pomodoro':
         color = Colors.red.shade400;
@@ -1071,7 +1358,11 @@ class _LogScreenState extends ConsumerState<LogScreen> with SingleTickerProvider
       case 'task':
         final task = item.data as Map;
         final priority = task['priority'] ?? 'medium';
-        color = priority == 'high' ? Colors.red : priority == 'low' ? Colors.green : Colors.orange;
+        color = priority == 'high'
+            ? Colors.red
+            : priority == 'low'
+            ? Colors.green
+            : Colors.orange;
         typeLabel = 'Tarefa';
         break;
       case 'pomodoro':
@@ -1097,10 +1388,7 @@ class _LogScreenState extends ConsumerState<LogScreen> with SingleTickerProvider
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: color.withValues(alpha: 0.2),
-          width: 1,
-        ),
+        border: Border.all(color: color.withValues(alpha: 0.2), width: 1),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1110,10 +1398,7 @@ class _LogScreenState extends ConsumerState<LogScreen> with SingleTickerProvider
               Container(
                 width: 8,
                 height: 8,
-                decoration: BoxDecoration(
-                  color: color,
-                  shape: BoxShape.circle,
-                ),
+                decoration: BoxDecoration(color: color, shape: BoxShape.circle),
               ),
               const SizedBox(width: 8),
               Text(
@@ -1134,9 +1419,7 @@ class _LogScreenState extends ConsumerState<LogScreen> with SingleTickerProvider
             ],
           ),
           const SizedBox(height: 12),
-          Expanded(
-            child: _buildItemContentCompact(item, color),
-          ),
+          Expanded(child: _buildItemContentCompact(item, color)),
         ],
       ),
     );
@@ -1149,7 +1432,10 @@ class _LogScreenState extends ConsumerState<LogScreen> with SingleTickerProvider
       case 'time':
         return _buildTimeContentCompact(item.data as TimeTrackingRecord);
       case 'reading':
-        return _buildReadingContentCompact(item.data as TimeTrackingRecord, color);
+        return _buildReadingContentCompact(
+          item.data as TimeTrackingRecord,
+          color,
+        );
       case 'habit':
         return _buildHabitContentCompact(item.data as Habit, color);
       case 'task':
@@ -1165,7 +1451,7 @@ class _LogScreenState extends ConsumerState<LogScreen> with SingleTickerProvider
 
   Widget _buildMoodContent(MoodRecord record) {
     final timeFormat = DateFormat('HH:mm');
-    
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1179,9 +1465,10 @@ class _LogScreenState extends ConsumerState<LogScreen> with SingleTickerProvider
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Center(
-                child: Text(
-                  _getMoodEmoji(record.label),
-                  style: const TextStyle(fontSize: 20),
+                child: SvgPicture.asset(
+                  _getMoodSvgPath(record.score),
+                  width: 26,
+                  height: 26,
                 ),
               ),
             ),
@@ -1199,7 +1486,11 @@ class _LogScreenState extends ConsumerState<LogScreen> with SingleTickerProvider
                   ),
                   Row(
                     children: [
-                      Icon(Icons.access_time, size: 12, color: Theme.of(context).colorScheme.onSurfaceVariant),
+                      Icon(
+                        Icons.access_time,
+                        size: 12,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
                       const SizedBox(width: 4),
                       Text(
                         '${timeFormat.format(record.date)} • ${_getRelativeTime(record.date)}',
@@ -1237,13 +1528,19 @@ class _LogScreenState extends ConsumerState<LogScreen> with SingleTickerProvider
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+              color: Theme.of(
+                context,
+              ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(Icons.notes, size: 14, color: Theme.of(context).colorScheme.onSurfaceVariant),
+                Icon(
+                  Icons.notes,
+                  size: 14,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
@@ -1266,22 +1563,32 @@ class _LogScreenState extends ConsumerState<LogScreen> with SingleTickerProvider
           Wrap(
             spacing: 6,
             runSpacing: 4,
-            children: record.activities.take(4).map((activity) => Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-              decoration: BoxDecoration(
-                color: Color(record.color).withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(6),
-                border: Border.all(color: Color(record.color).withValues(alpha: 0.3)),
-              ),
-              child: Text(
-                activity.activityName,
-                style: TextStyle(
-                  fontSize: 10,
-                  color: Color(record.color),
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            )).toList(),
+            children: record.activities
+                .take(4)
+                .map(
+                  (activity) => Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 3,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Color(record.color).withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(
+                        color: Color(record.color).withValues(alpha: 0.3),
+                      ),
+                    ),
+                    child: Text(
+                      activity.activityName,
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: Color(record.color),
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                )
+                .toList(),
           ),
         ],
       ],
@@ -1291,7 +1598,7 @@ class _LogScreenState extends ConsumerState<LogScreen> with SingleTickerProvider
   String _getRelativeTime(DateTime date) {
     final now = DateTime.now();
     final diff = now.difference(date);
-    
+
     if (diff.inMinutes < 1) return 'agora';
     if (diff.inMinutes < 60) return 'há ${diff.inMinutes}min';
     if (diff.inHours < 24) return 'há ${diff.inHours}h';
@@ -1303,16 +1610,13 @@ class _LogScreenState extends ConsumerState<LogScreen> with SingleTickerProvider
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(
-          _getMoodEmoji(record.label),
-          style: const TextStyle(fontSize: 26),
-        ),
+        SvgPicture.asset(_getMoodSvgPath(record.score), width: 32, height: 32),
         const Spacer(),
         Text(
           record.label,
-          style: Theme.of(context).textTheme.titleSmall?.copyWith(
-            fontWeight: FontWeight.w600,
-          ),
+          style: Theme.of(
+            context,
+          ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
         ),
         if (record.note != null && record.note!.isNotEmpty)
           Text(
@@ -1343,7 +1647,9 @@ class _LogScreenState extends ConsumerState<LogScreen> with SingleTickerProvider
               width: 40,
               height: 40,
               decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.15),
+                color: Theme.of(
+                  context,
+                ).colorScheme.secondary.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Icon(
@@ -1366,7 +1672,11 @@ class _LogScreenState extends ConsumerState<LogScreen> with SingleTickerProvider
                   ),
                   Row(
                     children: [
-                      Icon(Icons.access_time, size: 12, color: Theme.of(context).colorScheme.onSurfaceVariant),
+                      Icon(
+                        Icons.access_time,
+                        size: 12,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
                       const SizedBox(width: 4),
                       Text(
                         '${timeFormat.format(record.startTime)} - ${timeFormat.format(record.endTime)}',
@@ -1384,7 +1694,9 @@ class _LogScreenState extends ConsumerState<LogScreen> with SingleTickerProvider
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.15),
+                color: Theme.of(
+                  context,
+                ).colorScheme.secondary.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Text(
@@ -1403,7 +1715,11 @@ class _LogScreenState extends ConsumerState<LogScreen> with SingleTickerProvider
           const SizedBox(height: 10),
           Row(
             children: [
-              Icon(Icons.folder_outlined, size: 14, color: Theme.of(context).colorScheme.onSurfaceVariant),
+              Icon(
+                Icons.folder_outlined,
+                size: 14,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
               const SizedBox(width: 6),
               Text(
                 'Categoria: ${record.category}',
@@ -1421,13 +1737,19 @@ class _LogScreenState extends ConsumerState<LogScreen> with SingleTickerProvider
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+              color: Theme.of(
+                context,
+              ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(Icons.notes, size: 14, color: Theme.of(context).colorScheme.onSurfaceVariant),
+                Icon(
+                  Icons.notes,
+                  size: 14,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
@@ -1465,9 +1787,9 @@ class _LogScreenState extends ConsumerState<LogScreen> with SingleTickerProvider
         const Spacer(),
         Text(
           record.activityName,
-          style: Theme.of(context).textTheme.titleSmall?.copyWith(
-            fontWeight: FontWeight.w600,
-          ),
+          style: Theme.of(
+            context,
+          ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
         ),
@@ -1508,10 +1830,10 @@ class _LogScreenState extends ConsumerState<LogScreen> with SingleTickerProvider
     final minutes = record.duration.inMinutes.remainder(60);
     final seconds = record.duration.inSeconds.remainder(60);
     final timeFormat = DateFormat('HH:mm');
-    
+
     // Extract book title from project field
     final bookTitle = record.project ?? 'Livro';
-    
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1544,7 +1866,11 @@ class _LogScreenState extends ConsumerState<LogScreen> with SingleTickerProvider
                   ),
                   Row(
                     children: [
-                      Icon(Icons.access_time, size: 12, color: Theme.of(context).colorScheme.onSurfaceVariant),
+                      Icon(
+                        Icons.access_time,
+                        size: 12,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
                       const SizedBox(width: 4),
                       Text(
                         '${timeFormat.format(record.startTime)} - ${timeFormat.format(record.endTime)}',
@@ -1582,13 +1908,19 @@ class _LogScreenState extends ConsumerState<LogScreen> with SingleTickerProvider
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+              color: Theme.of(
+                context,
+              ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(Icons.notes, size: 14, color: Theme.of(context).colorScheme.onSurfaceVariant),
+                Icon(
+                  Icons.notes,
+                  size: 14,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
@@ -1623,9 +1955,9 @@ class _LogScreenState extends ConsumerState<LogScreen> with SingleTickerProvider
         const Spacer(),
         Text(
           bookTitle,
-          style: Theme.of(context).textTheme.titleSmall?.copyWith(
-            fontWeight: FontWeight.w600,
-          ),
+          style: Theme.of(
+            context,
+          ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
         ),
@@ -1657,11 +1989,11 @@ class _LogScreenState extends ConsumerState<LogScreen> with SingleTickerProvider
                 color: color.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(10),
               ),
-child: Icon(
-                 OdysseyIcons.fromCodePoint(habit.iconCode),
-                 color: color,
-                 size: 20,
-               ),
+              child: Icon(
+                OdysseyIcons.fromCodePoint(habit.iconCode),
+                color: color,
+                size: 20,
+              ),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -1724,17 +2056,17 @@ child: Icon(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-Icon(
-           OdysseyIcons.fromCodePoint(habit.iconCode),
-           color: color,
-           size: 26,
-         ),
+        Icon(
+          OdysseyIcons.fromCodePoint(habit.iconCode),
+          color: color,
+          size: 26,
+        ),
         const Spacer(),
         Text(
           habit.name,
-          style: Theme.of(context).textTheme.titleSmall?.copyWith(
-            fontWeight: FontWeight.w600,
-          ),
+          style: Theme.of(
+            context,
+          ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
         ),
@@ -1762,8 +2094,12 @@ Icon(
   Widget _buildTaskContent(Map task, Color color) {
     final title = task['title'] ?? 'Tarefa';
     final priority = task['priority'] ?? 'medium';
-    final priorityLabel = priority == 'high' ? AppLocalizations.of(context)!.priorityHigh : priority == 'low' ? AppLocalizations.of(context)!.priorityLow : AppLocalizations.of(context)!.priorityMedium;
-    
+    final priorityLabel = priority == 'high'
+        ? AppLocalizations.of(context)!.priorityHigh
+        : priority == 'low'
+        ? AppLocalizations.of(context)!.priorityLow
+        : AppLocalizations.of(context)!.priorityMedium;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1776,11 +2112,7 @@ Icon(
                 color: color.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: Icon(
-                Icons.check_circle,
-                color: color,
-                size: 20,
-              ),
+              child: Icon(Icons.check_circle, color: color, size: 20),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -1833,22 +2165,18 @@ Icon(
 
   Widget _buildTaskContentCompact(Map task, Color color) {
     final title = task['title'] ?? 'Tarefa';
-    
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(
-          Icons.check_circle,
-          color: color,
-          size: 26,
-        ),
+        Icon(Icons.check_circle, color: color, size: 26),
         const Spacer(),
         Text(
           title,
-          style: Theme.of(context).textTheme.titleSmall?.copyWith(
-            fontWeight: FontWeight.w600,
-          ),
+          style: Theme.of(
+            context,
+          ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
         ),
@@ -1870,7 +2198,7 @@ Icon(
   Widget _buildPomodoroContent(Map session, Color color) {
     final duration = session['duration'] ?? 25;
     final activityName = session['activityName'] ?? 'Pomodoro';
-    
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1938,17 +2266,18 @@ Icon(
 
   Widget _buildPomodoroContentCompact(Map session, Color color) {
     final duration = session['duration'] ?? 25;
-    
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
         const Text('🍅', style: TextStyle(fontSize: 26)),
         const Spacer(),
-        Text(AppLocalizations.of(context)!.pomodoro,
-          style: Theme.of(context).textTheme.titleSmall?.copyWith(
-            fontWeight: FontWeight.w600,
-          ),
+        Text(
+          AppLocalizations.of(context)!.pomodoro,
+          style: Theme.of(
+            context,
+          ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
         ),
@@ -1970,7 +2299,7 @@ Icon(
   Widget _buildNoteContent(Map note, Color color) {
     final content = note['content'] ?? '';
     final title = note['title'] ?? AppLocalizations.of(context)!.quickNote;
-    
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -2003,7 +2332,11 @@ Icon(
                   ),
                   Row(
                     children: [
-                      Icon(Icons.edit_note, size: 12, color: Theme.of(context).colorScheme.onSurfaceVariant),
+                      Icon(
+                        Icons.edit_note,
+                        size: 12,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
                       const SizedBox(width: 4),
                       Text(
                         AppLocalizations.of(context)!.quickNote,
@@ -2024,7 +2357,9 @@ Icon(
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+              color: Theme.of(
+                context,
+              ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Text(
@@ -2044,7 +2379,7 @@ Icon(
 
   Widget _buildNoteContentCompact(Map note, Color color) {
     final content = note['content'] ?? '';
-    
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
@@ -2053,9 +2388,9 @@ Icon(
         const Spacer(),
         Text(
           content.isNotEmpty ? content : 'Nota vazia',
-          style: Theme.of(context).textTheme.titleSmall?.copyWith(
-            fontWeight: FontWeight.w500,
-          ),
+          style: Theme.of(
+            context,
+          ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w500),
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
         ),
@@ -2072,7 +2407,9 @@ Icon(
             width: 80,
             height: 80,
             decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+              color: Theme.of(
+                context,
+              ).colorScheme.primary.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(24),
             ),
             child: Icon(
@@ -2084,9 +2421,9 @@ Icon(
           const SizedBox(height: 24),
           Text(
             message ?? 'Nenhum registro neste dia',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w600,
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 8),
           Text(
@@ -2100,13 +2437,21 @@ Icon(
     );
   }
 
-  String _getMoodEmoji(String label) {
-    final moodEmojis = {
-      'Great': '😊', 'Good': '🙂', 'Okay': '😐', 'Alright': '😐',
-      'Bad': '😔', 'Terrible': '😢',
-      'Ótimo': '😊', 'Bem': '🙂', 'Ok': '😐', 'Triste': '😔', 'Mal': '😢',
-    };
-    return moodEmojis[label] ?? '😐';
+  /// Retorna o path do SVG do mood baseado no score
+  String _getMoodSvgPath(int score) {
+    switch (score) {
+      case 5:
+        return 'assets/emojis/noto_awesome.svg';
+      case 4:
+        return 'assets/emojis/noto_good.svg';
+      case 3:
+        return 'assets/emojis/noto_neutral.svg';
+      case 2:
+        return 'assets/emojis/noto_bad.svg';
+      case 1:
+      default:
+        return 'assets/emojis/noto_terrible.svg';
+    }
   }
 
   String _getWeekdayAbbr(int weekday) {
@@ -2115,26 +2460,25 @@ Icon(
   }
 
   String _getMonthAbbr(int month) {
-    const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+    const months = [
+      'Jan',
+      'Fev',
+      'Mar',
+      'Abr',
+      'Mai',
+      'Jun',
+      'Jul',
+      'Ago',
+      'Set',
+      'Out',
+      'Nov',
+      'Dez',
+    ];
     return months[month - 1];
   }
 
   bool _isSameDay(DateTime? a, DateTime? b) {
     return a?.year == b?.year && a?.month == b?.month && a?.day == b?.day;
-  }
-
-  String _formatTrackedTime(Duration duration) {
-    final hours = duration.inHours;
-    final minutes = duration.inMinutes.remainder(60);
-    final seconds = duration.inSeconds.remainder(60);
-    
-    if (hours > 0) {
-      return '${hours}h${minutes}m';
-    } else if (minutes > 0) {
-      return '${minutes}m${seconds}s';
-    } else {
-      return '${seconds}s';
-    }
   }
 
   String _formatDurationWithSeconds(int hours, int minutes, int seconds) {
@@ -2156,11 +2500,24 @@ class _LogItem {
   _LogItem({required this.type, required this.date, required this.data});
 }
 
-class _DayStatsData {
+class _MonthlyInsightsData {
   final int totalRecords;
-  final String avgMood;
-  final Color avgMoodColor;
   final Duration totalTime;
+  final int habitsCompleted;
+  final String? mostActiveDay;
+  final String? bestMoodDay;
+  final double? positiveMoodRate;
+  final String? tip;
 
-  _DayStatsData(this.totalRecords, this.avgMood, this.avgMoodColor, this.totalTime);
+  _MonthlyInsightsData({
+    required this.totalRecords,
+    required this.totalTime,
+    required this.habitsCompleted,
+    this.mostActiveDay,
+    this.bestMoodDay,
+    this.positiveMoodRate,
+    this.tip,
+  });
+
+  bool get isEmpty => totalRecords == 0;
 }

@@ -62,8 +62,20 @@ class _EditPostScreenState extends ConsumerState<EditPostScreen> {
     HapticFeedback.lightImpact();
 
     try {
-      final repo = ref.read(communityRepositoryProvider);
-      await repo.updatePost(widget.post.id, UpdatePostDto(content: content));
+      final isOffline = ref.read(isOfflineModeProvider);
+
+      if (isOffline) {
+        // Em modo offline, usa mock
+        final mockRepo = ref.read(mockCommunityRepositoryProvider);
+        await mockRepo.updatePost(
+          widget.post.id,
+          UpdatePostDto(content: content),
+        );
+      } else {
+        final repo = ref.read(communityRepositoryProvider);
+        if (repo == null) throw Exception('Repositório não disponível');
+        await repo.updatePost(widget.post.id, UpdatePostDto(content: content));
+      }
 
       if (mounted) {
         ref.invalidate(feedProvider);

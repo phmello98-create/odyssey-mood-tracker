@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/community_providers.dart';
 import '../widgets/post_card.dart';
 import '../widgets/comment_item.dart';
+import '../../data/mock_community_data.dart';
 import '../../domain/post.dart';
 
 /// Tela de detalhes do post com comentários
@@ -35,7 +36,34 @@ class _PostDetailScreenState extends ConsumerState<PostDetailScreen> {
     setState(() => _isAddingComment = true);
 
     try {
+      final isOffline = ref.read(isOfflineModeProvider);
+      if (isOffline) {
+        // Em modo offline, adiciona ao mock
+        MockCommunityData.addComment(
+          widget.post.id,
+          content,
+          'mock_user_local',
+          'Você',
+        );
+        _commentController.clear();
+        _commentFocus.unfocus();
+        // Invalida o provider para atualizar a lista
+        ref.invalidate(commentsProvider(widget.post.id));
+        if (mounted) {
+          HapticFeedback.mediumImpact();
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Comentário adicionado!'),
+              backgroundColor: Colors.green,
+              duration: Duration(seconds: 2),
+            ),
+          );
+        }
+        return;
+      }
+
       final repo = ref.read(commentRepositoryProvider);
+      if (repo == null) throw Exception('Repositório não disponível');
       await repo.addComment(widget.post.id, content);
 
       _commentController.clear();
@@ -150,13 +178,10 @@ class _PostDetailScreenState extends ConsumerState<PostDetailScreen> {
                     return SliverPadding(
                       padding: const EdgeInsets.only(bottom: 16),
                       sliver: SliverList(
-                        delegate: SliverChildBuilderDelegate(
-                          (context, index) {
-                            if (index >= comments.length) return null;
-                            return CommentItem(comment: comments[index]);
-                          },
-                          childCount: comments.length,
-                        ),
+                        delegate: SliverChildBuilderDelegate((context, index) {
+                          if (index >= comments.length) return null;
+                          return CommentItem(comment: comments[index]);
+                        }, childCount: comments.length),
                       ),
                     );
                   },
@@ -211,10 +236,7 @@ class _PostDetailScreenState extends ConsumerState<PostDetailScreen> {
             const SizedBox(height: 8),
             Text(
               'Seja o primeiro a comentar!',
-              style: TextStyle(
-                fontSize: 14,
-                color: colors.onSurfaceVariant,
-              ),
+              style: TextStyle(fontSize: 14, color: colors.onSurfaceVariant),
             ),
           ],
         ),
