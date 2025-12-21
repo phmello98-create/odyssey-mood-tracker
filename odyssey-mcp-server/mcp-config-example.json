@@ -1,0 +1,14 @@
+{
+    "mcpServers": {
+        "odyssey-flutter": {
+            "command": "/home/agyspc/Downloads/odyssey-mood-tracker/odyssey-mcp-server/.venv/bin/python",
+            "args": [
+                "/home/agyspc/Downloads/odyssey-mood-tracker/odyssey-mcp-server/server.py"
+            ],
+            "env": {
+                "PROJECT_ROOT": "/home/agyspc/Downloads/odyssey-mood-tracker",
+                "PYTHONPATH": "/home/agyspc/Downloads/odyssey-mood-tracker/odyssey-mcp-server"
+            }
+        }
+    }
+}

@@ -382,15 +382,15 @@ class ProfileHeader extends StatelessWidget {
                         color: Colors.black38,
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: Row(
+                      child: const Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(
+                          Icon(
                             Icons.add_photo_alternate,
                             size: 14,
                             color: Colors.white70,
                           ),
-                          const SizedBox(width: 4),
+                          SizedBox(width: 4),
                           Text(
                             'Banner',
                             style: TextStyle(
@@ -1069,7 +1069,7 @@ class PremiumGoalCard extends StatelessWidget {
                   onTap: onDelete,
                 ),
               ] else if (goal.isCompleted)
-                Icon(Icons.check_circle, color: Colors.green, size: 22),
+                const Icon(Icons.check_circle, color: Colors.green, size: 22),
             ],
           ),
           const SizedBox(height: 10),
@@ -1119,9 +1119,387 @@ class PremiumGoalCard extends StatelessWidget {
   String _getStatusText() {
     if (goal.isCompleted) return 'Concluída ✅';
     if (goal.trackingType == 'checklist') return 'Pendente';
-    if (goal.trackingType == 'percentage')
+    if (goal.trackingType == 'percentage') {
       return '${goal.currentValue.clamp(0, 100)}%';
+    }
     return '${goal.currentValue}/${goal.targetValue}';
+  }
+
+  Color _getGoalColor(String type) {
+    switch (type) {
+      case 'mood':
+        return const Color(0xFFFFA94D);
+      case 'tasks':
+        return const Color(0xFF51CF66);
+      case 'focus':
+        return const Color(0xFF339AF0);
+      case 'habits':
+        return const Color(0xFFB197FC);
+      default:
+        return const Color(0xFF868E96);
+    }
+  }
+
+  String _getGoalEmoji(String type) {
+    switch (type) {
+      case 'mood':
+        return '😊';
+      case 'tasks':
+        return '✅';
+      case 'focus':
+        return '⏱️';
+      case 'habits':
+        return '🎯';
+      default:
+        return '🌟';
+    }
+  }
+}
+
+/// Card de meta com suporte a banner visual
+/// Seguindo @ui-specialist: Design elegante com imagem motivacional
+class PremiumGoalCardWithBanner extends StatelessWidget {
+  final PersonalGoal goal;
+  final VoidCallback onIncrement;
+  final VoidCallback onDelete;
+  final VoidCallback? onTap;
+  final bool showActions;
+
+  const PremiumGoalCardWithBanner({
+    super.key,
+    required this.goal,
+    required this.onIncrement,
+    required this.onDelete,
+    this.onTap,
+    this.showActions = true,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final goalColor = _getGoalColor(goal.type);
+
+    // Cálculo do progresso
+    double safeProgress = 0.0;
+    if (goal.isCompleted) {
+      safeProgress = 1.0;
+    } else if (goal.targetValue > 0) {
+      safeProgress = (goal.currentValue / goal.targetValue).clamp(0.0, 1.0);
+    }
+    final percentage = (safeProgress * 100).round();
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 14),
+        clipBehavior: Clip.antiAlias,
+        decoration: BoxDecoration(
+          color: colors.surfaceContainerHighest.withAlpha(80),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: colors.outline.withAlpha(30)),
+          boxShadow: [
+            BoxShadow(
+              color: colors.shadow.withValues(alpha: 0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Banner (se existir)
+            if (goal.hasBanner) _buildBanner(colors),
+
+            // Content
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      // Emoji icon
+                      Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          color: goalColor.withAlpha(30),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          _getGoalEmoji(goal.type),
+                          style: const TextStyle(fontSize: 22),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      // Title and description
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              goal.title,
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: colors.onSurface,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            if (goal.description != null) ...[
+                              const SizedBox(height: 2),
+                              Text(
+                                goal.description!,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: colors.onSurfaceVariant,
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                      // Action buttons
+                      if (showActions && !goal.isCompleted) ...[
+                        _SimpleBtn(
+                          icon: goal.trackingType == 'checklist'
+                              ? Icons.check_rounded
+                              : Icons.add_rounded,
+                          color: goalColor,
+                          onTap: onIncrement,
+                        ),
+                        const SizedBox(width: 6),
+                        _SimpleBtn(
+                          icon: Icons.delete_outline_rounded,
+                          color: colors.error,
+                          onTap: onDelete,
+                        ),
+                      ] else if (goal.isCompleted)
+                        Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF51CF66).withAlpha(30),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Icon(
+                            Icons.check_rounded,
+                            color: Color(0xFF51CF66),
+                            size: 22,
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  // Progress bar
+                  Stack(
+                    children: [
+                      Container(
+                        height: 8,
+                        decoration: BoxDecoration(
+                          color: colors.outlineVariant.withAlpha(50),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ),
+                      FractionallySizedBox(
+                        widthFactor: safeProgress,
+                        child: Container(
+                          height: 8,
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                goalColor,
+                                goalColor.withValues(alpha: 0.7),
+                              ],
+                            ),
+                            borderRadius: BorderRadius.circular(4),
+                            boxShadow: [
+                              BoxShadow(
+                                color: goalColor.withValues(alpha: 0.3),
+                                blurRadius: 6,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        _getStatusText(),
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: colors.onSurfaceVariant,
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: goalColor.withAlpha(20),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Text(
+                          '$percentage%',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: goalColor,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBanner(ColorScheme colors) {
+    return Container(
+      height: 120,
+      width: double.infinity,
+      decoration: BoxDecoration(color: colors.surfaceContainerHighest),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          // Image
+          if (goal.bannerPath != null)
+            Image.file(
+              File(goal.bannerPath!),
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => _buildFallbackBanner(colors),
+            )
+          else if (goal.bannerUrl != null)
+            Image.network(
+              goal.bannerUrl!,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => _buildFallbackBanner(colors),
+              loadingBuilder: (context, child, loadingProgress) {
+                if (loadingProgress == null) return child;
+                return Container(
+                  color: colors.surfaceContainerHighest,
+                  child: Center(
+                    child: CircularProgressIndicator(
+                      value: loadingProgress.expectedTotalBytes != null
+                          ? loadingProgress.cumulativeBytesLoaded /
+                                loadingProgress.expectedTotalBytes!
+                          : null,
+                      strokeWidth: 2,
+                      color: colors.primary,
+                    ),
+                  ),
+                );
+              },
+            ),
+          // Gradient overlay
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            child: Container(
+              height: 50,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.transparent,
+                    colors.surface.withValues(alpha: 0.9),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          // Category badge
+          if (goal.category != null)
+            Positioned(
+              top: 10,
+              right: 10,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
+                decoration: BoxDecoration(
+                  color: colors.surface.withValues(alpha: 0.9),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  _getCategoryName(goal.category!),
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                    color: colors.onSurface,
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFallbackBanner(ColorScheme colors) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            _getGoalColor(goal.type).withValues(alpha: 0.3),
+            colors.primaryContainer.withValues(alpha: 0.3),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
+      child: Center(
+        child: Text(
+          _getGoalEmoji(goal.type),
+          style: const TextStyle(fontSize: 48),
+        ),
+      ),
+    );
+  }
+
+  String _getStatusText() {
+    if (goal.isCompleted) return 'Concluída ✅';
+    if (goal.trackingType == 'checklist') return 'Pendente';
+    if (goal.trackingType == 'percentage') {
+      return '${goal.currentValue.clamp(0, 100)}% completo';
+    }
+    return '${goal.currentValue}/${goal.targetValue}';
+  }
+
+  String _getCategoryName(String category) {
+    switch (category) {
+      case 'financial':
+        return '💰 Financeiro';
+      case 'travel':
+        return '✈️ Viagem';
+      case 'education':
+        return '📚 Educação';
+      case 'health':
+        return '💪 Saúde';
+      case 'career':
+        return '💼 Carreira';
+      case 'personal':
+        return '⭐ Pessoal';
+      default:
+        return '🎯 Meta';
+    }
   }
 
   Color _getGoalColor(String type) {

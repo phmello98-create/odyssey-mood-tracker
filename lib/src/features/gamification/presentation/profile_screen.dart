@@ -22,6 +22,7 @@ import 'package:odyssey/src/features/onboarding/services/showcase_service.dart'
 import '../data/gamification_repository.dart';
 import '../domain/user_stats.dart';
 import '../domain/user_skills.dart';
+import '../domain/goal_suggestions.dart';
 import 'widgets/profile_widgets.dart';
 import 'dart:math' as math;
 
@@ -42,6 +43,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
   late List<SkillCategory> _skillCategories;
   int _selectedTabIndex = 0;
   bool _showCompletedGoals = false;
+  bool _showGoalSuggestions = false;
 
   // Showcase keys
   final GlobalKey _showcaseStats = GlobalKey();
@@ -218,7 +220,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
 
     // Calcular mana (baseado na energia/foco disponível)
     final mana = (stats.wellnessScore * 1.5).clamp(0, 150).round();
-    final maxMana = 150;
+    const maxMana = 150;
 
     return ProfileHeader(
       userName: displayName,
@@ -1056,6 +1058,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
     );
   }
 
+  /// Tab selector responsivo - scroll horizontal no mobile
+  /// Seguindo @ui-specialist: MediaQuery para responsividade
   Widget _buildModernTabSelector(ColorScheme colors) {
     final tabs = [
       (AppLocalizations.of(context)!.overview, Icons.dashboard_rounded),
@@ -1065,71 +1069,107 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
       ('Metas', Icons.flag_rounded),
     ];
 
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isNarrow = screenWidth < 400; // Mobile estreito
+
     return Container(
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
         color: colors.surfaceContainerHighest.withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(14),
       ),
-      child: Row(
-        children: tabs.asMap().entries.map((entry) {
-          final index = entry.key;
-          final (title, icon) = entry.value;
-          final isSelected = _selectedTabIndex == index;
-
-          return Expanded(
-            child: GestureDetector(
-              onTap: () {
-                HapticFeedback.lightImpact();
-                setState(() => _selectedTabIndex = index);
-              },
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                padding: const EdgeInsets.symmetric(vertical: 10),
-                decoration: BoxDecoration(
-                  color: isSelected ? colors.surface : Colors.transparent,
-                  borderRadius: BorderRadius.circular(10),
-                  boxShadow: isSelected
-                      ? [
-                          BoxShadow(
-                            color: colors.shadow.withValues(alpha: 0.08),
-                            blurRadius: 8,
-                            offset: const Offset(0, 2),
-                          ),
-                        ]
-                      : null,
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      icon,
-                      size: 20,
-                      color: isSelected
-                          ? colors.primary
-                          : colors.onSurfaceVariant,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      title,
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: isSelected
-                            ? FontWeight.w600
-                            : FontWeight.w500,
-                        color: isSelected
-                            ? colors.primary
-                            : colors.onSurfaceVariant,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
+      child: isNarrow
+          // Mobile: Scroll horizontal
+          ? SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              physics: const BouncingScrollPhysics(),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: tabs.asMap().entries.map((entry) {
+                  return _buildTabItem(
+                    entry.key,
+                    entry.value.$1,
+                    entry.value.$2,
+                    colors,
+                    minWidth: 72,
+                  );
+                }).toList(),
               ),
+            )
+          // Desktop/Tablet: Expandido
+          : Row(
+              children: tabs.asMap().entries.map((entry) {
+                return Expanded(
+                  child: _buildTabItem(
+                    entry.key,
+                    entry.value.$1,
+                    entry.value.$2,
+                    colors,
+                  ),
+                );
+              }).toList(),
             ),
-          );
-        }).toList(),
+    );
+  }
+
+  /// Item individual do tab selector
+  Widget _buildTabItem(
+    int index,
+    String title,
+    IconData icon,
+    ColorScheme colors, {
+    double? minWidth,
+  }) {
+    final isSelected = _selectedTabIndex == index;
+
+    return GestureDetector(
+      onTap: () {
+        HapticFeedback.lightImpact();
+        setState(() => _selectedTabIndex = index);
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        constraints: minWidth != null
+            ? BoxConstraints(minWidth: minWidth)
+            : null,
+        padding: EdgeInsets.symmetric(
+          vertical: 10,
+          horizontal: minWidth != null ? 12 : 0,
+        ),
+        decoration: BoxDecoration(
+          color: isSelected ? colors.surface : Colors.transparent,
+          borderRadius: BorderRadius.circular(10),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: colors.shadow.withValues(alpha: 0.08),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+              : null,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              size: 20,
+              color: isSelected ? colors.primary : colors.onSurfaceVariant,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              title,
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                color: isSelected ? colors.primary : colors.onSurfaceVariant,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1262,16 +1302,27 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
               (goal) => Padding(
                 padding: const EdgeInsets.only(bottom: 12),
                 child: ExcludeSemantics(
-                  child: PremiumGoalCard(
-                    goal: goal,
-                    onIncrement: () => _incrementGoal(
-                      goal,
-                      delta: goal.trackingType == 'percentage' ? 10 : 1,
-                    ),
-                    onDelete: () => _deleteGoal(goal.id),
-                    showActions: true,
-                    onTap: () => _showGoalPopup(goal, colors),
-                  ),
+                  child: goal.hasBanner
+                      ? PremiumGoalCardWithBanner(
+                          goal: goal,
+                          onIncrement: () => _incrementGoal(
+                            goal,
+                            delta: goal.trackingType == 'percentage' ? 10 : 1,
+                          ),
+                          onDelete: () => _deleteGoal(goal.id),
+                          showActions: true,
+                          onTap: () => _showGoalPopup(goal, colors),
+                        )
+                      : PremiumGoalCard(
+                          goal: goal,
+                          onIncrement: () => _incrementGoal(
+                            goal,
+                            delta: goal.trackingType == 'percentage' ? 10 : 1,
+                          ),
+                          onDelete: () => _deleteGoal(goal.id),
+                          showActions: true,
+                          onTap: () => _showGoalPopup(goal, colors),
+                        ),
                 ),
               ),
             ),
@@ -1294,9 +1345,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                 ),
                 child: Row(
                   children: [
-                    Icon(
+                    const Icon(
                       Icons.check_circle,
-                      color: const Color(0xFF51CF66),
+                      color: Color(0xFF51CF66),
                       size: 20,
                     ),
                     const SizedBox(width: 12),
@@ -1348,51 +1399,419 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
     );
   }
 
+  /// Estado vazio de metas - expandido com sugestões
+  /// Seguindo @ui-specialist: Layout responsivo e atraente
   Widget _buildEmptyGoalsState(ColorScheme colors) {
-    return Container(
-      padding: const EdgeInsets.all(32),
-      decoration: BoxDecoration(
-        color: colors.surfaceContainerHighest.withValues(alpha: 0.3),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: colors.outlineVariant.withValues(alpha: 0.3),
-          width: 1,
-        ),
-      ),
-      child: Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: colors.primaryContainer.withValues(alpha: 0.5),
-              shape: BoxShape.circle,
+    return Column(
+      children: [
+        // Card principal expandido
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(32),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                colors.primaryContainer.withValues(alpha: 0.4),
+                colors.secondaryContainer.withValues(alpha: 0.3),
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
             ),
-            child: Icon(Icons.flag_outlined, size: 40, color: colors.primary),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: colors.outlineVariant.withValues(alpha: 0.3),
+              width: 1,
+            ),
+          ),
+          child: Column(
+            children: [
+              // Ícone animado
+              TweenAnimationBuilder<double>(
+                tween: Tween(begin: 0.8, end: 1.0),
+                duration: const Duration(milliseconds: 800),
+                curve: Curves.easeOutBack,
+                builder: (context, value, child) {
+                  return Transform.scale(
+                    scale: value,
+                    child: Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: colors.primary.withValues(alpha: 0.15),
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: colors.primary.withValues(alpha: 0.2),
+                            blurRadius: 20,
+                            spreadRadius: 2,
+                          ),
+                        ],
+                      ),
+                      child: Icon(
+                        Icons.flag_rounded,
+                        size: 48,
+                        color: colors.primary,
+                      ),
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 24),
+              Text(
+                'Comece Sua Jornada!',
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: colors.onSurface,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Text(
+                  'Defina metas pessoais para acompanhar seu progresso e alcançar seus sonhos! 🚀',
+                  style: TextStyle(
+                    fontSize: 15,
+                    color: colors.onSurfaceVariant,
+                    height: 1.5,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+              const SizedBox(height: 28),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  FilledButton.icon(
+                    onPressed: () => _showAddGoalDialog(colors),
+                    icon: const Icon(Icons.add_rounded),
+                    label: const Text('Criar Meta'),
+                    style: FilledButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 14,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  OutlinedButton.icon(
+                    onPressed: () {
+                      HapticFeedback.lightImpact();
+                      setState(
+                        () => _showGoalSuggestions = !_showGoalSuggestions,
+                      );
+                    },
+                    icon: Icon(
+                      _showGoalSuggestions
+                          ? Icons.keyboard_arrow_up
+                          : Icons.lightbulb_outline,
+                    ),
+                    label: Text(_showGoalSuggestions ? 'Fechar' : 'Sugestões'),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 14,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+
+        // Toggle de sugestões
+        AnimatedCrossFade(
+          firstChild: const SizedBox.shrink(),
+          secondChild: _buildGoalSuggestions(colors),
+          crossFadeState: _showGoalSuggestions
+              ? CrossFadeState.showSecond
+              : CrossFadeState.showFirst,
+          duration: const Duration(milliseconds: 300),
+        ),
+      ],
+    );
+  }
+
+  /// Grid de sugestões de metas
+  Widget _buildGoalSuggestions(ColorScheme colors) {
+    final suggestions = getRandomSuggestions(6);
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.auto_awesome, color: colors.tertiary, size: 20),
+              const SizedBox(width: 8),
+              Text(
+                'Sugestões de Metas',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: colors.onSurface,
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 16),
-          Text(
-            'Nenhuma meta ativa',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-              color: colors.onSurface,
+          ...suggestions.map(
+            (suggestion) => Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: _buildSuggestionCard(suggestion, colors),
             ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Crie metas para acompanhar seu progresso!',
-            style: TextStyle(fontSize: 14, color: colors.onSurfaceVariant),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 20),
-          FilledButton.icon(
-            onPressed: () => _showAddGoalDialog(colors),
-            icon: const Icon(Icons.add),
-            label: const Text('Criar Meta'),
           ),
         ],
       ),
     );
+  }
+
+  /// Card de sugestão de meta com banner
+  Widget _buildSuggestionCard(GoalSuggestion suggestion, ColorScheme colors) {
+    return GestureDetector(
+      onTap: () => _addSuggestedGoal(suggestion),
+      child: Container(
+        clipBehavior: Clip.antiAlias,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: colors.outlineVariant.withValues(alpha: 0.4),
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Banner
+            if (suggestion.bannerUrl != null)
+              Container(
+                height: 100,
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: colors.surfaceContainerHighest,
+                ),
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    Image.network(
+                      suggestion.bannerUrl!,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => Container(
+                        color: colors.primaryContainer,
+                        child: Center(
+                          child: Text(
+                            suggestion.emoji,
+                            style: const TextStyle(fontSize: 40),
+                          ),
+                        ),
+                      ),
+                      loadingBuilder: (context, child, loadingProgress) {
+                        if (loadingProgress == null) return child;
+                        return Container(
+                          color: colors.surfaceContainerHighest,
+                          child: Center(
+                            child: CircularProgressIndicator(
+                              value: loadingProgress.expectedTotalBytes != null
+                                  ? loadingProgress.cumulativeBytesLoaded /
+                                        loadingProgress.expectedTotalBytes!
+                                  : null,
+                              strokeWidth: 2,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                    // Gradient overlay
+                    Positioned(
+                      bottom: 0,
+                      left: 0,
+                      right: 0,
+                      child: Container(
+                        height: 40,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              Colors.transparent,
+                              colors.surface.withValues(alpha: 0.8),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    // Category badge
+                    Positioned(
+                      top: 8,
+                      right: 8,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: colors.surface.withValues(alpha: 0.9),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              _getCategoryEmoji(suggestion.category),
+                              style: const TextStyle(fontSize: 12),
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              _getCategoryName(suggestion.category),
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                                color: colors.onSurface,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+            // Content
+            Padding(
+              padding: const EdgeInsets.all(14),
+              child: Row(
+                children: [
+                  // Emoji
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: colors.primaryContainer.withValues(alpha: 0.5),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Center(
+                      child: Text(
+                        suggestion.emoji,
+                        style: const TextStyle(fontSize: 22),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  // Info
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          suggestion.title,
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            color: colors.onSurface,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          suggestion.description,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: colors.onSurfaceVariant,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                  // Add button
+                  IconButton(
+                    onPressed: () => _addSuggestedGoal(suggestion),
+                    icon: const Icon(Icons.add_circle_outline),
+                    color: colors.primary,
+                    tooltip: 'Adicionar Meta',
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Adiciona uma meta sugerida
+  void _addSuggestedGoal(GoalSuggestion suggestion) {
+    HapticFeedback.mediumImpact();
+
+    final goal = suggestion.toPersonalGoal();
+    final repo = ref.read(gamificationRepositoryProvider);
+    repo.addPersonalGoal(goal);
+
+    setState(() {
+      _stats = repo.getStats();
+      _showGoalSuggestions = false;
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Text(suggestion.emoji, style: const TextStyle(fontSize: 20)),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'Meta "${suggestion.title}" adicionada!',
+                style: const TextStyle(fontWeight: FontWeight.w500),
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: const Color(0xFF51CF66),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
+  }
+
+  /// Retorna emoji da categoria
+  String _getCategoryEmoji(String category) {
+    switch (category) {
+      case 'financial':
+        return '💰';
+      case 'travel':
+        return '✈️';
+      case 'education':
+        return '📚';
+      case 'health':
+        return '💪';
+      case 'career':
+        return '💼';
+      case 'personal':
+        return '⭐';
+      default:
+        return '🎯';
+    }
+  }
+
+  /// Retorna nome da categoria
+  String _getCategoryName(String category) {
+    switch (category) {
+      case 'financial':
+        return 'Financeiro';
+      case 'travel':
+        return 'Viagem';
+      case 'education':
+        return 'Educação';
+      case 'health':
+        return 'Saúde';
+      case 'career':
+        return 'Carreira';
+      case 'personal':
+        return 'Pessoal';
+      default:
+        return 'Meta';
+    }
   }
 
   Widget _buildCompletedGoalCard(PersonalGoal goal, ColorScheme colors) {
@@ -1438,10 +1857,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                 const SizedBox(height: 4),
                 Row(
                   children: [
-                    Icon(
+                    const Icon(
                       Icons.check_circle,
                       size: 14,
-                      color: const Color(0xFF51CF66),
+                      color: Color(0xFF51CF66),
                     ),
                     const SizedBox(width: 4),
                     Text(
@@ -3373,7 +3792,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                     ),
                   ),
                   if (goal.isCompleted)
-                    Icon(Icons.check_circle, color: Colors.green, size: 24),
+                    const Icon(Icons.check_circle, color: Colors.green, size: 24),
                 ],
               ),
               const SizedBox(height: 20),
@@ -3435,7 +3854,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                         ],
                       ),
                     ),
-                    Text('🪙 +50', style: TextStyle(fontSize: 14)),
+                    const Text('🪙 +50', style: TextStyle(fontSize: 14)),
                   ],
                 ),
               ),

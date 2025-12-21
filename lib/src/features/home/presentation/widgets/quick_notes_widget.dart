@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'dart:ui';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:odyssey/src/features/notes/presentation/notes_screen.dart';
 import 'package:odyssey/src/features/notes/presentation/note_editor_screen.dart';
@@ -19,13 +20,52 @@ class _QuickNotesWidgetState extends State<QuickNotesWidget> {
   bool _isLoading = true;
   final _quickNoteController = TextEditingController();
   int _previousTextLength = 0;
-  bool _isFocused = false;
 
   @override
   void initState() {
     super.initState();
     _initBox();
     _quickNoteController.addListener(_onTextChanged);
+  }
+
+  /// Abre o campo de texto expandido com animação de zoom
+  void _openExpandedTextField() {
+    HapticFeedback.mediumImpact();
+    soundService.playModalOpen();
+
+    showGeneralDialog(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: 'Fechar',
+      barrierColor: Colors.black54,
+      transitionDuration: const Duration(milliseconds: 300),
+      transitionBuilder: (context, animation, secondaryAnimation, child) {
+        final curvedAnimation = CurvedAnimation(
+          parent: animation,
+          curve: Curves.easeOutBack,
+          reverseCurve: Curves.easeInBack,
+        );
+        return ScaleTransition(
+          scale: Tween<double>(begin: 0.7, end: 1.0).animate(curvedAnimation),
+          child: FadeTransition(opacity: animation, child: child),
+        );
+      },
+      pageBuilder: (context, animation, secondaryAnimation) {
+        return _ExpandedNoteEditor(
+          initialText: _quickNoteController.text,
+          onSave: (text) {
+            _quickNoteController.text = text;
+            _saveQuickNote();
+            Navigator.pop(context);
+          },
+          onCancel: (text) {
+            // Preserva o texto digitado
+            _quickNoteController.text = text;
+            Navigator.pop(context);
+          },
+        );
+      },
+    );
   }
 
   void _onTextChanged() {
@@ -206,68 +246,57 @@ class _QuickNotesWidgetState extends State<QuickNotesWidget> {
           ),
           const SizedBox(height: 16),
 
-          // Quick note input
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            decoration: BoxDecoration(
-              color: colors.onSurface.withOpacity(_isFocused ? 0.06 : 0.04),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(
-                color: _isFocused
-                    ? notesColor.withOpacity(0.4)
-                    : Colors.transparent,
-                width: 1.5,
+          // Quick note input - Tap to expand
+          GestureDetector(
+            onTap: _openExpandedTextField,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              decoration: BoxDecoration(
+                color: colors.onSurface.withOpacity(0.04),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: Colors.transparent, width: 1.5),
               ),
-            ),
-            child: Focus(
-              onFocusChange: (hasFocus) =>
-                  setState(() => _isFocused = hasFocus),
-              child: TextField(
-                controller: _quickNoteController,
-                style: TextStyle(fontSize: 14, color: colors.onSurface),
-                maxLines: 2,
-                minLines: 1,
-                decoration: InputDecoration(
-                  hintText: 'Escreva uma nota rápida...',
-                  hintStyle: TextStyle(
-                    fontSize: 13,
-                    color: colors.onSurfaceVariant.withOpacity(0.5),
-                  ),
-                  filled: false,
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 12,
-                  ),
-                  border: InputBorder.none,
-                  suffixIcon: Padding(
-                    padding: const EdgeInsets.all(6),
-                    child: GestureDetector(
-                      onTap: _saveQuickNote,
-                      child: Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            colors: [notesColor, Color(0xFFFF7043)],
-                          ),
-                          borderRadius: BorderRadius.circular(10),
-                          boxShadow: [
-                            BoxShadow(
-                              color: notesColor.withOpacity(0.3),
-                              blurRadius: 6,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: const Icon(
-                          Icons.send_rounded,
-                          color: Colors.white,
-                          size: 16,
-                        ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      _quickNoteController.text.isEmpty
+                          ? 'Toque para escrever...'
+                          : _quickNoteController.text,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: _quickNoteController.text.isEmpty
+                            ? colors.onSurfaceVariant.withOpacity(0.5)
+                            : colors.onSurface,
                       ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                ),
-                onSubmitted: (_) => _saveQuickNote(),
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [notesColor, Color(0xFFFF7043)],
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: notesColor.withOpacity(0.3),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: const Icon(
+                      Icons.edit_rounded,
+                      color: Colors.white,
+                      size: 18,
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
@@ -362,8 +391,8 @@ class _QuickNotesWidgetState extends State<QuickNotesWidget> {
                                   Row(
                                     children: [
                                       if (isPinned)
-                                        Padding(
-                                          padding: const EdgeInsets.only(
+                                        const Padding(
+                                          padding: EdgeInsets.only(
                                             right: 4,
                                           ),
                                           child: Icon(
@@ -459,5 +488,225 @@ class _QuickNotesWidgetState extends State<QuickNotesWidget> {
     if (diff.inHours < 24) return '${diff.inHours}h';
     if (diff.inDays < 7) return '${diff.inDays}d';
     return DateFormat('dd/MM').format(date);
+  }
+}
+
+/// Widget de edição expandida de nota com animações premium
+class _ExpandedNoteEditor extends StatefulWidget {
+  final String initialText;
+  final Function(String) onSave;
+  final Function(String) onCancel;
+
+  const _ExpandedNoteEditor({
+    required this.initialText,
+    required this.onSave,
+    required this.onCancel,
+  });
+
+  @override
+  State<_ExpandedNoteEditor> createState() => _ExpandedNoteEditorState();
+}
+
+class _ExpandedNoteEditorState extends State<_ExpandedNoteEditor>
+    with SingleTickerProviderStateMixin {
+  late TextEditingController _controller;
+  late FocusNode _focusNode;
+
+  static const notesColor = Color(0xFFFFA726);
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.initialText);
+    _focusNode = FocusNode();
+
+    // Auto-focus após a animação
+    Future.delayed(const Duration(milliseconds: 350), () {
+      if (mounted) _focusNode.requestFocus();
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final screenSize = MediaQuery.of(context).size;
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      body: Stack(
+        children: [
+          // Background com blur muito sutil - quase visível o app
+          Positioned.fill(
+            child: GestureDetector(
+              onTap: () {
+                HapticFeedback.lightImpact();
+                soundService.playModalClose();
+                widget.onCancel(_controller.text);
+              },
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 1.5, sigmaY: 1.5),
+                child: Container(color: Colors.black.withOpacity(0.15)),
+              ),
+            ),
+          ),
+
+          // Card compacto centralizado
+          Center(
+            child: SingleChildScrollView(
+              padding: EdgeInsets.only(
+                left: 24,
+                right: 24,
+                top: 60,
+                bottom: bottomInset + 60,
+              ),
+              child: GestureDetector(
+                onTap: () {},
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(20),
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+                    child: Container(
+                      width: screenSize.width - 48,
+                      constraints: BoxConstraints(
+                        maxHeight: screenSize.height * 0.4,
+                        maxWidth: 400,
+                      ),
+                      decoration: BoxDecoration(
+                        color: colors.surface.withOpacity(0.85),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: colors.onSurface.withOpacity(0.08),
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.08),
+                            blurRadius: 20,
+                            offset: const Offset(0, 8),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const SizedBox(height: 20),
+                          // Campo de texto compacto
+                          Flexible(
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                              ),
+                              child: TextField(
+                                controller: _controller,
+                                focusNode: _focusNode,
+                                maxLines: null,
+                                minLines: 4,
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  color: colors.onSurface,
+                                  height: 1.4,
+                                ),
+                                decoration: InputDecoration(
+                                  hintText: 'Escreva sua nota...',
+                                  hintStyle: TextStyle(
+                                    fontSize: 16,
+                                    color: colors.onSurfaceVariant.withOpacity(
+                                      0.4,
+                                    ),
+                                  ),
+                                  border: InputBorder.none,
+                                  enabledBorder: InputBorder.none,
+                                  focusedBorder: InputBorder.none,
+                                  filled: false,
+                                  fillColor: Colors.transparent,
+                                  contentPadding: EdgeInsets.zero,
+                                ),
+                              ),
+                            ),
+                          ),
+
+                          // Footer compacto
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+                            child: Row(
+                              children: [
+                                // Minimizar
+                                GestureDetector(
+                                  onTap: () {
+                                    HapticFeedback.lightImpact();
+                                    soundService.playModalClose();
+                                    widget.onCancel(_controller.text);
+                                  },
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 8,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: colors.onSurface.withOpacity(0.05),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Icon(
+                                      Icons.close_rounded,
+                                      color: colors.onSurfaceVariant,
+                                      size: 20,
+                                    ),
+                                  ),
+                                ),
+                                const Spacer(),
+                                // Salvar
+                                GestureDetector(
+                                  onTap: () {
+                                    if (_controller.text.trim().isEmpty) {
+                                      HapticFeedback.heavyImpact();
+                                      soundService.playError();
+                                      return;
+                                    }
+                                    HapticFeedback.mediumImpact();
+                                    soundService.playSuccess();
+                                    widget.onSave(_controller.text);
+                                  },
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                      vertical: 8,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      gradient: const LinearGradient(
+                                        colors: [notesColor, Color(0xFFFF7043)],
+                                      ),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: const Text(
+                                      'Salvar',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

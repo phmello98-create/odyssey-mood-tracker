@@ -1,91 +1,91 @@
 // lib/src/features/notes/data/synced_quotes_repository.dart
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:hive_flutter/hive_flutter.dart';
+import '../domain/quote.dart';
 import 'quotes_repository.dart';
 import 'package:odyssey/src/features/auth/services/synced_repository_mixin.dart';
 
-/// Repository wrapper que adiciona sincronização automática via fila offline para citações
+/// Repository wrapper que adiciona sincronização automática via fila offline para citações (Isar version)
 class SyncedQuotesRepository with SyncedRepositoryMixin {
   final QuotesRepository _localRepository;
   @override
   final Ref ref;
-  
+
   @override
   String get collectionName => 'quotes';
-  
+
   SyncedQuotesRepository(this._localRepository, this.ref);
-  
+
   /// Inicializa o repositório
   Future<void> initialize() => _localRepository.initialize();
-  
+
   // ============================================
   // MÉTODOS DE ESCRITA (com sync)
   // ============================================
-  
+
   /// Adiciona uma citação e enfileira para sync
-  Future<String> addQuote(Map<String, dynamic> quoteData) async {
-    final quoteId = await _localRepository.addQuote(quoteData);
-    await enqueueCreate(quoteId, _quoteToMap(quoteData, quoteId));
-    return quoteId;
+  Future<void> addQuote(Quote quote) async {
+    await _localRepository.addQuote(quote);
+    await enqueueCreate(quote.id.toString(), _quoteToMap(quote));
   }
-  
+
   /// Atualiza uma citação e enfileira para sync
-  Future<void> updateQuote(String quoteId, Map<String, dynamic> quoteData) async {
-    await _localRepository.updateQuote(quoteId, quoteData);
-    await enqueueUpdate(quoteId, _quoteToMap(quoteData, quoteId));
+  Future<void> updateQuote(Quote quote) async {
+    await _localRepository.updateQuote(quote);
+    await enqueueUpdate(quote.id.toString(), _quoteToMap(quote));
   }
-  
+
   /// Deleta uma citação e enfileira para sync
-  Future<void> deleteQuote(String quoteId) async {
-    await _localRepository.deleteQuote(quoteId);
-    await enqueueDelete(quoteId);
+  Future<void> deleteQuote(int id) async {
+    await _localRepository.deleteQuote(id);
+    await enqueueDelete(id.toString());
   }
-  
+
   /// Alterna favorito de uma citação e enfileira para sync
-  Future<void> toggleFavorite(String quoteId) async {
-    await _localRepository.toggleFavorite(quoteId);
-    final quote = _localRepository.getQuote(quoteId);
+  Future<void> toggleFavorite(int id) async {
+    await _localRepository.toggleFavorite(id);
+    final quote = await _localRepository.getQuote(id);
     if (quote != null) {
-      await enqueueUpdate(quoteId, _quoteToMap(quote, quoteId));
+      await enqueueUpdate(id.toString(), _quoteToMap(quote));
     }
   }
-  
-  /// Adiciona citações de exemplo se o box estiver vazio
+
+  /// Adiciona citações de exemplo se o banco estiver vazio
   Future<void> addSampleQuotesIfEmpty() async {
     await _localRepository.addSampleQuotesIfEmpty();
-    // Não precisa sync porque são dados de exemplo
   }
-  
+
   // ============================================
   // MÉTODOS DE LEITURA (não precisam de sync)
   // ============================================
-  
-  Map<String, dynamic>? getQuote(String quoteId) => _localRepository.getQuote(quoteId);
-  
-  List<Map<String, dynamic>> getAllQuotes() => _localRepository.getAllQuotes();
-  
-  List<Map<String, dynamic>> getFavoriteQuotes() => _localRepository.getFavoriteQuotes();
-  
-  List<Map<String, dynamic>> getNonFavoriteQuotes() => _localRepository.getNonFavoriteQuotes();
-  
-  List<Map<String, dynamic>> searchQuotes(String query) => _localRepository.searchQuotes(query);
-  
-  List<Map<String, dynamic>> getQuotesByCategory(String category) => _localRepository.getQuotesByCategory(category);
-  
+
+  Future<Quote?> getQuote(int id) => _localRepository.getQuote(id);
+
+  Future<List<Quote>> getAllQuotes() => _localRepository.getAllQuotes();
+
+  Future<List<Quote>> getFavoriteQuotes() =>
+      _localRepository.getFavoriteQuotes();
+
+  Future<List<Quote>> searchQuotes(String query) =>
+      _localRepository.searchQuotes(query);
+
+  Stream<List<Quote>> watchQuotes() => _localRepository.watchQuotes();
+
   bool get isInitialized => _localRepository.isInitialized;
-  
-  /// Expõe o box para uso com ValueListenableBuilder
-  Box? get box => _localRepository.box;
-  
+
   // ============================================
   // CONVERSÃO
   // ============================================
-  
-  Map<String, dynamic> _quoteToMap(Map<String, dynamic> quoteData, String quoteId) {
+
+  Map<String, dynamic> _quoteToMap(Quote quote) {
     return {
-      ...quoteData,
-      'id': quoteId,
+      'id': quote.id.toString(),
+      'text': quote.text,
+      'author': quote.author,
+      'category': quote.category,
+      'isFavorite': quote.isFavorite,
+      'createdAt': quote.createdAt.toIso8601String(),
+      'source': quote.source,
       '_localModifiedAt': DateTime.now().toIso8601String(),
     };
   }

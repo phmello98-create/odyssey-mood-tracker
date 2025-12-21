@@ -6,17 +6,18 @@ part of 'time_tracking_record.dart';
 // TypeAdapterGenerator
 // **************************************************************************
 
-class TimeTrackingRecordAdapter extends TypeAdapter<TimeTrackingRecord> {
+class TimeTrackingRecordImplAdapter
+    extends TypeAdapter<_$TimeTrackingRecordImpl> {
   @override
   final int typeId = 2;
 
   @override
-  TimeTrackingRecord read(BinaryReader reader) {
+  _$TimeTrackingRecordImpl read(BinaryReader reader) {
     final numOfFields = reader.readByte();
     final fields = <int, dynamic>{
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
-    return TimeTrackingRecord._internal(
+    return _$TimeTrackingRecordImpl(
       id: fields[0] as String,
       activityName: fields[1] as String,
       iconCode: fields[2] as int,
@@ -32,7 +33,7 @@ class TimeTrackingRecordAdapter extends TypeAdapter<TimeTrackingRecord> {
   }
 
   @override
-  void write(BinaryWriter writer, TimeTrackingRecord obj) {
+  void write(BinaryWriter writer, _$TimeTrackingRecordImpl obj) {
     writer
       ..writeByte(11)
       ..writeByte(0)
@@ -65,7 +66,7 @@ class TimeTrackingRecordAdapter extends TypeAdapter<TimeTrackingRecord> {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is TimeTrackingRecordAdapter &&
+      other is TimeTrackingRecordImplAdapter &&
           runtimeType == other.runtimeType &&
           typeId == other.typeId;
 }

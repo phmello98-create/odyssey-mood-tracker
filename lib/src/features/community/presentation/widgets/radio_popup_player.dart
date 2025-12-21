@@ -47,7 +47,7 @@ class RadioPopupPlayer extends ConsumerWidget {
                   ),
                 ),
                 IconButton(
-                  icon: Icon(Icons.close_rounded, size: 20),
+                  icon: const Icon(Icons.close_rounded, size: 20),
                   onPressed: onClose,
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),
@@ -146,10 +146,10 @@ class RadioPopupPlayer extends ConsumerWidget {
             TextButton.icon(
               onPressed: () {
                 HapticFeedback.lightImpact();
-                // TODO: Implement stop functionality
+                ref.read(radioProvider.notifier).stop();
                 onClose();
               },
-              icon: Icon(Icons.stop_rounded, size: 18),
+              icon: const Icon(Icons.stop_rounded, size: 18),
               label: const Text('Parar'),
               style: TextButton.styleFrom(foregroundColor: colors.error),
             ),
@@ -190,7 +190,7 @@ class RadioPopupPlayer extends ConsumerWidget {
                   ),
                 ),
                 IconButton(
-                  icon: Icon(Icons.close_rounded, size: 20),
+                  icon: const Icon(Icons.close_rounded, size: 20),
                   onPressed: onClose,
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),

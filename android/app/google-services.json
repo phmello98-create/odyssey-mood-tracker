@@ -41,6 +41,65 @@
           ]
         }
       }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:742719498764:android:e50ee0a10ee779d13d9c29",
+        "android_client_info": {
+          "package_name": "com.exemple.odyssey"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "742719498764-3rpuuh1r1qochn2h7u16bslm84dvkbqi.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDJ67iq4RuBOEg-iuNdpflBW9Zace57EFM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "742719498764-3rpuuh1r1qochn2h7u16bslm84dvkbqi.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      },
+      "admob_app_id": "ca-app-pub-3976367803523988~9594250499"
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:742719498764:android:dddd69e4366db0353d9c29",
+        "android_client_info": {
+          "package_name": "io.odyssey.moodtracker"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "742719498764-3rpuuh1r1qochn2h7u16bslm84dvkbqi.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDJ67iq4RuBOEg-iuNdpflBW9Zace57EFM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "742719498764-3rpuuh1r1qochn2h7u16bslm84dvkbqi.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
     }
   ],
   "configuration_version": "1"

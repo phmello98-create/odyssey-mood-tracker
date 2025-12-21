@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:intl/intl.dart';
-import 'package:odyssey/src/utils/widgets/feedback_widgets.dart';
 import 'package:odyssey/src/utils/widgets/staggered_list_animation.dart';
 import 'package:odyssey/src/utils/services/sound_service.dart';
 import 'package:odyssey/src/features/notes/presentation/note_editor_screen.dart';
@@ -22,9 +21,7 @@ class _NotesScreenState extends State<NotesScreen>
   final GlobalKey _showcaseAdd = GlobalKey();
   final GlobalKey _showcaseList = GlobalKey();
   final GlobalKey _showcaseSearch = GlobalKey();
-  late TabController _tabController;
   Box? _notesBox;
-  Box? _quotesBox;
   bool _isLoading = true;
   bool _isGridView = true;
   String _sortBy = 'date';
@@ -33,7 +30,6 @@ class _NotesScreenState extends State<NotesScreen>
   void initState() {
     super.initState();
     _initShowcase();
-    _tabController = TabController(length: 2, vsync: this);
     _initializeBoxes();
   }
 
@@ -59,20 +55,6 @@ class _NotesScreenState extends State<NotesScreen>
       } catch (e) {
         debugPrint('Error opening notes box: $e');
       }
-
-      try {
-        if (Hive.isBoxOpen('quotes')) {
-          _quotesBox = Hive.box('quotes');
-        } else {
-          _quotesBox = await Hive.openBox('quotes');
-        }
-      } catch (e) {
-        debugPrint('Error opening quotes box: $e');
-      }
-
-      if (_quotesBox != null && _quotesBox!.isEmpty) {
-        await _addSampleQuotes();
-      }
     } catch (e) {
       debugPrint('Error opening boxes in NotesScreen: $e');
     }
@@ -82,113 +64,9 @@ class _NotesScreenState extends State<NotesScreen>
     }
   }
 
-  Future<void> _addSampleQuotes() async {
-    final sampleQuotes = [
-      {
-        'id': '1',
-        'text':
-            'A única maneira de fazer um excelente trabalho é amar o que você faz.',
-        'author': 'Steve Jobs',
-        'category': 'motivational',
-        'isFavorite': true,
-      },
-      {
-        'id': '2',
-        'text':
-            'O sucesso é a soma de pequenos esforços repetidos dia após dia.',
-        'author': 'Robert Collier',
-        'category': 'motivational',
-        'isFavorite': false,
-      },
-      {
-        'id': '3',
-        'text': 'Conhece-te a ti mesmo.',
-        'author': 'Sócrates',
-        'category': 'philosophical',
-        'isFavorite': true,
-      },
-      {
-        'id': '4',
-        'text':
-            'A vida é o que acontece enquanto você está ocupado fazendo outros planos.',
-        'author': 'John Lennon',
-        'category': 'philosophical',
-        'isFavorite': true,
-      },
-      {
-        'id': '5',
-        'text': 'Seja a mudança que você deseja ver no mundo.',
-        'author': 'Mahatma Gandhi',
-        'category': 'motivational',
-        'isFavorite': true,
-      },
-      {
-        'id': '6',
-        'text': 'A imaginação é mais importante que o conhecimento.',
-        'author': 'Albert Einstein',
-        'category': 'philosophical',
-        'isFavorite': false,
-      },
-      {
-        'id': '7',
-        'text':
-            'Não é a mais forte das espécies que sobrevive, nem a mais inteligente, mas a que melhor se adapta às mudanças.',
-        'author': 'Charles Darwin',
-        'category': 'philosophical',
-        'isFavorite': true,
-      },
-      {
-        'id': '8',
-        'text': 'O medo de sofrer é pior que o próprio sofrimento.',
-        'author': 'Paulo Coelho',
-        'category': 'philosophical',
-        'isFavorite': false,
-      },
-      {
-        'id': '9',
-        'text': 'A persistência é o caminho do êxito.',
-        'author': 'Charlie Chaplin',
-        'category': 'motivational',
-        'isFavorite': true,
-      },
-      {
-        'id': '10',
-        'text':
-            'Tudo o que temos de decidir é o que fazer com o tempo que nos é dado.',
-        'author': 'J.R.R. Tolkien',
-        'category': 'philosophical',
-        'isFavorite': true,
-      },
-      {
-        'id': '11',
-        'text': 'Nada do que é humano me é estranho.',
-        'author': 'Terêncio',
-        'category': 'philosophical',
-        'isFavorite': false,
-      },
-      {
-        'id': '12',
-        'text': 'O homem é aquilo que ele faz de si mesmo.',
-        'author': 'Jean-Paul Sartre',
-        'category': 'philosophical',
-        'isFavorite': true,
-      },
-    ];
-
-    for (final quote in sampleQuotes) {
-      await _quotesBox!.put(quote['id'], {
-        ...quote,
-        'createdAt': DateTime.now()
-            .subtract(Duration(days: int.parse(quote['id'] as String)))
-            .toIso8601String(),
-      });
-    }
-  }
-
   @override
   void dispose() {
     showcase.ShowcaseService.unregisterScreen(showcase.ShowcaseTour.notes);
-    _tabController.dispose();
     super.dispose();
   }
 
@@ -201,9 +79,18 @@ class _NotesScreenState extends State<NotesScreen>
     showcase.ShowcaseService.startIfNeeded(showcase.ShowcaseTour.notes, keys);
   }
 
-  void _startTour() {
-    final keys = [_showcaseSearch, _showcaseList, _showcaseAdd];
-    showcase.ShowcaseService.start(showcase.ShowcaseTour.notes, keys);
+  void _showNoteEditor({String? id, Map<String, dynamic>? initialData}) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) =>
+            NoteEditorScreen(noteId: id, initialData: initialData),
+      ),
+    );
+  }
+
+  void _showAddDialog() {
+    _showNoteEditor();
   }
 
   @override
@@ -246,7 +133,7 @@ class _NotesScreenState extends State<NotesScreen>
                   ),
                   const SizedBox(width: 12),
                   Text(
-                    'Biblioteca',
+                    'Notas',
                     style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.w600,
@@ -275,42 +162,7 @@ class _NotesScreenState extends State<NotesScreen>
               ),
             ),
             const SizedBox(height: 16),
-            // iOS-style segmented control
-            Container(
-              height: 40,
-              margin: const EdgeInsets.symmetric(horizontal: 16),
-              decoration: BoxDecoration(
-                color: colors.surfaceContainerHighest.withValues(alpha: 0.5),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: TabBar(
-                controller: _tabController,
-                indicator: BoxDecoration(
-                  color: colors.primary,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                indicatorSize: TabBarIndicatorSize.tab,
-                indicatorPadding: const EdgeInsets.all(3),
-                labelColor: Colors.white,
-                unselectedLabelColor: colors.onSurfaceVariant,
-                labelStyle: const TextStyle(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 14,
-                ),
-                dividerColor: Colors.transparent,
-                tabs: const [
-                  Tab(text: 'Notas'),
-                  Tab(text: 'Frases'),
-                ],
-              ),
-            ),
-            const SizedBox(height: 12),
-            Expanded(
-              child: TabBarView(
-                controller: _tabController,
-                children: [_buildNotesTab(colors), _buildQuotesTab(colors)],
-              ),
-            ),
+            Expanded(child: _buildNotesTab(colors)),
           ],
         ),
       ),
@@ -352,8 +204,9 @@ class _NotesScreenState extends State<NotesScreen>
   }
 
   Widget _buildNotesTab(ColorScheme colors) {
-    if (_notesBox == null)
+    if (_notesBox == null) {
       return _buildErrorState('Erro ao carregar notas', colors);
+    }
     return ValueListenableBuilder(
       valueListenable: _notesBox!.listenable(),
       builder: (context, box, _) {
@@ -551,6 +404,7 @@ class _NotesScreenState extends State<NotesScreen>
         color: Colors.transparent,
         child: InkWell(
           onTap: () => _showNoteEditor(id: id, initialData: data),
+          onLongPress: () => _deleteNote(id),
           borderRadius: BorderRadius.circular(14),
           child: Padding(
             padding: const EdgeInsets.all(14),
@@ -661,6 +515,7 @@ class _NotesScreenState extends State<NotesScreen>
         color: Colors.transparent,
         child: InkWell(
           onTap: () => _showNoteEditor(id: id, initialData: data),
+          onLongPress: () => _deleteNote(id),
           borderRadius: BorderRadius.circular(14),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -753,432 +608,6 @@ class _NotesScreenState extends State<NotesScreen>
     );
   }
 
-  Widget _buildQuotesTab(ColorScheme colors) {
-    if (_quotesBox == null)
-      return _buildErrorState('Erro ao carregar frases', colors);
-    return ValueListenableBuilder(
-      valueListenable: _quotesBox!.listenable(),
-      builder: (context, box, _) {
-        final quotes = box.keys.toList().reversed.toList();
-        if (quotes.isEmpty) {
-          return _buildEmptyState(
-            icon: Icons.format_quote_outlined,
-            title: 'Nenhuma frase ainda',
-            subtitle: 'Guarde suas citações e ideias favoritas',
-            colors: colors,
-          );
-        }
-
-        final allQuotes = quotes
-            .map((k) => Map<String, dynamic>.from(box.get(k) as Map))
-            .toList();
-        final favorites = allQuotes
-            .where((q) => q['isFavorite'] == true)
-            .toList();
-        final others = allQuotes.where((q) => q['isFavorite'] != true).toList();
-
-        return SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (allQuotes.isNotEmpty)
-                _buildQuoteOfTheDay(
-                  favorites.isNotEmpty ? favorites.first : allQuotes.first,
-                  colors,
-                ),
-              const SizedBox(height: 20),
-              if (favorites.isNotEmpty) ...[
-                _buildQuoteSectionHeader(
-                  'Favoritas',
-                  Icons.favorite,
-                  favorites.length,
-                  colors,
-                ),
-                const SizedBox(height: 10),
-                ...favorites.map((q) => _buildQuoteCard(q, colors)),
-                const SizedBox(height: 20),
-              ],
-              if (others.isNotEmpty) ...[
-                _buildQuoteSectionHeader(
-                  'Todas',
-                  Icons.format_quote,
-                  others.length,
-                  colors,
-                ),
-                const SizedBox(height: 10),
-                ...others.map((q) => _buildQuoteCard(q, colors)),
-              ],
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildQuoteSectionHeader(
-    String title,
-    IconData icon,
-    int count,
-    ColorScheme colors,
-  ) {
-    return Row(
-      children: [
-        Icon(icon, size: 18, color: colors.onSurfaceVariant),
-        const SizedBox(width: 8),
-        Text(
-          title,
-          style: TextStyle(
-            fontSize: 15,
-            fontWeight: FontWeight.w600,
-            color: colors.onSurface,
-          ),
-        ),
-        const SizedBox(width: 8),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-          decoration: BoxDecoration(
-            color: colors.surfaceContainerHighest.withValues(alpha: 0.5),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Text(
-            '$count',
-            style: TextStyle(fontSize: 12, color: colors.onSurfaceVariant),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildQuoteOfTheDay(Map<String, dynamic> quote, ColorScheme colors) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: colors.primary.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: colors.primary.withValues(alpha: 0.15)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: colors.primary.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(
-                  Icons.auto_awesome,
-                  color: colors.primary,
-                  size: 16,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                'Frase do Dia',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: colors.primary,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Text(
-            '"${quote['text']}"',
-            style: TextStyle(
-              fontSize: 15,
-              fontStyle: FontStyle.italic,
-              height: 1.5,
-              color: colors.onSurface,
-            ),
-          ),
-          if (quote['author'] != null) ...[
-            const SizedBox(height: 10),
-            Text(
-              '— ${quote['author']}',
-              style: TextStyle(
-                fontSize: 13,
-                color: colors.onSurfaceVariant,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildQuoteCard(Map<String, dynamic> quote, ColorScheme colors) {
-    final isFavorite = quote['isFavorite'] == true;
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      decoration: BoxDecoration(
-        color: colors.surfaceContainerHighest.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(14),
-        border: isFavorite
-            ? Border.all(color: colors.tertiary.withValues(alpha: 0.2))
-            : null,
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: () => _showQuoteEditor(id: quote['id'], initialData: quote),
-          borderRadius: BorderRadius.circular(14),
-          child: Padding(
-            padding: const EdgeInsets.all(14),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Icon(
-                      Icons.format_quote,
-                      color: colors.tertiary.withValues(alpha: 0.4),
-                      size: 20,
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        quote['text'] ?? '',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontStyle: FontStyle.italic,
-                          height: 1.4,
-                          color: colors.onSurface,
-                        ),
-                      ),
-                    ),
-                    GestureDetector(
-                      onTap: () => _toggleQuoteFavorite(quote['id']),
-                      child: Icon(
-                        isFavorite ? Icons.favorite : Icons.favorite_border,
-                        color: isFavorite
-                            ? colors.error
-                            : colors.onSurfaceVariant,
-                        size: 20,
-                      ),
-                    ),
-                  ],
-                ),
-                if (quote['author'] != null) ...[
-                  const SizedBox(height: 8),
-                  Padding(
-                    padding: const EdgeInsets.only(left: 28),
-                    child: Text(
-                      '— ${quote['author']}${quote['source'] != null ? ', ${quote['source']}' : ''}',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: colors.onSurfaceVariant,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  void _toggleQuoteFavorite(String id) {
-    final quote = _quotesBox!.get(id) as Map;
-    final updated = Map<String, dynamic>.from(quote);
-    updated['isFavorite'] = !(quote['isFavorite'] == true);
-    _quotesBox!.put(id, updated);
-    HapticFeedback.lightImpact();
-  }
-
-  void _showAddDialog() {
-    switch (_tabController.index) {
-      case 0:
-        _showNoteEditor();
-        break;
-      case 1:
-        _showQuoteEditor();
-        break;
-    }
-  }
-
-  void _showNoteEditor({String? id, Map<String, dynamic>? initialData}) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) =>
-            NoteEditorScreen(noteId: id, initialData: initialData),
-      ),
-    );
-  }
-
-  void _showQuoteEditor({String? id, Map<String, dynamic>? initialData}) {
-    final colors = Theme.of(context).colorScheme;
-    final textController = TextEditingController(
-      text: initialData?['text'] ?? '',
-    );
-    final authorController = TextEditingController(
-      text: initialData?['author'] ?? '',
-    );
-    final sourceController = TextEditingController(
-      text: initialData?['source'] ?? '',
-    );
-    final isEditing = id != null;
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: colors.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (context) => Padding(
-        padding: EdgeInsets.fromLTRB(
-          16,
-          20,
-          16,
-          MediaQuery.of(context).viewInsets.bottom + 20,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  isEditing ? 'Editar Frase' : 'Nova Frase',
-                  style: TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.w600,
-                    color: colors.onSurface,
-                  ),
-                ),
-                if (isEditing)
-                  IconButton(
-                    onPressed: () {
-                      Navigator.pop(context);
-                      _deleteQuote(id);
-                    },
-                    icon: Icon(Icons.delete_outline, color: colors.error),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: textController,
-              autofocus: true,
-              maxLines: 4,
-              decoration: InputDecoration(
-                hintText: 'A frase ou citação...',
-                filled: true,
-                fillColor: colors.surfaceContainerHighest.withValues(
-                  alpha: 0.5,
-                ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: authorController,
-                    decoration: InputDecoration(
-                      hintText: 'Autor',
-                      prefixIcon: Icon(
-                        Icons.person_outline,
-                        size: 20,
-                        color: colors.onSurfaceVariant,
-                      ),
-                      filled: true,
-                      fillColor: colors.surfaceContainerHighest.withValues(
-                        alpha: 0.5,
-                      ),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide.none,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: TextField(
-                    controller: sourceController,
-                    decoration: InputDecoration(
-                      hintText: 'Fonte',
-                      prefixIcon: Icon(
-                        Icons.source_outlined,
-                        size: 20,
-                        color: colors.onSurfaceVariant,
-                      ),
-                      filled: true,
-                      fillColor: colors.surfaceContainerHighest.withValues(
-                        alpha: 0.5,
-                      ),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide.none,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () {
-                  final text = textController.text.trim();
-                  if (text.isEmpty) return;
-                  HapticFeedback.mediumImpact();
-                  final quoteId =
-                      id ?? DateTime.now().millisecondsSinceEpoch.toString();
-                  _quotesBox!.put(quoteId, {
-                    'id': quoteId,
-                    'text': text,
-                    'author': authorController.text.trim().isEmpty
-                        ? null
-                        : authorController.text.trim(),
-                    'source': sourceController.text.trim().isEmpty
-                        ? null
-                        : sourceController.text.trim(),
-                    'createdAt':
-                        initialData?['createdAt'] ??
-                        DateTime.now().toIso8601String(),
-                    'isFavorite': initialData?['isFavorite'] ?? false,
-                  });
-                  Navigator.pop(context);
-                  FeedbackService.showSuccess(
-                    context,
-                    isEditing ? 'Frase atualizada!' : 'Frase salva!',
-                    icon: Icons.format_quote,
-                  );
-                },
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                child: Text(isEditing ? 'Salvar' : 'Adicionar Frase'),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   void _deleteNote(String id) {
     final colors = Theme.of(context).colorScheme;
     soundService.playModalOpen();
@@ -1196,34 +625,6 @@ class _NotesScreenState extends State<NotesScreen>
           ElevatedButton(
             onPressed: () {
               _notesBox!.delete(id);
-              Navigator.pop(context);
-              soundService.playDelete();
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: colors.error),
-            child: const Text('Excluir'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _deleteQuote(String id) {
-    final colors = Theme.of(context).colorScheme;
-    soundService.playModalOpen();
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: colors.surface,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Excluir frase?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancelar'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              _quotesBox!.delete(id);
               Navigator.pop(context);
               soundService.playDelete();
             },

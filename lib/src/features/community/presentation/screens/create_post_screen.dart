@@ -40,8 +40,8 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
 
   PostType _selectedType = PostType.text;
   CommunityTopic? _selectedTopic;
-  List<String> _tags = [];
-  List<File> _selectedImages = [];
+  final List<String> _tags = [];
+  final List<File> _selectedImages = [];
   bool _isPosting = false;
 
   // Mood selecionado para compartilhar
@@ -262,11 +262,11 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Row(
+            content: const Row(
               children: [
-                const Icon(Icons.check_circle, color: Colors.white),
-                const SizedBox(width: 8),
-                const Text('Post publicado!'),
+                Icon(Icons.check_circle, color: Colors.white),
+                SizedBox(width: 8),
+                Text('Post publicado!'),
               ],
             ),
             backgroundColor: Colors.green,

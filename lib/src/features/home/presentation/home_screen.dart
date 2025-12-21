@@ -67,70 +67,44 @@ import 'package:odyssey/src/features/community/domain/topic.dart';
 import 'package:odyssey/src/features/community/presentation/widgets/user_avatar.dart';
 import 'package:odyssey/src/features/settings/presentation/settings_screen.dart';
 
-// Frases motivacionais/céticas e de grandes pensadores
+// Frases e insights profundos: Nietzsche, Spinoza, Maslow, Psicologia e Ciência
 const List<String> _dailyInsights = [
-  // Céticas/Estoicas
-  'Lembre-se: ninguém sabe o que está fazendo. Todos improvisam.',
-  'O universo tem 13.8 bilhões de anos. Seu problema de hoje é temporário.',
-  'Você é feito de poeira de estrelas tendo uma experiência humana.',
-  'Em 100 anos, nada disso vai importar. Relaxa.',
-  'Todo mundo está ocupado demais pensando em si mesmo pra te julgar.',
-  'A Terra é um grão de areia no cosmos. Seus erros são microscópicos.',
-  'Sucesso e fracasso são narrativas que inventamos. Apenas exista.',
-  'Você já sobreviveu a 100% dos seus piores dias.',
-  'O caos é o estado natural. Ordem é a exceção temporária.',
-  'Seus antepassados sobreviveram a predadores. Você consegue com um e-mail.',
-  'A ansiedade é seu cérebro primitivo tentando te proteger de tigres inexistentes.',
-  'Nenhum plano sobrevive ao contato com a realidade. Adapte-se.',
-  'O "eu ideal" não existe. Você já é a versão que está aqui agora.',
-  'Perfeição é uma ilusão coletiva. Feito é melhor que perfeito.',
-  'Sua única obrigação é respirar. O resto é extra.',
+  // Spinoza (A Essência da Serenidade)
+  '"Não rir, não chorar, nem detestar, mas compreender." — Spinoza',
+  'A serenidade vem de entender que as pessoas agem segundo sua própria natureza e necessidade, não contra você.',
+  '"A alegria é a passagem do homem de uma perfeição menor para uma maior." — Spinoza',
+  'A liberdade é o entendimento da necessidade: quando compreendemos as causas do nosso sofrimento, ele deixa de ser paixão e torna-se ação.',
+  'O ódio é uma tristeza acompanhada da ideia de uma causa exterior. Diminua a tristeza, compreendendo a causa.',
 
-  // Maslow
+  // Nietzsche (Superação e Amor Fati)
+  '"Amor Fati: não querer que nada seja diferente. Nem para frente, nem para trás, nem em toda a eternidade." — Nietzsche',
+  '"O que não me mata, fortalece-me." — Nietzsche (O convite para transmutar a dor em potência).',
+  '"É preciso ter o caos dentro de si para dar à luz uma estrela dançante." — Nietzsche',
+  '"Torna-te quem tu és." — A jornada para a autenticidade além das pressões externas.',
+  '"Quem tem um porquê para viver suporta quase qualquer como." — Nietzsche',
+  'O deserto cresce: proteja sua própria fonte de água em ambientes áridos.',
+
+  // Maslow (Psicologia e Transcendência)
   '"O que um homem pode ser, ele deve ser." — Maslow',
-  '"A autorrealização é o uso pleno dos talentos e potencialidades." — Maslow',
-  '"Se você planeja ser menos do que é capaz, será infeliz pelo resto da vida." — Maslow',
-  '"Em qualquer momento, temos duas opções: avançar para o crescimento ou recuar para a segurança." — Maslow',
-  '"O músico deve fazer música, o artista deve pintar, o poeta deve escrever." — Maslow',
-  '"A vida é um processo contínuo de escolher entre segurança e risco." — Maslow',
-  '"Precisamos de algo maior que nós mesmos para nos dedicarmos." — Maslow',
+  'A autorrealização exige a coragem de ser impopular e o desapego das expectativas alheias.',
+  'O "Vazio" não é falta, é o espaço necessário para a autoatualização ocorrer sem interferência.',
+  '"A capacidade de ser solitário é a condição para a capacidade de amar." — Maslow',
+  'A necessidade de privacidade e independência é marca das mentes mais desenvolvidas.',
 
-  // Estoicos
-  '"Não é o que acontece com você, mas como você reage." — Epicteto',
-  '"Sofremos mais na imaginação do que na realidade." — Sêneca',
-  '"Quem tem um porquê vive qualquer como." — Nietzsche',
-  '"O homem sábio não se aflige pelas coisas que não tem." — Epicteto',
-  '"Faça cada ato como se fosse o último da sua vida." — Marco Aurélio',
-  '"A felicidade não depende de coisas externas, mas de como as vemos." — Marco Aurélio',
-  '"Não desperdice tempo discutindo o que um bom homem deve ser. Seja um." — Marco Aurélio',
+  // Realidade, Ciência e Ambiente Tóxico
+  'O seu cérebro não foi feito para ser feliz, mas para sobreviver. A ansiedade em ambientes tóxicos é seu sistema de defesa funcionando.',
+  'Pessoas invasivas não respeitam limites porque não os enxergam. O limite é uma construção sua, não uma concessão deles.',
+  'A neuroplasticidade prova que seu cérebro pode se reconstruir, mesmo após anos de ambientes pesados.',
+  'Você não é o seu diagnóstico. Bipolaridade, depressão e vício são ondas; você é o oceano onde elas ocorrem.',
+  'O vácuo quântico prova que o vazio é, na verdade, um estado de energia latente infinita.',
+  'Ambientes pesados consomem glicose e energia mental. Descansar não é preguiça, é manutenção de sistema.',
 
-  // Viktor Frankl
-  '"Quem tem um porquê enfrenta qualquer como." — Viktor Frankl',
-  '"Entre o estímulo e a resposta há um espaço. Nesse espaço está nosso poder de escolher." — Viktor Frankl',
-  '"A vida nunca é insuportável pelas circunstâncias, apenas pela falta de sentido." — Viktor Frankl',
-
-  // Carl Rogers
-  '"O curioso paradoxo é que quando me aceito como sou, posso mudar." — Carl Rogers',
-  '"Ser empático é ver o mundo com os olhos do outro." — Carl Rogers',
-
-  // Motivacionais modernas
-  'Cada pequeno passo conta. Continue.',
-  'Hoje é um bom dia para recomeçar.',
-  'Progresso, não perfeição.',
-  'Você não precisa ser perfeito para começar, precisa começar para ser melhor.',
-  'Disciplina é lembrar o que você quer.',
-  'O hábito de hoje é o resultado de amanhã.',
-  'Pequenas ações diárias criam grandes transformações.',
-  'Não espere motivação. Crie disciplina.',
-  'Seu futuro eu agradece suas escolhas de hoje.',
-  'A consistência supera a intensidade.',
-
-  // Zen/Mindfulness
-  'Onde você está é onde você deve estar.',
-  'Este momento é tudo que existe.',
-  'Respire. Você está exatamente onde precisa estar.',
-  'Não há caminho para a felicidade. A felicidade é o caminho.',
-  'Comece onde você está. Use o que você tem. Faça o que puder.',
+  // Sabedoria Cética e Existencial
+  'O universo é indiferente aos seus erros. Essa é a maior das liberdades.',
+  'O sentido da vida não é algo que se encontra, é algo que se cria no vazio da existência.',
+  'A verdadeira autonomia começa quando a opinião dos seus pais deixa de soar como uma sentença.',
+  'Sobreviver a 100% dos seus piores dias é a prova empírica da sua resiliência.',
+  'O caos é o estado natural; a ordem exige esforço consciente. Não se culpe pela desordem ao redor.',
 ];
 
 class HomeScreen extends ConsumerStatefulWidget {
@@ -175,12 +149,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   // New variables for chart interactivity
   int _focusTouchedIndex = -1; // For Focus Pie Chart interaction
-  int _moodTouchedIndex = -1; // For Mood Pie Chart interaction
+  final int _moodTouchedIndex = -1; // For Mood Pie Chart interaction
 
   // NOTE: _selectedDate and _habitRepoInitialized are at lines 153-154
   int _selectedChartIndex = 0; // 0: Habits, 1: Focus, 2: Mood
   int _chartViewMode = 0; // 0: Trend, 1: Analysis
-  bool _isQuoteVisible =
+  final bool _isQuoteVisible =
       true; // Restoring this as it was flagged as unused but removal caused more errors? Or maybe not, but chart view logic depends on _selectedChartIndex.
 
   // Show/Hide completed items
@@ -1030,95 +1004,106 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   }
 
   Widget _buildDailyQuoteWidget() {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: WellnessColors.purpleGradient,
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(32),
-        boxShadow: [
-          BoxShadow(
-            color: WellnessColors.primary.withOpacity(0.3),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
+    return GestureDetector(
+      onTap: () {
+        HapticFeedback.mediumImpact();
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => const LibraryScreen(initialType: 2),
           ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(
-                  Icons.format_quote_rounded,
-                  color: Colors.white,
-                  size: 20,
-                ),
-              ),
-              const SizedBox(width: 12),
-              const Text(
-                'Inspiração do Dia',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
-            ],
+        );
+      },
+      child: Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: WellnessColors.purpleGradient,
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
           ),
-          const SizedBox(height: 16),
-          Text(
-            _currentInsight,
-            style: const TextStyle(
-              fontSize: 16,
-              height: 1.5,
-              color: Colors.white,
-              fontWeight: FontWeight.w500,
+          borderRadius: BorderRadius.circular(32),
+          boxShadow: [
+            BoxShadow(
+              color: WellnessColors.primary.withOpacity(0.3),
+              blurRadius: 20,
+              offset: const Offset(0, 10),
             ),
-          ),
-          const SizedBox(height: 20),
-          Row(
-            children: [
-              Expanded(
-                child: Container(
-                  height: 4,
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.3),
-                    borderRadius: BorderRadius.circular(2),
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                  child: FractionallySizedBox(
-                    alignment: Alignment.centerLeft,
-                    widthFactor: 0.7, // Mock progress
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(2),
+                  child: const Icon(
+                    Icons.format_quote_rounded,
+                    color: Colors.white,
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                const Text(
+                  'Inspiração do Dia',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Text(
+              _currentInsight,
+              style: const TextStyle(
+                fontSize: 16,
+                height: 1.5,
+                color: Colors.white,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                Expanded(
+                  child: Container(
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.3),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                    child: FractionallySizedBox(
+                      alignment: Alignment.centerLeft,
+                      widthFactor: 0.7, // Mock progress
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
                       ),
                     ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 12),
-              Text(
-                'Dia ${DateTime.now().day}/30',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.white.withOpacity(0.8),
-                  fontWeight: FontWeight.w500,
+                const SizedBox(width: 12),
+                Text(
+                  'Dia ${DateTime.now().day}/30',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.white.withOpacity(0.8),
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
-              ),
-            ],
-          ),
-        ],
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -3738,7 +3723,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         final dayNames = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
 
         double totalRate = 0;
-        for (var rate in weekRates.values) totalRate += rate;
+        for (var rate in weekRates.values) {
+          totalRate += rate;
+        }
         final avgRate = (totalRate / 7 * 100).toInt();
 
         return Column(
@@ -3808,8 +3795,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                         showTitles: true,
                         getTitlesWidget: (double value, TitleMeta meta) {
                           final index = value.toInt();
-                          if (index < 0 || index >= dayNames.length)
+                          if (index < 0 || index >= dayNames.length) {
                             return const SizedBox.shrink();
+                          }
 
                           final isToday = index == (DateTime.now().weekday - 1);
                           return SideTitleWidget(
@@ -4034,8 +4022,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                         getTitlesWidget: (value, meta) {
                           final dayNames = ['S', 'T', 'Q', 'Q', 'S', 'S', 'D'];
                           final idx = value.toInt();
-                          if (idx < 0 || idx >= 7)
+                          if (idx < 0 || idx >= 7) {
                             return const SizedBox.shrink();
+                          }
                           return SideTitleWidget(
                             meta: meta,
                             space: 8,
@@ -4214,8 +4203,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                         getTitlesWidget: (value, meta) {
                           final dayNames = ['S', 'T', 'Q', 'Q', 'S', 'S', 'D'];
                           final idx = value.toInt();
-                          if (idx < 0 || idx >= 7)
+                          if (idx < 0 || idx >= 7) {
                             return const SizedBox.shrink();
+                          }
                           return SideTitleWidget(
                             meta: meta,
                             child: Text(
@@ -4676,8 +4666,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                         showTitles: true,
                         getTitlesWidget: (val, meta) {
                           final index = val.toInt();
-                          if (index < 1 || index > 5)
+                          if (index < 1 || index > 5) {
                             return const SizedBox.shrink();
+                          }
                           final iconData = [
                             Icons.sentiment_very_dissatisfied,
                             Icons.sentiment_dissatisfied,
@@ -5846,7 +5837,7 @@ extension _HomeScreenStateDataInsights on _HomeScreenState {
                         builder: (context, constraints) {
                           // Calculate dynamic width for bars
                           const spacing = 4.0;
-                          final totalSpacing = spacing * 13;
+                          const totalSpacing = spacing * 13;
                           final availableWidth =
                               constraints.maxWidth - totalSpacing;
                           final itemWidth = availableWidth / 14;
@@ -8679,7 +8670,7 @@ class _ActiveTimerIndicatorState extends State<_ActiveTimerIndicator>
                 ),
               ),
               const SizedBox(width: 6),
-              Text(
+              const Text(
                 'Ativo',
                 style: TextStyle(
                   fontSize: 11,

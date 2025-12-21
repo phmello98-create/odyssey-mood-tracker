@@ -9,7 +9,7 @@ cd "$(dirname "$0")"
 export ANDROID_HOME="$HOME/Android/Sdk"
 export PATH="$PATH:$ANDROID_HOME/platform-tools:$ANDROID_HOME/tools:$ANDROID_HOME/tools/bin"
 
-FLUTTER_BIN="/usr/bin/flutter"
+FLUTTER_BIN="$HOME/flutter/bin/flutter"
 
 echo "🤖 Odyssey - Executar no Android"
 echo "================================"

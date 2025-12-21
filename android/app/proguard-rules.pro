@@ -1,7 +1,7 @@
 -keep class io.flutter.app.** { *; }
 -keep class io.flutter.plugin.** { *; }
 -keep class io.flutter.plugins.** { *; }
--keep class com.example.odyssey.** { *; }
+-keep class io.odyssey.moodtracker.** { *; }
 -keep class com.dexterous.** { *; }
 -keep class com.soloud.** { *; }
 -keep class me.carda.awesome_notifications.** { *; }

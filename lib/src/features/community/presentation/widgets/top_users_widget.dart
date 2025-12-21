@@ -34,7 +34,7 @@ class TopUsersWidget extends StatelessWidget {
           // Header
           Row(
             children: [
-              Icon(Icons.emoji_events_rounded, color: Colors.amber, size: 20),
+              const Icon(Icons.emoji_events_rounded, color: Colors.amber, size: 20),
               const SizedBox(width: 8),
               Text(
                 'Top Membros',

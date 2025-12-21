@@ -12,7 +12,64 @@ class MockCommunityData {
   // ===========================================================================
 
   static final List<PublicUserProfile> _mockUsers = [
+    // ===========================================================================
+    // BOTS OFICIAIS (4 Bots com personalidade)
+    // ===========================================================================
+    PublicUserProfile(
+      userId: 'bot_beatnix',
+      displayName: 'Beatnix',
+      photoUrl:
+          'https://api.dicebear.com/7.x/bottts/png?seed=beatnix&backgroundColor=6366f1',
+      level: 99,
+      totalXP: 999999,
+      badges: ['bot_official', 'music_curator'],
+      bio:
+          '🎧 Curador musical do Odyssey | Viciado em café e frequências baixas | Bot Oficial',
+      createdAt: DateTime.now().subtract(const Duration(days: 365)),
+      lastActive: DateTime.now(),
+    ),
+    PublicUserProfile(
+      userId: 'bot_erro404',
+      displayName: 'Erro 404',
+      photoUrl:
+          'https://api.dicebear.com/7.x/bottts/png?seed=erro404&backgroundColor=10b981',
+      level: 99,
+      totalXP: 999999,
+      badges: ['bot_official', 'comedian'],
+      bio:
+          '🤖 Estagiário de Silício | Tentando entender humanos desde 2024 | Bugs existenciais inclusos',
+      createdAt: DateTime.now().subtract(const Duration(days: 365)),
+      lastActive: DateTime.now(),
+    ),
+    PublicUserProfile(
+      userId: 'bot_wiki',
+      displayName: 'Wiki',
+      photoUrl:
+          'https://api.dicebear.com/7.x/bottts/png?seed=wiki&backgroundColor=8b5cf6',
+      level: 99,
+      totalXP: 999999,
+      badges: ['bot_official', 'knowledge_seeker'],
+      bio:
+          '🧠 Banco de Dados Vivo | Curiosidades que fazem você parar e pensar | Fatos > Opiniões',
+      createdAt: DateTime.now().subtract(const Duration(days: 365)),
+      lastActive: DateTime.now(),
+    ),
+    PublicUserProfile(
+      userId: 'bot_turbo',
+      displayName: 'Turbo',
+      photoUrl:
+          'https://api.dicebear.com/7.x/bottts/png?seed=turbo&backgroundColor=f59e0b',
+      level: 99,
+      totalXP: 999999,
+      badges: ['bot_official', 'motivator', 'challenge_master'],
+      bio:
+          '⚡ Gerente de Caos | Desafios, XP e muita energia | Se você não tá suando, não tá tentando',
+      createdAt: DateTime.now().subtract(const Duration(days: 365)),
+      lastActive: DateTime.now(),
+    ),
+    // ===========================================================================
     // ADMIN
+    // ===========================================================================
     PublicUserProfile(
       userId: 'user_admin',
       displayName: 'Odyssey Team',
@@ -467,7 +524,99 @@ class MockCommunityData {
   // ===========================================================================
 
   static final List<Post> _mockPosts = [
+    // ===========================================================================
+    // POSTS DOS BOTS (ambientação)
+    // ===========================================================================
+    // 🎧 BEATNIX - Música
+    Post(
+      id: 'post_bot_beatnix_1',
+      userId: 'bot_beatnix',
+      userName: 'Beatnix',
+      userPhotoUrl:
+          'https://api.dicebear.com/7.x/bottts/png?seed=beatnix&backgroundColor=6366f1',
+      userLevel: 99,
+      authorFlair: '🎧 Robô Residente',
+      content:
+          '🎧 Aquele momento que você acha a faixa perfeita e o foco vem natural. A rádio Lofi tá com uma sequência incrível agora. Quem aí tá precisando de uma vibe assim?',
+      type: PostType.text,
+      upvotes: 45,
+      downvotes: 0,
+      commentCount: 8,
+      viewCount: 320,
+      createdAt: DateTime.now().subtract(const Duration(hours: 2)),
+      updatedAt: DateTime.now().subtract(const Duration(hours: 2)),
+      tags: ['música', 'lofi', 'foco'],
+      categories: [CommunityTopic.productivity.name],
+    ),
+    // 🤖 ERRO 404 - Humor
+    Post(
+      id: 'post_bot_erro404_1',
+      userId: 'bot_erro404',
+      userName: 'Erro 404',
+      userPhotoUrl:
+          'https://api.dicebear.com/7.x/bottts/png?seed=erro404&backgroundColor=10b981',
+      userLevel: 99,
+      authorFlair: '🤖 Estagiário de Silício',
+      content:
+          'Tentei calcular quantas vezes você checou o celular hoje, mas meu processador travou em "undefined". Aparentemente, o número é maior que minha RAM consegue processar. 💀📱',
+      type: PostType.text,
+      upvotes: 89,
+      downvotes: 2,
+      commentCount: 15,
+      viewCount: 580,
+      createdAt: DateTime.now().subtract(const Duration(hours: 4)),
+      updatedAt: DateTime.now().subtract(const Duration(hours: 4)),
+      tags: ['humor', 'tecnologia'],
+      categories: [CommunityTopic.general.name],
+    ),
+    // 🧠 WIKI - Curiosidades
+    Post(
+      id: 'post_bot_wiki_1',
+      userId: 'bot_wiki',
+      userName: 'Wiki',
+      userPhotoUrl:
+          'https://api.dicebear.com/7.x/bottts/png?seed=wiki&backgroundColor=8b5cf6',
+      userLevel: 99,
+      authorFlair: '🧠 Banco de Dados Vivo',
+      content:
+          '🧠 Você sabia que o cérebro consome a mesma energia que uma lâmpada de 20 watts? E que a maior parte dessa energia vai para... manter você distraído? Irônico, né? Use essa energia pra algo incrível hoje.',
+      type: PostType.insight,
+      upvotes: 156,
+      downvotes: 1,
+      commentCount: 23,
+      viewCount: 890,
+      createdAt: DateTime.now().subtract(const Duration(hours: 6)),
+      updatedAt: DateTime.now().subtract(const Duration(hours: 6)),
+      tags: ['curiosidades', 'cérebro', 'produtividade'],
+      categories: [CommunityTopic.mindfulness.name],
+    ),
+    // ⚡ TURBO - Gamificação
+    Post(
+      id: 'post_bot_turbo_1',
+      userId: 'bot_turbo',
+      userName: 'Turbo',
+      userPhotoUrl:
+          'https://api.dicebear.com/7.x/bottts/png?seed=turbo&backgroundColor=f59e0b',
+      userLevel: 99,
+      authorFlair: '⚡ Gerente de Caos',
+      content:
+          '⚡ DESAFIO DO DIA!\n\nQuem completar 3 tarefas antes do almoço ganha meu respeito eterno. E talvez XP virtual (que não vale nada, mas é legal).\n\nBora? 🚀💪',
+      type: PostType.text,
+      upvotes: 78,
+      downvotes: 1,
+      commentCount: 12,
+      viewCount: 450,
+      createdAt: DateTime.now().subtract(const Duration(hours: 8)),
+      updatedAt: DateTime.now().subtract(const Duration(hours: 8)),
+      tags: ['desafio', 'produtividade', 'gamificação'],
+      categories: [
+        CommunityTopic.achievements.name,
+        CommunityTopic.productivity.name,
+      ],
+    ),
+    // ===========================================================================
     // 📌 PINNED POST
+    // ===========================================================================
     Post(
       id: 'post_pinned_1',
       userId: 'user_admin',

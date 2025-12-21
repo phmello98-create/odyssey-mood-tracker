@@ -1,9 +1,12 @@
 import 'dart:convert';
+import 'package:odyssey/src/features/notes/domain/quote.dart';
+import '../../notes/data/quotes_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:http/http.dart' as http;
+import 'package:share_plus/share_plus.dart';
 import 'package:odyssey/src/constants/app_theme.dart';
 import 'package:odyssey/src/features/library/data/book_repository.dart';
 import 'package:odyssey/src/features/library/domain/book.dart';
@@ -13,10 +16,12 @@ import 'package:odyssey/src/features/library/presentation/widgets/book_card_list
 import 'package:odyssey/src/features/library/presentation/add_book_screen.dart';
 import 'package:odyssey/src/features/library/presentation/book_detail_screen.dart';
 import 'package:odyssey/src/utils/widgets/feedback_widgets.dart';
-import 'package:odyssey/src/features/onboarding/services/showcase_service.dart' as showcase;
+import 'package:odyssey/src/features/onboarding/services/showcase_service.dart'
+    as showcase;
 
 class LibraryScreen extends ConsumerStatefulWidget {
-  const LibraryScreen({super.key});
+  final int initialType;
+  const LibraryScreen({super.key, this.initialType = 0});
 
   @override
   ConsumerState<LibraryScreen> createState() => _LibraryScreenState();
@@ -35,19 +40,32 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
   bool _isLoading = true;
   String _searchQuery = '';
   final _searchController = TextEditingController();
-  bool _showArticles = false; // Toggle between books and articles
-  
+  int _libraryType = 0; // 0: Books, 1: Articles, 2: Phrases
+
   final List<Map<String, dynamic>> _tabs = [
     {'status': null, 'label': 'Todos', 'icon': Icons.library_books_outlined},
-    {'status': BookStatus.inProgress, 'label': 'Lendo', 'icon': Icons.auto_stories_outlined},
-    {'status': BookStatus.forLater, 'label': 'Para Ler', 'icon': Icons.bookmark_outline},
-    {'status': BookStatus.read, 'label': 'Lidos', 'icon': Icons.check_circle_outline},
+    {
+      'status': BookStatus.inProgress,
+      'label': 'Lendo',
+      'icon': Icons.auto_stories_outlined,
+    },
+    {
+      'status': BookStatus.forLater,
+      'label': 'Para Ler',
+      'icon': Icons.bookmark_outline,
+    },
+    {
+      'status': BookStatus.read,
+      'label': 'Lidos',
+      'icon': Icons.check_circle_outline,
+    },
     {'status': 'favourites', 'label': '❤️', 'icon': Icons.favorite},
   ];
 
   @override
   void initState() {
     super.initState();
+    _libraryType = widget.initialType;
     _initShowcase();
     _tabController = TabController(length: _tabs.length, vsync: this);
     _tabController.addListener(() {
@@ -62,10 +80,13 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
     try {
       final repo = ref.read(bookRepositoryProvider);
       await repo.initialize();
+      final quotesRepo = ref.read(quotesRepositoryProvider);
+      await quotesRepo.initialize();
+      await quotesRepo.addSampleQuotesIfEmpty();
     } catch (e) {
       debugPrint('Error initializing library: $e');
     }
-    
+
     if (mounted) {
       setState(() => _isLoading = false);
     }
@@ -78,6 +99,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
     _searchController.dispose();
     super.dispose();
   }
+
   void _initShowcase() {
     final keys = [_showcaseStats, _showcaseShelves, _showcaseAdd];
     showcase.ShowcaseService.registerForScreen(
@@ -86,12 +108,11 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
     );
     showcase.ShowcaseService.startIfNeeded(showcase.ShowcaseTour.library, keys);
   }
-  
+
   void _startTour() {
     final keys = [_showcaseStats, _showcaseShelves, _showcaseAdd];
     showcase.ShowcaseService.start(showcase.ShowcaseTour.library, keys);
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -112,9 +133,20 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
           final allBooks = repo.getAllBooks();
           final stats = {
             'total': allBooks.length,
-            'reading': allBooks.where((b) => b.status == BookStatus.inProgress).length,
-            'finished': allBooks.where((b) => b.status == BookStatus.read).length,
-            'pages': allBooks.fold(0, (sum, b) => (sum) + (b.status == BookStatus.read ? (b.pages ?? 0) : b.currentPage)),
+            'reading': allBooks
+                .where((b) => b.status == BookStatus.inProgress)
+                .length,
+            'finished': allBooks
+                .where((b) => b.status == BookStatus.read)
+                .length,
+            'pages': allBooks.fold(
+              0,
+              (sum, b) =>
+                  (sum) +
+                  (b.status == BookStatus.read
+                      ? (b.pages ?? 0)
+                      : b.currentPage),
+            ),
           };
 
           return NestedScrollView(
@@ -152,7 +184,11 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                 centerTitle: false,
                 actions: [
                   IconButton(
-                    icon: Icon(_isGridView ? Icons.view_list_rounded : Icons.grid_view_rounded),
+                    icon: Icon(
+                      _isGridView
+                          ? Icons.view_list_rounded
+                          : Icons.grid_view_rounded,
+                    ),
                     onPressed: () => setState(() => _isGridView = !_isGridView),
                     tooltip: _isGridView ? 'Lista' : 'Grade',
                   ),
@@ -161,7 +197,9 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                     onPressed: () {
                       Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (context) => const StatisticsScreen()),
+                        MaterialPageRoute(
+                          builder: (context) => const StatisticsScreen(),
+                        ),
                       );
                     },
                     tooltip: 'Estatísticas',
@@ -172,12 +210,12 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                   ),
                 ],
                 bottom: PreferredSize(
-                  preferredSize: Size.fromHeight(_showArticles ? 52 : 92),
+                  preferredSize: Size.fromHeight(_libraryType != 0 ? 52 : 92),
                   child: Column(
                     children: [
-                      // Toggle Livros / Artigos
+                      // Toggle Livros / Artigos / Frases
                       _buildLibraryToggle(),
-                      if (!_showArticles) ...[
+                      if (_libraryType == 0) ...[
                         const SizedBox(height: 8),
                         // Tabs
                         _buildTabBar(),
@@ -193,15 +231,14 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                 _buildSearchBar(),
                 // Content
                 Expanded(
-                  child: _showArticles 
+                  child: _libraryType == 1
                       ? _buildArticlesSection()
+                      : _libraryType == 2
+                      ? _buildQuotesSection()
                       : TabBarView(
                           controller: _tabController,
                           children: _tabs.map((tab) {
-                            return _buildBooksList(
-                              repo,
-                              status: tab['status'],
-                            );
+                            return _buildBooksList(repo, status: tab['status']);
                           }).toList(),
                         ),
                 ),
@@ -211,13 +248,31 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
         },
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _showArticles ? _showAddArticleDialog() : _navigateToAddBook(),
-        backgroundColor: UltravioletColors.primary,
+        onPressed: () {
+          if (_libraryType == 0) {
+            _navigateToAddBook();
+          } else if (_libraryType == 1)
+            _showAddArticleDialog();
+          else
+            _showAddQuoteDialog();
+        },
+        backgroundColor: _libraryType == 0
+            ? UltravioletColors.primary
+            : _libraryType == 1
+            ? UltravioletColors.secondary
+            : UltravioletColors.accent,
         elevation: 4,
         icon: const Icon(Icons.add_rounded, color: Colors.white),
         label: Text(
-          _showArticles ? 'Novo Artigo' : 'Adicionar',
-          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          _libraryType == 0
+              ? 'Adicionar'
+              : _libraryType == 1
+              ? 'Novo Artigo'
+              : 'Nova Frase',
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
         ),
       ),
     );
@@ -234,75 +289,72 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
         ),
         child: Row(
           children: [
-            Expanded(
-              child: GestureDetector(
-                onTap: () {
-                  HapticFeedback.selectionClick();
-                  setState(() => _showArticles = false);
-                },
-                child: Container(
-                  margin: const EdgeInsets.all(4),
-                  decoration: BoxDecoration(
-                    color: !_showArticles ? UltravioletColors.primary : Colors.transparent,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.menu_book_rounded,
-                        size: 18,
-                        color: !_showArticles ? Colors.white : UltravioletColors.onSurfaceVariant,
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        'Livros',
-                        style: TextStyle(
-                          color: !_showArticles ? Colors.white : UltravioletColors.onSurfaceVariant,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 13,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
+            _buildToggleButton(
+              0,
+              Icons.menu_book_rounded,
+              'Livros',
+              UltravioletColors.primary,
             ),
-            Expanded(
-              child: GestureDetector(
-                onTap: () {
-                  HapticFeedback.selectionClick();
-                  setState(() => _showArticles = true);
-                },
-                child: Container(
-                  margin: const EdgeInsets.all(4),
-                  decoration: BoxDecoration(
-                    color: _showArticles ? UltravioletColors.secondary : Colors.transparent,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.article_outlined,
-                        size: 18,
-                        color: _showArticles ? Colors.white : UltravioletColors.onSurfaceVariant,
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        'Artigos',
-                        style: TextStyle(
-                          color: _showArticles ? Colors.white : UltravioletColors.onSurfaceVariant,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 13,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
+            _buildToggleButton(
+              1,
+              Icons.article_outlined,
+              'Artigos',
+              UltravioletColors.secondary,
+            ),
+            _buildToggleButton(
+              2,
+              Icons.format_quote_rounded,
+              'Frases',
+              UltravioletColors.accent,
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildToggleButton(
+    int type,
+    IconData icon,
+    String label,
+    Color activeColor,
+  ) {
+    final isSelected = _libraryType == type;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () {
+          HapticFeedback.selectionClick();
+          setState(() => _libraryType = type);
+        },
+        child: Container(
+          margin: const EdgeInsets.all(4),
+          decoration: BoxDecoration(
+            color: isSelected ? activeColor : Colors.transparent,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                icon,
+                size: 16,
+                color: isSelected
+                    ? Colors.white
+                    : UltravioletColors.onSurfaceVariant,
+              ),
+              const SizedBox(width: 4),
+              Text(
+                label,
+                style: TextStyle(
+                  color: isSelected
+                      ? Colors.white
+                      : UltravioletColors.onSurfaceVariant,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -311,16 +363,22 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
   Widget _buildTabBar() {
     final repo = ref.watch(bookRepositoryProvider);
     final allBooks = repo.getAllBooks();
-    
+
     // Contagem por status
     final counts = {
       null: allBooks.length,
-      BookStatus.inProgress: allBooks.where((b) => b.status == BookStatus.inProgress).length,
-      BookStatus.forLater: allBooks.where((b) => b.status == BookStatus.forLater).length,
-      BookStatus.read: allBooks.where((b) => b.status == BookStatus.read).length,
+      BookStatus.inProgress: allBooks
+          .where((b) => b.status == BookStatus.inProgress)
+          .length,
+      BookStatus.forLater: allBooks
+          .where((b) => b.status == BookStatus.forLater)
+          .length,
+      BookStatus.read: allBooks
+          .where((b) => b.status == BookStatus.read)
+          .length,
       'favourites': allBooks.where((b) => b.favourite).length,
     };
-    
+
     return SizedBox(
       height: 36,
       child: ListView.builder(
@@ -333,7 +391,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
           final label = tab['label'] as String;
           final icon = tab['icon'] as IconData;
           final count = counts[tab['status']] ?? 0;
-          
+
           // Cores diferentes para cada tab
           Color tabColor;
           if (tab['status'] == 'favourites') {
@@ -353,7 +411,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                 tabColor = UltravioletColors.primary;
             }
           }
-          
+
           return Padding(
             padding: EdgeInsets.only(right: index < _tabs.length - 1 ? 8 : 0),
             child: GestureDetector(
@@ -364,15 +422,16 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
               },
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
-                  color: isSelected 
-                      ? tabColor 
-                      : Colors.transparent,
+                  color: isSelected ? tabColor : Colors.transparent,
                   borderRadius: BorderRadius.circular(18),
                   border: Border.all(
-                    color: isSelected 
-                        ? tabColor 
+                    color: isSelected
+                        ? tabColor
                         : UltravioletColors.outline.withValues(alpha: 0.3),
                     width: 1,
                   ),
@@ -383,23 +442,32 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                     Icon(
                       icon,
                       size: 14,
-                      color: isSelected ? Colors.white : UltravioletColors.onSurfaceVariant,
+                      color: isSelected
+                          ? Colors.white
+                          : UltravioletColors.onSurfaceVariant,
                     ),
                     const SizedBox(width: 4),
                     Text(
                       label,
                       style: TextStyle(
-                        color: isSelected ? Colors.white : UltravioletColors.onSurfaceVariant,
-                        fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                        color: isSelected
+                            ? Colors.white
+                            : UltravioletColors.onSurfaceVariant,
+                        fontWeight: isSelected
+                            ? FontWeight.w600
+                            : FontWeight.w500,
                         fontSize: 12,
                       ),
                     ),
                     if (count > 0) ...[
                       const SizedBox(width: 4),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 5,
+                          vertical: 1,
+                        ),
                         decoration: BoxDecoration(
-                          color: isSelected 
+                          color: isSelected
                               ? Colors.white.withValues(alpha: 0.25)
                               : tabColor.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(8),
@@ -448,7 +516,10 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
             borderRadius: BorderRadius.circular(16),
             borderSide: BorderSide.none,
           ),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 14,
+          ),
         ),
       ),
     );
@@ -456,7 +527,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
 
   Widget _buildBooksList(BookRepository repo, {dynamic status}) {
     List<Book> books;
-    
+
     if (status == 'favourites') {
       // Favoritos
       books = repo.getAllBooks().where((b) => b.favourite).toList();
@@ -471,8 +542,8 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
       books = books.where((book) {
         final query = _searchQuery.toLowerCase();
         return book.title.toLowerCase().contains(query) ||
-               book.author.toLowerCase().contains(query) ||
-               (book.genre?.toLowerCase().contains(query) ?? false);
+            book.author.toLowerCase().contains(query) ||
+            (book.genre?.toLowerCase().contains(query) ?? false);
       }).toList();
     }
 
@@ -525,7 +596,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
     String message;
     String subMessage;
     IconData icon;
-    
+
     if (status == 'favourites') {
       message = 'Nenhum favorito';
       subMessage = 'Adicione livros aos favoritos para vê-los aqui.';
@@ -568,7 +639,11 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
               color: UltravioletColors.surfaceVariant.withValues(alpha: 0.3),
               shape: BoxShape.circle,
             ),
-            child: Icon(icon, size: 48, color: UltravioletColors.onSurfaceVariant.withValues(alpha: 0.5)),
+            child: Icon(
+              icon,
+              size: 48,
+              color: UltravioletColors.onSurfaceVariant.withValues(alpha: 0.5),
+            ),
           ),
           const SizedBox(height: 24),
           Text(
@@ -597,8 +672,13 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
               style: ElevatedButton.styleFrom(
                 backgroundColor: UltravioletColors.primary,
                 foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 12,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
             ),
           ],
@@ -676,7 +756,11 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                 book.favourite ? Icons.favorite : Icons.favorite_border,
                 color: book.favourite ? Colors.red : null,
               ),
-              title: Text(book.favourite ? 'Remover dos Favoritos' : 'Adicionar aos Favoritos'),
+              title: Text(
+                book.favourite
+                    ? 'Remover dos Favoritos'
+                    : 'Adicionar aos Favoritos',
+              ),
               onTap: () async {
                 Navigator.pop(context);
                 final repo = ref.read(bookRepositoryProvider);
@@ -701,7 +785,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
 
   void _showProgressDialog(Book book) {
     int currentPage = book.currentPage;
-    
+
     showModalBottomSheet(
       context: context,
       backgroundColor: UltravioletColors.surface,
@@ -716,14 +800,16 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
             children: [
               Text(
                 'Atualizar Progresso',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
               ),
               const SizedBox(height: 8),
               Text(
                 book.title,
-                style: const TextStyle(color: UltravioletColors.onSurfaceVariant),
+                style: const TextStyle(
+                  color: UltravioletColors.onSurfaceVariant,
+                ),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 24),
@@ -766,10 +852,14 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
               const SizedBox(height: 16),
               if (book.pages != null && book.pages! > 0)
                 Slider(
-                  value: currentPage.toDouble().clamp(0, book.pages!.toDouble()),
+                  value: currentPage.toDouble().clamp(
+                    0,
+                    book.pages!.toDouble(),
+                  ),
                   min: 0,
                   max: book.pages!.toDouble(),
-                  onChanged: (value) => setModalState(() => currentPage = value.toInt()),
+                  onChanged: (value) =>
+                      setModalState(() => currentPage = value.toInt()),
                   activeColor: UltravioletColors.primary,
                 ),
               const SizedBox(height: 24),
@@ -780,7 +870,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                     final repo = ref.read(bookRepositoryProvider);
                     await repo.updateProgress(book.id, currentPage);
                     Navigator.pop(context);
-                    
+
                     if (book.pages != null && currentPage >= book.pages!) {
                       FeedbackService.showAchievement(
                         context,
@@ -855,9 +945,9 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
               const SizedBox(height: 20),
               Text(
                 'Opções da Biblioteca',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 20),
               // Options grid
@@ -872,7 +962,9 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                         Navigator.pop(context);
                         Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (context) => const StatisticsScreen()),
+                          MaterialPageRoute(
+                            builder: (context) => const StatisticsScreen(),
+                          ),
                         );
                       },
                     ),
@@ -971,9 +1063,9 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
               const SizedBox(height: 20),
               Text(
                 'Ordenar por',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 16),
               _buildSortOption('Mais recentes', Icons.access_time, true),
@@ -992,7 +1084,9 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
     return ListTile(
       leading: Icon(icon, color: isSelected ? UltravioletColors.primary : null),
       title: Text(label),
-      trailing: isSelected ? const Icon(Icons.check, color: UltravioletColors.primary) : null,
+      trailing: isSelected
+          ? const Icon(Icons.check, color: UltravioletColors.primary)
+          : null,
       onTap: () {
         Navigator.pop(context);
         // TODO: Implement sorting
@@ -1004,7 +1098,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
   void _showTrash() {
     final repo = ref.read(bookRepositoryProvider);
     final deletedBooks = repo.box.values.where((b) => b.deleted).toList();
-    
+
     showModalBottomSheet(
       context: context,
       backgroundColor: UltravioletColors.surface,
@@ -1034,7 +1128,10 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                   const SizedBox(height: 20),
                   Row(
                     children: [
-                      const Icon(Icons.delete_outline, color: UltravioletColors.error),
+                      const Icon(
+                        Icons.delete_outline,
+                        color: UltravioletColors.error,
+                      ),
                       const SizedBox(width: 12),
                       Text(
                         'Lixeira',
@@ -1048,7 +1145,10 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                           onPressed: () async {
                             Navigator.pop(context);
                             // TODO: Empty trash
-                            FeedbackService.showWarning(context, 'Lixeira esvaziada');
+                            FeedbackService.showWarning(
+                              context,
+                              'Lixeira esvaziada',
+                            );
                           },
                           child: const Text(
                             'Esvaziar',
@@ -1069,7 +1169,8 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                           Icon(
                             Icons.delete_outline,
                             size: 64,
-                            color: UltravioletColors.onSurfaceVariant.withValues(alpha: 0.3),
+                            color: UltravioletColors.onSurfaceVariant
+                                .withValues(alpha: 0.3),
                           ),
                           const SizedBox(height: 16),
                           const Text(
@@ -1094,11 +1195,17 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                             title: Text(book.title),
                             subtitle: Text(book.author),
                             trailing: IconButton(
-                              icon: const Icon(Icons.restore, color: UltravioletColors.primary),
+                              icon: const Icon(
+                                Icons.restore,
+                                color: UltravioletColors.primary,
+                              ),
                               onPressed: () async {
                                 // TODO: Restore book
                                 Navigator.pop(context);
-                                FeedbackService.showSuccess(context, 'Livro restaurado');
+                                FeedbackService.showSuccess(
+                                  context,
+                                  'Livro restaurado',
+                                );
                               },
                             ),
                           ),
@@ -1115,7 +1222,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
   // ==========================================
   // ARTICLES SECTION
   // ==========================================
-  
+
   Widget _buildArticlesSection() {
     return FutureBuilder<Box>(
       future: Hive.openBox('articles'),
@@ -1123,14 +1230,14 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
         if (!snapshot.hasData) {
           return const Center(child: CircularProgressIndicator());
         }
-        
+
         final box = snapshot.data!;
-        
+
         return ValueListenableBuilder(
           valueListenable: box.listenable(),
           builder: (context, Box articlesBox, _) {
             final articles = articlesBox.values.toList();
-            
+
             // Apply search filter
             final filteredArticles = _searchQuery.isEmpty
                 ? articles
@@ -1140,22 +1247,24 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                     final author = (a['author'] ?? '').toString().toLowerCase();
                     final source = (a['source'] ?? '').toString().toLowerCase();
                     return title.contains(_searchQuery.toLowerCase()) ||
-                           author.contains(_searchQuery.toLowerCase()) ||
-                           source.contains(_searchQuery.toLowerCase());
+                        author.contains(_searchQuery.toLowerCase()) ||
+                        source.contains(_searchQuery.toLowerCase());
                   }).toList();
-            
+
             // Sort by date (newest first)
             filteredArticles.sort((a, b) {
               if (a is! Map || b is! Map) return 0;
-              final dateA = DateTime.tryParse(a['dateAdded'] ?? '') ?? DateTime(2000);
-              final dateB = DateTime.tryParse(b['dateAdded'] ?? '') ?? DateTime(2000);
+              final dateA =
+                  DateTime.tryParse(a['dateAdded'] ?? '') ?? DateTime(2000);
+              final dateB =
+                  DateTime.tryParse(b['dateAdded'] ?? '') ?? DateTime(2000);
               return dateB.compareTo(dateA);
             });
-            
+
             return Column(
               children: [
                 // Botão de busca online
-                _buildOnlineSearchButton(),
+                _buildOnlineArticleSearchButton(),
                 // Lista de artigos
                 Expanded(
                   child: filteredArticles.isEmpty
@@ -1177,7 +1286,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
     );
   }
 
-  Widget _buildOnlineSearchButton() {
+  Widget _buildOnlineArticleSearchButton() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
       child: GestureDetector(
@@ -1264,7 +1373,9 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
           ),
           const SizedBox(height: 24),
           Text(
-            _searchQuery.isNotEmpty ? 'Nenhum artigo encontrado' : 'Nenhum artigo salvo',
+            _searchQuery.isNotEmpty
+                ? 'Nenhum artigo encontrado'
+                : 'Nenhum artigo salvo',
             style: const TextStyle(
               color: UltravioletColors.onSurface,
               fontSize: 18,
@@ -1291,8 +1402,13 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
               style: ElevatedButton.styleFrom(
                 backgroundColor: UltravioletColors.secondary,
                 foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 12,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
             ),
           ],
@@ -1310,11 +1426,11 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
     final dateAdded = DateTime.tryParse(article['dateAdded'] ?? '');
     final readingTime = article['readingTime'];
     final url = article['url'];
-    
+
     Color statusColor;
     String statusLabel;
     IconData statusIcon;
-    
+
     switch (status) {
       case 1:
         statusColor = UltravioletColors.primary;
@@ -1331,16 +1447,13 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
         statusLabel = 'Para ler';
         statusIcon = Icons.bookmark_outline;
     }
-    
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         color: UltravioletColors.cardBackground,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: statusColor.withValues(alpha: 0.2),
-          width: 1,
-        ),
+        border: Border.all(color: statusColor.withValues(alpha: 0.2), width: 1),
       ),
       child: Material(
         color: Colors.transparent,
@@ -1388,7 +1501,10 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                           if (author.isNotEmpty || source.isNotEmpty) ...[
                             const SizedBox(height: 4),
                             Text(
-                              [author, source].where((s) => s.isNotEmpty).join(' • '),
+                              [
+                                author,
+                                source,
+                              ].where((s) => s.isNotEmpty).join(' • '),
                               style: const TextStyle(
                                 color: UltravioletColors.onSurfaceVariant,
                                 fontSize: 12,
@@ -1411,7 +1527,10 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                   children: [
                     // Status badge
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: statusColor.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(8),
@@ -1435,7 +1554,11 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                     const Spacer(),
                     // Reading time
                     if (readingTime != null) ...[
-                      const Icon(Icons.timer_outlined, size: 14, color: UltravioletColors.onSurfaceVariant),
+                      const Icon(
+                        Icons.timer_outlined,
+                        size: 14,
+                        color: UltravioletColors.onSurfaceVariant,
+                      ),
                       const SizedBox(width: 4),
                       Text(
                         '${readingTime}min',
@@ -1448,7 +1571,11 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                     ],
                     // URL indicator
                     if (url != null && url.toString().isNotEmpty)
-                      const Icon(Icons.link, size: 14, color: UltravioletColors.onSurfaceVariant),
+                      const Icon(
+                        Icons.link,
+                        size: 14,
+                        color: UltravioletColors.onSurfaceVariant,
+                      ),
                   ],
                 ),
               ],
@@ -1466,7 +1593,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
     final urlController = TextEditingController();
     final notesController = TextEditingController();
     int readingTime = 5;
-    
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -1501,9 +1628,9 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                 const SizedBox(height: 20),
                 Text(
                   'Novo Artigo',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 20),
                 // Title
@@ -1513,9 +1640,13 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                     labelText: 'Título *',
                     hintText: 'Nome do artigo ou texto',
                     prefixIcon: const Icon(Icons.title),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                     filled: true,
-                    fillColor: UltravioletColors.surfaceVariant.withValues(alpha: 0.3),
+                    fillColor: UltravioletColors.surfaceVariant.withValues(
+                      alpha: 0.3,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -1526,9 +1657,13 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                     labelText: 'Autor',
                     hintText: 'Quem escreveu',
                     prefixIcon: const Icon(Icons.person_outline),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                     filled: true,
-                    fillColor: UltravioletColors.surfaceVariant.withValues(alpha: 0.3),
+                    fillColor: UltravioletColors.surfaceVariant.withValues(
+                      alpha: 0.3,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -1539,9 +1674,13 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                     labelText: 'Fonte',
                     hintText: 'Site, revista, jornal...',
                     prefixIcon: const Icon(Icons.source_outlined),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                     filled: true,
-                    fillColor: UltravioletColors.surfaceVariant.withValues(alpha: 0.3),
+                    fillColor: UltravioletColors.surfaceVariant.withValues(
+                      alpha: 0.3,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -1552,9 +1691,13 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                     labelText: 'Link (URL)',
                     hintText: 'https://...',
                     prefixIcon: const Icon(Icons.link),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                     filled: true,
-                    fillColor: UltravioletColors.surfaceVariant.withValues(alpha: 0.3),
+                    fillColor: UltravioletColors.surfaceVariant.withValues(
+                      alpha: 0.3,
+                    ),
                   ),
                   keyboardType: TextInputType.url,
                 ),
@@ -1601,9 +1744,13 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                     labelText: 'Notas',
                     hintText: 'Anotações sobre o artigo...',
                     prefixIcon: const Icon(Icons.notes),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                     filled: true,
-                    fillColor: UltravioletColors.surfaceVariant.withValues(alpha: 0.3),
+                    fillColor: UltravioletColors.surfaceVariant.withValues(
+                      alpha: 0.3,
+                    ),
                   ),
                   maxLines: 2,
                 ),
@@ -1614,13 +1761,17 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                   child: ElevatedButton(
                     onPressed: () async {
                       if (titleController.text.isEmpty) {
-                        FeedbackService.showWarning(context, 'Digite um título');
+                        FeedbackService.showWarning(
+                          context,
+                          'Digite um título',
+                        );
                         return;
                       }
-                      
+
                       final box = await Hive.openBox('articles');
-                      final id = DateTime.now().millisecondsSinceEpoch.toString();
-                      
+                      final id = DateTime.now().millisecondsSinceEpoch
+                          .toString();
+
                       await box.put(id, {
                         'id': id,
                         'title': titleController.text,
@@ -1633,9 +1784,12 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                         'favourite': false,
                         'dateAdded': DateTime.now().toIso8601String(),
                       });
-                      
+
                       Navigator.pop(context);
-                      FeedbackService.showSuccess(context, '📄 Artigo adicionado!');
+                      FeedbackService.showSuccess(
+                        context,
+                        '📄 Artigo adicionado!',
+                      );
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: UltravioletColors.secondary,
@@ -1645,13 +1799,439 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                         borderRadius: BorderRadius.circular(12),
                       ),
                     ),
-                    child: const Text('Salvar Artigo', style: TextStyle(fontWeight: FontWeight.bold)),
+                    child: const Text(
+                      'Salvar Artigo',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 20),
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  // ==========================================
+  // QUOTES SECTION
+  // ==========================================
+
+  Widget _buildQuotesSection() {
+    final repo = ref.watch(quotesRepositoryProvider);
+
+    return StreamBuilder<List<Quote>>(
+      stream: repo.watchQuotes(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData && !repo.isInitialized) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        final allQuotes = snapshot.data ?? [];
+
+        // local filtering for performance and simplicity with Isar streams
+        final quotes = _searchQuery.isEmpty
+            ? allQuotes
+            : allQuotes
+                  .where(
+                    (q) =>
+                        q.text.toLowerCase().contains(
+                          _searchQuery.toLowerCase(),
+                        ) ||
+                        q.author.toLowerCase().contains(
+                          _searchQuery.toLowerCase(),
+                        ) ||
+                        (q.category?.toLowerCase().contains(
+                              _searchQuery.toLowerCase(),
+                            ) ??
+                            false),
+                  )
+                  .toList();
+
+        if (quotes.isEmpty) {
+          return _buildQuotesEmptyState();
+        }
+
+        return ListView.builder(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
+          itemCount: quotes.length,
+          itemBuilder: (context, index) {
+            final quote = quotes[index];
+            return _buildQuoteCard(quote);
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildQuotesEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: UltravioletColors.surfaceVariant.withValues(alpha: 0.3),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.format_quote_rounded,
+              size: 48,
+              color: UltravioletColors.onSurfaceVariant.withValues(alpha: 0.5),
+            ),
+          ),
+          const SizedBox(height: 24),
+          const Text(
+            'Nenhuma frase salva',
+            style: TextStyle(
+              color: UltravioletColors.onSurface,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Guarde suas inspirações, pensamentos e\ncitações favoritas aqui.',
+            style: TextStyle(
+              color: UltravioletColors.onSurfaceVariant,
+              fontSize: 14,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          if (_searchQuery.isEmpty) ...[
+            const SizedBox(height: 32),
+            ElevatedButton.icon(
+              onPressed: _showAddQuoteDialog,
+              icon: const Icon(Icons.add_rounded),
+              label: const Text('Adicionar Frase'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: UltravioletColors.accent,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 12,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQuoteCard(Quote quote) {
+    final text = quote.text;
+    final author = quote.author;
+    final isFavorite = quote.isFavorite;
+    final category = quote.category ?? 'Inspiração';
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: UltravioletColors.cardBackground,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: UltravioletColors.accent.withValues(alpha: 0.1),
+        ),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: () => _showQuoteActions(quote),
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(
+                  Icons.format_quote_rounded,
+                  color: UltravioletColors.accent,
+                  size: 24,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  text,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    height: 1.5,
+                    fontWeight: FontWeight.w500,
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Text(
+                      '— $author',
+                      style: const TextStyle(
+                        color: UltravioletColors.onSurfaceVariant,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                      ),
+                    ),
+                    const Spacer(),
+                    if (category.isNotEmpty)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: UltravioletColors.accent.withValues(
+                            alpha: 0.1,
+                          ),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          category,
+                          style: const TextStyle(
+                            color: UltravioletColors.accent,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    const SizedBox(width: 12),
+                    Icon(
+                      isFavorite ? Icons.favorite : Icons.favorite_border,
+                      color: isFavorite
+                          ? Colors.red
+                          : UltravioletColors.onSurfaceVariant,
+                      size: 18,
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showAddQuoteDialog() {
+    final textController = TextEditingController();
+    final authorController = TextEditingController();
+    String category = 'Inspiração';
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: UltravioletColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setModalState) => Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom,
+            left: 20,
+            right: 20,
+            top: 20,
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: UltravioletColors.outline.withValues(alpha: 0.3),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  'Nova Frase',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 20),
+                TextField(
+                  controller: textController,
+                  maxLines: 4,
+                  decoration: InputDecoration(
+                    labelText: 'Citação *',
+                    hintText: 'Digite a frase inspiradora...',
+                    alignLabelWithHint: true,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: authorController,
+                  decoration: InputDecoration(
+                    labelText: 'Autor',
+                    hintText: 'Quem disse isso?',
+                    prefixIcon: const Icon(Icons.person_outline),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                const Text(
+                  'Categoria',
+                  style: TextStyle(
+                    color: UltravioletColors.onSurfaceVariant,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  children: ['Inspiração', 'Filosofia', 'Psicologia', 'Geral']
+                      .map((cat) {
+                        final isSelected = category == cat;
+                        return ChoiceChip(
+                          label: Text(cat),
+                          selected: isSelected,
+                          onSelected: (selected) {
+                            if (selected) setModalState(() => category = cat);
+                          },
+                        );
+                      })
+                      .toList(),
+                ),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () async {
+                      if (textController.text.isEmpty) {
+                        FeedbackService.showWarning(
+                          context,
+                          'Digite o texto da frase',
+                        );
+                        return;
+                      }
+
+                      final repo = ref.read(quotesRepositoryProvider);
+                      final newQuote = Quote()
+                        ..text = textController.text
+                        ..author = authorController.text.isEmpty
+                            ? 'Desconhecido'
+                            : authorController.text
+                        ..category = category
+                        ..isFavorite = false
+                        ..createdAt = DateTime.now();
+
+                      await repo.addQuote(newQuote);
+
+                      Navigator.pop(context);
+                      FeedbackService.showSuccess(
+                        context,
+                        '✨ Frase inspiradora salva!',
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: UltravioletColors.accent,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: const Text(
+                      'Salvar Frase',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showQuoteActions(Quote quote) {
+    HapticFeedback.mediumImpact();
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: UltravioletColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              margin: const EdgeInsets.symmetric(vertical: 12),
+              decoration: BoxDecoration(
+                color: UltravioletColors.outline,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            ListTile(
+              leading: Icon(
+                quote.isFavorite ? Icons.favorite : Icons.favorite_border,
+                color: quote.isFavorite ? Colors.red : null,
+              ),
+              title: Text(
+                quote.isFavorite
+                    ? 'Remover dos Favoritos'
+                    : 'Adicionar aos Favoritos',
+              ),
+              onTap: () async {
+                Navigator.pop(context);
+                final repo = ref.read(quotesRepositoryProvider);
+                await repo.toggleFavorite(quote.id);
+                HapticFeedback.lightImpact();
+                setState(() {}); // Refresh list
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.copy_rounded),
+              title: const Text('Copiar Texto'),
+              onTap: () {
+                Navigator.pop(context);
+                Clipboard.setData(
+                  ClipboardData(text: '${quote.text} — ${quote.author}'),
+                );
+                FeedbackService.showSuccess(context, 'Texto copiado!');
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.share_rounded),
+              title: const Text('Compartilhar'),
+              onTap: () async {
+                Navigator.pop(context);
+                final textToShare =
+                    '"${quote.text}"\n— ${quote.author}\n\nEnviado via Odyssey Mood Tracker';
+                await Share.share(textToShare);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.delete_outline, color: Colors.red),
+              title: const Text('Excluir', style: TextStyle(color: Colors.red)),
+              onTap: () async {
+                Navigator.pop(context);
+                final repo = ref.read(quotesRepositoryProvider);
+                await repo.deleteQuote(quote.id);
+                FeedbackService.showWarning(context, 'Frase removida');
+              },
+            ),
+            const SizedBox(height: 16),
+          ],
         ),
       ),
     );
@@ -1666,7 +2246,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
     final id = article['id'];
     final status = article['status'] ?? 0;
     final favourite = article['favourite'] ?? false;
-    
+
     HapticFeedback.mediumImpact();
     showModalBottomSheet(
       context: context,
@@ -1694,7 +2274,9 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                 color: status == 0 ? UltravioletColors.primary : null,
               ),
               title: const Text('Para Ler'),
-              trailing: status == 0 ? const Icon(Icons.check, color: UltravioletColors.primary) : null,
+              trailing: status == 0
+                  ? const Icon(Icons.check, color: UltravioletColors.primary)
+                  : null,
               onTap: () async {
                 await box.put(id, {...article, 'status': 0});
                 Navigator.pop(context);
@@ -1706,7 +2288,9 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                 color: status == 1 ? UltravioletColors.primary : null,
               ),
               title: const Text('Lendo'),
-              trailing: status == 1 ? const Icon(Icons.check, color: UltravioletColors.primary) : null,
+              trailing: status == 1
+                  ? const Icon(Icons.check, color: UltravioletColors.primary)
+                  : null,
               onTap: () async {
                 await box.put(id, {...article, 'status': 1});
                 Navigator.pop(context);
@@ -1718,7 +2302,12 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                 color: status == 2 ? UltravioletColors.accentGreen : null,
               ),
               title: const Text('Lido'),
-              trailing: status == 2 ? const Icon(Icons.check, color: UltravioletColors.accentGreen) : null,
+              trailing: status == 2
+                  ? const Icon(
+                      Icons.check,
+                      color: UltravioletColors.accentGreen,
+                    )
+                  : null,
               onTap: () async {
                 await box.put(id, {
                   ...article,
@@ -1735,7 +2324,9 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                 favourite ? Icons.favorite : Icons.favorite_border,
                 color: favourite ? Colors.red : null,
               ),
-              title: Text(favourite ? 'Remover dos Favoritos' : 'Adicionar aos Favoritos'),
+              title: Text(
+                favourite ? 'Remover dos Favoritos' : 'Adicionar aos Favoritos',
+              ),
               onTap: () async {
                 await box.put(id, {...article, 'favourite': !favourite});
                 Navigator.pop(context);
@@ -1761,13 +2352,13 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
   // ==========================================
   // ONLINE ARTICLE SEARCH
   // ==========================================
-  
+
   void _showOnlineArticleSearch() {
     final searchController = TextEditingController();
     List<Map<String, dynamic>> searchResults = [];
     bool isLoading = false;
     String? errorMessage;
-    
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -1799,7 +2390,10 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                     const SizedBox(height: 16),
                     Row(
                       children: [
-                        const Icon(Icons.travel_explore_rounded, color: UltravioletColors.secondary),
+                        const Icon(
+                          Icons.travel_explore_rounded,
+                          color: UltravioletColors.secondary,
+                        ),
                         const SizedBox(width: 12),
                         Expanded(
                           child: Column(
@@ -1807,9 +2401,8 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                             children: [
                               Text(
                                 'Descobrir Artigos',
-                                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                ),
+                                style: Theme.of(context).textTheme.titleLarge
+                                    ?.copyWith(fontWeight: FontWeight.bold),
                               ),
                               const Text(
                                 'Powered by OpenAlex • Milhões de artigos',
@@ -1836,21 +2429,25 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                                 child: SizedBox(
                                   width: 20,
                                   height: 20,
-                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
                                 ),
                               )
                             : IconButton(
                                 icon: const Icon(Icons.send_rounded),
                                 onPressed: () async {
                                   if (searchController.text.isEmpty) return;
-                                  
+
                                   setModalState(() {
                                     isLoading = true;
                                     errorMessage = null;
                                   });
-                                  
+
                                   try {
-                                    final results = await _searchOpenAlex(searchController.text);
+                                    final results = await _searchOpenAlex(
+                                      searchController.text,
+                                    );
                                     setModalState(() {
                                       searchResults = results;
                                       isLoading = false;
@@ -1858,24 +2455,29 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                                   } catch (e) {
                                     debugPrint('Search error: $e');
                                     setModalState(() {
-                                      errorMessage = 'Erro na busca: ${e.toString().length > 50 ? e.toString().substring(0, 50) : e}';
+                                      errorMessage =
+                                          'Erro na busca: ${e.toString().length > 50 ? e.toString().substring(0, 50) : e}';
                                       isLoading = false;
                                     });
                                   }
                                 },
                               ),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
                         filled: true,
-                        fillColor: UltravioletColors.surfaceVariant.withValues(alpha: 0.3),
+                        fillColor: UltravioletColors.surfaceVariant.withValues(
+                          alpha: 0.3,
+                        ),
                       ),
                       onSubmitted: (value) async {
                         if (value.isEmpty) return;
-                        
+
                         setModalState(() {
                           isLoading = true;
                           errorMessage = null;
                         });
-                        
+
                         try {
                           final results = await _searchOpenAlex(value);
                           setModalState(() {
@@ -1885,7 +2487,8 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                         } catch (e) {
                           debugPrint('Search error: $e');
                           setModalState(() {
-                            errorMessage = 'Erro na busca: ${e.toString().length > 50 ? e.toString().substring(0, 50) : e}';
+                            errorMessage =
+                                'Erro na busca: ${e.toString().length > 50 ? e.toString().substring(0, 50) : e}';
                             isLoading = false;
                           });
                         }
@@ -1902,7 +2505,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                               isLoading = true;
                               errorMessage = null;
                             });
-                            
+
                             try {
                               final results = await _searchOpenAlex(query);
                               setModalState(() {
@@ -1916,14 +2519,39 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                               });
                             }
                           }
-                          
+
                           return Row(
                             children: [
-                              _buildQuickSearchChip('Artificial Intelligence', searchController, setModalState, performSearch),
-                              _buildQuickSearchChip('Psychology', searchController, setModalState, performSearch),
-                              _buildQuickSearchChip('Neuroscience', searchController, setModalState, performSearch),
-                              _buildQuickSearchChip('Climate Change', searchController, setModalState, performSearch),
-                              _buildQuickSearchChip('Machine Learning', searchController, setModalState, performSearch),
+                              _buildQuickSearchChip(
+                                'Artificial Intelligence',
+                                searchController,
+                                setModalState,
+                                performSearch,
+                              ),
+                              _buildQuickSearchChip(
+                                'Psychology',
+                                searchController,
+                                setModalState,
+                                performSearch,
+                              ),
+                              _buildQuickSearchChip(
+                                'Neuroscience',
+                                searchController,
+                                setModalState,
+                                performSearch,
+                              ),
+                              _buildQuickSearchChip(
+                                'Climate Change',
+                                searchController,
+                                setModalState,
+                                performSearch,
+                              ),
+                              _buildQuickSearchChip(
+                                'Machine Learning',
+                                searchController,
+                                setModalState,
+                                performSearch,
+                              ),
                             ],
                           );
                         },
@@ -1939,50 +2567,61 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            const Icon(Icons.error_outline, size: 48, color: UltravioletColors.error),
+                            const Icon(
+                              Icons.error_outline,
+                              size: 48,
+                              color: UltravioletColors.error,
+                            ),
                             const SizedBox(height: 12),
-                            Text(errorMessage!, style: const TextStyle(color: UltravioletColors.error)),
+                            Text(
+                              errorMessage!,
+                              style: const TextStyle(
+                                color: UltravioletColors.error,
+                              ),
+                            ),
                           ],
                         ),
                       )
                     : searchResults.isEmpty
-                        ? Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  Icons.article_outlined,
-                                  size: 64,
-                                  color: UltravioletColors.onSurfaceVariant.withValues(alpha: 0.3),
-                                ),
-                                const SizedBox(height: 16),
-                                const Text(
-                                  'Pesquise por um tema',
-                                  style: TextStyle(
-                                    color: UltravioletColors.onSurfaceVariant,
-                                    fontSize: 16,
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  'Use os chips acima para buscas rápidas',
-                                  style: TextStyle(
-                                    color: UltravioletColors.onSurfaceVariant.withValues(alpha: 0.7),
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              ],
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.article_outlined,
+                              size: 64,
+                              color: UltravioletColors.onSurfaceVariant
+                                  .withValues(alpha: 0.3),
                             ),
-                          )
-                        : ListView.builder(
-                            controller: scrollController,
-                            padding: const EdgeInsets.symmetric(horizontal: 20),
-                            itemCount: searchResults.length,
-                            itemBuilder: (context, index) {
-                              final result = searchResults[index];
-                              return _buildSearchResultCard(result, context);
-                            },
-                          ),
+                            const SizedBox(height: 16),
+                            const Text(
+                              'Pesquise por um tema',
+                              style: TextStyle(
+                                color: UltravioletColors.onSurfaceVariant,
+                                fontSize: 16,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Use os chips acima para buscas rápidas',
+                              style: TextStyle(
+                                color: UltravioletColors.onSurfaceVariant
+                                    .withValues(alpha: 0.7),
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    : ListView.builder(
+                        controller: scrollController,
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        itemCount: searchResults.length,
+                        itemBuilder: (context, index) {
+                          final result = searchResults[index];
+                          return _buildSearchResultCard(result, context);
+                        },
+                      ),
               ),
             ],
           ),
@@ -1992,8 +2631,8 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
   }
 
   Widget _buildQuickSearchChip(
-    String label, 
-    TextEditingController controller, 
+    String label,
+    TextEditingController controller,
     StateSetter setModalState,
     Future<void> Function(String) onSearch,
   ) {
@@ -2001,7 +2640,9 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
       padding: const EdgeInsets.only(right: 8),
       child: ActionChip(
         label: Text(label, style: const TextStyle(fontSize: 12)),
-        backgroundColor: UltravioletColors.surfaceVariant.withValues(alpha: 0.5),
+        backgroundColor: UltravioletColors.surfaceVariant.withValues(
+          alpha: 0.5,
+        ),
         onPressed: () {
           controller.text = label;
           onSearch(label);
@@ -2015,18 +2656,20 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
     // Encode query properly for URL
     final encodedQuery = Uri.encodeComponent(query);
     final uri = Uri.parse(
-      'https://api.openalex.org/works?search=$encodedQuery&per_page=20&mailto=app@odyssey.com'
+      'https://api.openalex.org/works?search=$encodedQuery&per_page=20&mailto=app@odyssey.com',
     );
-    
+
     try {
-      final response = await http.get(
-        uri,
-        headers: {
-          'Accept': 'application/json',
-          'User-Agent': 'OdysseyApp/1.0',
-        },
-      ).timeout(const Duration(seconds: 15));
-      
+      final response = await http
+          .get(
+            uri,
+            headers: {
+              'Accept': 'application/json',
+              'User-Agent': 'OdysseyApp/1.0',
+            },
+          )
+          .timeout(const Duration(seconds: 15));
+
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         final results = (data['results'] as List? ?? []).map((work) {
@@ -2037,22 +2680,27 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
               .map((a) => a['author']?['display_name'] ?? '')
               .where((name) => name.isNotEmpty)
               .join(', ');
-          
+
           // Extract publication year
           final year = work['publication_year'];
-          
+
           // Extract source (journal/venue)
-          final source = work['primary_location']?['source']?['display_name'] ?? 
-                         work['host_venue']?['display_name'] ?? '';
-          
+          final source =
+              work['primary_location']?['source']?['display_name'] ??
+              work['host_venue']?['display_name'] ??
+              '';
+
           // Open access URL
           String? openAccessUrl = work['open_access']?['oa_url'];
           openAccessUrl ??= work['primary_location']?['pdf_url'];
           if (openAccessUrl == null && work['doi'] != null) {
-            final doi = work['doi'].toString().replaceAll('https://doi.org/', '');
+            final doi = work['doi'].toString().replaceAll(
+              'https://doi.org/',
+              '',
+            );
             openAccessUrl = 'https://doi.org/$doi';
           }
-          
+
           return {
             'title': work['title'] ?? 'Sem título',
             'authors': authors,
@@ -2061,16 +2709,20 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
             'url': openAccessUrl,
             'citedCount': work['cited_by_count'] ?? 0,
             'isOpenAccess': work['open_access']?['is_oa'] ?? false,
-            'abstract': work['abstract_inverted_index'] != null 
-                ? _reconstructAbstract(work['abstract_inverted_index'] as Map<String, dynamic>) 
+            'abstract': work['abstract_inverted_index'] != null
+                ? _reconstructAbstract(
+                    work['abstract_inverted_index'] as Map<String, dynamic>,
+                  )
                 : null,
             'doi': work['doi'],
           };
         }).toList();
-        
+
         return results.cast<Map<String, dynamic>>();
       } else {
-        debugPrint('OpenAlex API error: ${response.statusCode} - ${response.body}');
+        debugPrint(
+          'OpenAlex API error: ${response.statusCode} - ${response.body}',
+        );
         throw Exception('API returned ${response.statusCode}');
       }
     } catch (e) {
@@ -2091,24 +2743,29 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
         }
       }
     });
-    
+
     final sortedPositions = wordPositions.keys.toList()..sort();
     final words = sortedPositions.map((pos) => wordPositions[pos]).toList();
     final abstract = words.take(50).join(' ');
-    return abstract.length > 200 ? '${abstract.substring(0, 200)}...' : '$abstract...';
+    return abstract.length > 200
+        ? '${abstract.substring(0, 200)}...'
+        : '$abstract...';
   }
 
-  Widget _buildSearchResultCard(Map<String, dynamic> result, BuildContext context) {
+  Widget _buildSearchResultCard(
+    Map<String, dynamic> result,
+    BuildContext context,
+  ) {
     final isOpenAccess = result['isOpenAccess'] == true;
     final citedCount = result['citedCount'] ?? 0;
-    
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         color: UltravioletColors.cardBackground,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: isOpenAccess 
+          color: isOpenAccess
               ? UltravioletColors.accentGreen.withValues(alpha: 0.3)
               : UltravioletColors.outline.withValues(alpha: 0.2),
         ),
@@ -2135,7 +2792,8 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                 ),
                 const SizedBox(height: 6),
                 // Authors & Year
-                if (result['authors'] != null && result['authors'].toString().isNotEmpty)
+                if (result['authors'] != null &&
+                    result['authors'].toString().isNotEmpty)
                   Text(
                     '${result['authors']}${result['year'] != null ? ' • ${result['year']}' : ''}',
                     style: const TextStyle(
@@ -2146,7 +2804,8 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                     overflow: TextOverflow.ellipsis,
                   ),
                 // Source
-                if (result['source'] != null && result['source'].toString().isNotEmpty) ...[
+                if (result['source'] != null &&
+                    result['source'].toString().isNotEmpty) ...[
                   const SizedBox(height: 4),
                   Text(
                     result['source'],
@@ -2166,15 +2825,24 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                     // Open Access badge
                     if (isOpenAccess)
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
                         decoration: BoxDecoration(
-                          color: UltravioletColors.accentGreen.withValues(alpha: 0.15),
+                          color: UltravioletColors.accentGreen.withValues(
+                            alpha: 0.15,
+                          ),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: const Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.lock_open, size: 12, color: UltravioletColors.accentGreen),
+                            Icon(
+                              Icons.lock_open,
+                              size: 12,
+                              color: UltravioletColors.accentGreen,
+                            ),
                             SizedBox(width: 4),
                             Text(
                               'Open Access',
@@ -2190,7 +2858,11 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                     const Spacer(),
                     // Citations
                     if (citedCount > 0) ...[
-                      const Icon(Icons.format_quote, size: 14, color: UltravioletColors.onSurfaceVariant),
+                      const Icon(
+                        Icons.format_quote,
+                        size: 14,
+                        color: UltravioletColors.onSurfaceVariant,
+                      ),
                       const SizedBox(width: 4),
                       Text(
                         '$citedCount citações',
@@ -2203,7 +2875,10 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                     const SizedBox(width: 12),
                     // Add button
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: UltravioletColors.primary,
                         borderRadius: BorderRadius.circular(8),
@@ -2268,16 +2943,25 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
               // Open Access badge
               if (result['isOpenAccess'] == true)
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 5,
+                  ),
                   margin: const EdgeInsets.only(bottom: 12),
                   decoration: BoxDecoration(
-                    color: UltravioletColors.accentGreen.withValues(alpha: 0.15),
+                    color: UltravioletColors.accentGreen.withValues(
+                      alpha: 0.15,
+                    ),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: const Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.lock_open, size: 14, color: UltravioletColors.accentGreen),
+                      Icon(
+                        Icons.lock_open,
+                        size: 14,
+                        color: UltravioletColors.accentGreen,
+                      ),
                       SizedBox(width: 6),
                       Text(
                         'Acesso Aberto',
@@ -2293,16 +2977,21 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
               // Title
               Text(
                 result['title'] ?? 'Sem título',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 12),
               // Authors
-              if (result['authors'] != null && result['authors'].toString().isNotEmpty)
+              if (result['authors'] != null &&
+                  result['authors'].toString().isNotEmpty)
                 Row(
                   children: [
-                    const Icon(Icons.person_outline, size: 16, color: UltravioletColors.onSurfaceVariant),
+                    const Icon(
+                      Icons.person_outline,
+                      size: 16,
+                      color: UltravioletColors.onSurfaceVariant,
+                    ),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
@@ -2320,29 +3009,49 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
               Row(
                 children: [
                   if (result['year'] != null) ...[
-                    const Icon(Icons.calendar_today, size: 14, color: UltravioletColors.onSurfaceVariant),
+                    const Icon(
+                      Icons.calendar_today,
+                      size: 14,
+                      color: UltravioletColors.onSurfaceVariant,
+                    ),
                     const SizedBox(width: 6),
                     Text(
                       '${result['year']}',
-                      style: const TextStyle(color: UltravioletColors.onSurfaceVariant, fontSize: 13),
+                      style: const TextStyle(
+                        color: UltravioletColors.onSurfaceVariant,
+                        fontSize: 13,
+                      ),
                     ),
                     const SizedBox(width: 16),
                   ],
-                  if (result['citedCount'] != null && result['citedCount'] > 0) ...[
-                    const Icon(Icons.format_quote, size: 14, color: UltravioletColors.onSurfaceVariant),
+                  if (result['citedCount'] != null &&
+                      result['citedCount'] > 0) ...[
+                    const Icon(
+                      Icons.format_quote,
+                      size: 14,
+                      color: UltravioletColors.onSurfaceVariant,
+                    ),
                     const SizedBox(width: 6),
                     Text(
                       '${result['citedCount']} citações',
-                      style: const TextStyle(color: UltravioletColors.onSurfaceVariant, fontSize: 13),
+                      style: const TextStyle(
+                        color: UltravioletColors.onSurfaceVariant,
+                        fontSize: 13,
+                      ),
                     ),
                   ],
                 ],
               ),
-              if (result['source'] != null && result['source'].toString().isNotEmpty) ...[
+              if (result['source'] != null &&
+                  result['source'].toString().isNotEmpty) ...[
                 const SizedBox(height: 8),
                 Row(
                   children: [
-                    const Icon(Icons.library_books_outlined, size: 14, color: UltravioletColors.secondary),
+                    const Icon(
+                      Icons.library_books_outlined,
+                      size: 14,
+                      color: UltravioletColors.secondary,
+                    ),
                     const SizedBox(width: 6),
                     Expanded(
                       child: Text(
@@ -2386,8 +3095,9 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                       onPressed: () async {
                         // Save to library
                         final box = await Hive.openBox('articles');
-                        final id = DateTime.now().millisecondsSinceEpoch.toString();
-                        
+                        final id = DateTime.now().millisecondsSinceEpoch
+                            .toString();
+
                         await box.put(id, {
                           'id': id,
                           'title': result['title'],
@@ -2403,10 +3113,13 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                           'year': result['year'],
                           'citedCount': result['citedCount'],
                         });
-                        
+
                         Navigator.pop(context);
                         Navigator.pop(context);
-                        FeedbackService.showSuccess(context, '📄 Artigo salvo na biblioteca!');
+                        FeedbackService.showSuccess(
+                          context,
+                          '📄 Artigo salvo na biblioteca!',
+                        );
                       },
                       icon: const Icon(Icons.add),
                       label: const Text('Salvar na Biblioteca'),
@@ -2427,9 +3140,14 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                         // TODO: Open URL
                         FeedbackService.showInfo(context, 'Abrindo artigo...');
                       },
-                      icon: const Icon(Icons.open_in_new, color: UltravioletColors.secondary),
+                      icon: const Icon(
+                        Icons.open_in_new,
+                        color: UltravioletColors.secondary,
+                      ),
                       style: IconButton.styleFrom(
-                        backgroundColor: UltravioletColors.secondary.withValues(alpha: 0.15),
+                        backgroundColor: UltravioletColors.secondary.withValues(
+                          alpha: 0.15,
+                        ),
                       ),
                     ),
                   ],

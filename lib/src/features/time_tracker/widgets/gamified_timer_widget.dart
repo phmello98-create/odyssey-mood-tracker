@@ -177,7 +177,7 @@ class _GamifiedTimerWidgetState extends State<GamifiedTimerWidget>
 
   Widget _buildSessionStatus(bool isDark, ColorScheme colorScheme) {
     // Determine colors based on state
-    final breakColor = const Color(
+    const breakColor = Color(
       0xFF4ECDC4,
     ); // Keep generic nice teal for break
     final activeColor = widget.accentColor;

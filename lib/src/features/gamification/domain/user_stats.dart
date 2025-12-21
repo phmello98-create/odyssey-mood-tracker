@@ -88,6 +88,10 @@ class PersonalGoal {
   final DateTime? deadline;
   final DateTime createdAt;
   final bool isCompleted;
+  final String? bannerPath; // Caminho local da imagem
+  final String? bannerUrl; // URL da imagem (para metas sugeridas)
+  final String?
+  category; // Categoria: 'financial', 'travel', 'education', 'health', 'career', 'personal'
 
   const PersonalGoal({
     required this.id,
@@ -100,6 +104,9 @@ class PersonalGoal {
     this.deadline,
     required this.createdAt,
     this.isCompleted = false,
+    this.bannerPath,
+    this.bannerUrl,
+    this.category,
   });
 
   double get progress {
@@ -116,6 +123,9 @@ class PersonalGoal {
   bool get isOverdue =>
       deadline != null && DateTime.now().isAfter(deadline!) && !isCompleted;
 
+  /// Verifica se tem uma imagem de banner disponível
+  bool get hasBanner => bannerPath != null || bannerUrl != null;
+
   Map<String, dynamic> toMap() => {
     'id': id,
     'title': title,
@@ -127,6 +137,9 @@ class PersonalGoal {
     'deadline': deadline?.toIso8601String(),
     'createdAt': createdAt.toIso8601String(),
     'isCompleted': isCompleted,
+    'bannerPath': bannerPath,
+    'bannerUrl': bannerUrl,
+    'category': category,
   };
 
   factory PersonalGoal.fromMap(Map<String, dynamic> map) => PersonalGoal(
@@ -142,6 +155,9 @@ class PersonalGoal {
         ? DateTime.parse(map['createdAt'])
         : DateTime.now(),
     isCompleted: map['isCompleted'] ?? false,
+    bannerPath: map['bannerPath'],
+    bannerUrl: map['bannerUrl'],
+    category: map['category'],
   );
 
   PersonalGoal copyWith({
@@ -152,6 +168,9 @@ class PersonalGoal {
     String? trackingType,
     DateTime? deadline,
     bool? isCompleted,
+    String? bannerPath,
+    String? bannerUrl,
+    String? category,
   }) {
     return PersonalGoal(
       id: id,
@@ -164,6 +183,9 @@ class PersonalGoal {
       deadline: deadline ?? this.deadline,
       createdAt: createdAt,
       isCompleted: isCompleted ?? this.isCompleted,
+      bannerPath: bannerPath ?? this.bannerPath,
+      bannerUrl: bannerUrl ?? this.bannerUrl,
+      category: category ?? this.category,
     );
   }
 }

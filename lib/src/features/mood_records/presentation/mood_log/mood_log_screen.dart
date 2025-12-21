@@ -708,7 +708,7 @@ class _MoodRecordsScreenState extends ConsumerState<MoodRecordsScreen> {
               children: [
                 Row(
                   children: [
-                    Icon(
+                    const Icon(
                       Icons.thumb_up_rounded,
                       size: 16,
                       color: UltravioletColors.moodGreat,

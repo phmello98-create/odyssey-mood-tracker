@@ -1,0 +1,15 @@
+[Unit]
+Description=Odyssey Community Bot Poster
+After=network.target
+
+[Service]
+Type=simple
+User=agys
+Group=users
+WorkingDirectory=/home/agys/Documentos/odyssey-mood-tracker/scripts
+ExecStart=/bin/bash -c 'source /home/agys/Documentos/odyssey-mood-tracker/scripts/venv/bin/activate && python /home/agys/Documentos/odyssey-mood-tracker/scripts/bot_poster.py --loop'
+Restart=always
+RestartSec=60
+
+[Install]
+WantedBy=multi-user.target

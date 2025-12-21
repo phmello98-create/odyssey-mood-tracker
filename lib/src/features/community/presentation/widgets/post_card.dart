@@ -188,7 +188,7 @@ class _PostCardState extends State<PostCard>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Nome + Flair/Badge
+                // Nome + Flair/Badge + BOT Badge
                 GestureDetector(
                   onTap: () => _navigateToProfile(context),
                   child: Row(
@@ -205,6 +205,43 @@ class _PostCardState extends State<PostCard>
                         ),
                       ),
                       const SizedBox(width: 6),
+                      // BOT Badge (se for bot)
+                      if (widget.post.userId.startsWith('bot_'))
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: _getBotColor().withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(4),
+                            border: Border.all(
+                              color: _getBotColor().withOpacity(0.4),
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.smart_toy_outlined,
+                                size: 10,
+                                color: _getBotColor(),
+                              ),
+                              const SizedBox(width: 3),
+                              Text(
+                                'BOT',
+                                style: TextStyle(
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.bold,
+                                  color: _getBotColor(),
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      if (widget.post.userId.startsWith('bot_'))
+                        const SizedBox(width: 6),
                       // Flair or Pinned Badge
                       if (widget.post.authorFlair != null ||
                           widget.post.isPinned)
@@ -572,6 +609,22 @@ class _PostCardState extends State<PostCard>
 
     // Default
     return const _MoodData(emoji: '💭', color: Color(0xFF81B29A));
+  }
+
+  /// Retorna a cor temática do bot baseado no userId
+  Color _getBotColor() {
+    switch (widget.post.userId) {
+      case 'bot_beatnix':
+        return const Color(0xFF6366F1); // Indigo
+      case 'bot_erro404':
+        return const Color(0xFF10B981); // Emerald
+      case 'bot_wiki':
+        return const Color(0xFF8B5CF6); // Violet
+      case 'bot_turbo':
+        return const Color(0xFFF59E0B); // Amber
+      default:
+        return const Color(0xFF6B7280); // Gray
+    }
   }
 
   Widget _buildImagePreview(BuildContext context) {

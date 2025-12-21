@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../auth/presentation/providers/sync_providers.dart';
@@ -16,7 +15,8 @@ import '../../domain/topic.dart';
 
 /// Provider para verificar se está em modo offline (Linux/Windows)
 final isOfflineModeProvider = Provider<bool>((ref) {
-  return Platform.isLinux || Platform.isWindows;
+  // Forçando FALSE para ver os bots reais do Firestore no Linux
+  return false;
 });
 
 /// Provider para MockCommunityRepository

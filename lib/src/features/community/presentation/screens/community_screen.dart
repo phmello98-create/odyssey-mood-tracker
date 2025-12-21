@@ -664,7 +664,7 @@ class _MusicIndicatorState extends State<_MusicIndicator>
             color: Theme.of(context).colorScheme.primary,
             shape: BoxShape.circle,
           ),
-          child: Icon(Icons.music_note_rounded, color: Colors.white, size: 8),
+          child: const Icon(Icons.music_note_rounded, color: Colors.white, size: 8),
         );
       },
     );

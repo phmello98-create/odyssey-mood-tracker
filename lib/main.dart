@@ -30,18 +30,24 @@ void main() async {
   // Inicializar MediaKit Apenas para Linux/Windows (suporte a streaming de áudio)
   // No Android/iOS, o just_audio usa implementações nativas (ExoPlayer/AVPlayer)
   if (!Platform.isAndroid && !Platform.isIOS) {
-    // Configurar para evitar ytdl_hook (youtube-dl) em streams de rádio
-    // IMPORTANTE: Configurar propriedades estáticas ANTES de ensureInitialized()
-    JustAudioMediaKit.protocolWhitelist = const [
-      'http',
-      'https',
-      'file',
-      'rtsp',
-      'rtmp',
-    ];
-    JustAudioMediaKit.bufferSize = 8 * 1024 * 1024; // 8MB buffer para streams
-    JustAudioMediaKit.ensureInitialized();
-    debugPrint('🎵 JustAudioMediaKit inicializado (Linux/Desktop)');
+    try {
+      // Configurar para evitar ytdl_hook (youtube-dl) em streams de rádio
+      // IMPORTANTE: Configurar propriedades estáticas ANTES de ensureInitialized()
+      JustAudioMediaKit.protocolWhitelist = const [
+        'http',
+        'https',
+        'file',
+        'rtsp',
+        'rtmp',
+      ];
+      JustAudioMediaKit.bufferSize = 8 * 1024 * 1024; // 8MB buffer para streams
+      JustAudioMediaKit.ensureInitialized();
+      debugPrint('🎵 JustAudioMediaKit inicializado (Linux/Desktop)');
+    } catch (e) {
+      // libmpv não está instalada - áudio não funcionará no desktop
+      debugPrint('⚠️ JustAudioMediaKit não disponível: $e');
+      debugPrint('💡 Instale libmpv-devel para habilitar áudio no Linux');
+    }
   }
 
   // Inicializar Firebase PRIMEIRO (antes de qualquer outro serviço que dependa dele)

@@ -13,7 +13,9 @@ class ForegroundService {
 
   ForegroundService._();
 
-  static const MethodChannel _channel = MethodChannel('com.example.odyssey/foreground_service');
+  static const MethodChannel _channel = MethodChannel(
+    'io.odyssey.moodtracker/foreground_service',
+  );
 
   bool _isRunning = false;
   String? _currentTaskName;
@@ -24,7 +26,8 @@ class ForegroundService {
   bool _initialized = false;
 
   // Stream controller for timer updates from native
-  final StreamController<TimerUpdate> _updateController = StreamController<TimerUpdate>.broadcast();
+  final StreamController<TimerUpdate> _updateController =
+      StreamController<TimerUpdate>.broadcast();
   Stream<TimerUpdate> get onTimerUpdate => _updateController.stream;
 
   // Callbacks from native side
@@ -44,14 +47,16 @@ class ForegroundService {
   /// Initialize method channel handlers and restore state
   Future<void> initialize() async {
     if (_initialized) return;
-    
+
     _channel.setMethodCallHandler(_handleMethodCall);
-    
+
     // Restore state from native side (important after app restart)
     await _restoreState();
-    
+
     _initialized = true;
-    debugPrint('[ForegroundService] Initialized on ${Platform.operatingSystem}');
+    debugPrint(
+      '[ForegroundService] Initialized on ${Platform.operatingSystem}',
+    );
   }
 
   /// Restore timer state from native storage
@@ -66,18 +71,22 @@ class ForegroundService {
         _isPomodoro = state['isPomodoro'] ?? false;
         final durSecs = state['durationSeconds'] ?? -1;
         _durationSeconds = durSecs > 0 ? durSecs : null;
-        
-        debugPrint('[ForegroundService] State restored: $_currentTaskName, elapsed=${_elapsed.inSeconds}s');
-        
+
+        debugPrint(
+          '[ForegroundService] State restored: $_currentTaskName, elapsed=${_elapsed.inSeconds}s',
+        );
+
         // Notify listeners
-        _updateController.add(TimerUpdate(
-          elapsed: _elapsed,
-          taskName: _currentTaskName ?? '',
-          isPaused: _isPaused,
-          remaining: _durationSeconds != null 
-              ? Duration(seconds: _durationSeconds! - _elapsed.inSeconds)
-              : null,
-        ));
+        _updateController.add(
+          TimerUpdate(
+            elapsed: _elapsed,
+            taskName: _currentTaskName ?? '',
+            isPaused: _isPaused,
+            remaining: _durationSeconds != null
+                ? Duration(seconds: _durationSeconds! - _elapsed.inSeconds)
+                : null,
+          ),
+        );
       }
     } catch (e) {
       debugPrint('[ForegroundService] Error restoring state: $e');
@@ -90,11 +99,13 @@ class ForegroundService {
       case 'onTimerTick':
         final elapsedSeconds = call.arguments['elapsedSeconds'] as int;
         _elapsed = Duration(seconds: elapsedSeconds);
-        _updateController.add(TimerUpdate(
-          elapsed: _elapsed,
-          taskName: _currentTaskName ?? '',
-          isPaused: _isPaused,
-        ));
+        _updateController.add(
+          TimerUpdate(
+            elapsed: _elapsed,
+            taskName: _currentTaskName ?? '',
+            isPaused: _isPaused,
+          ),
+        );
         onTimerTick?.call(_elapsed);
         break;
 
@@ -119,7 +130,9 @@ class ForegroundService {
         final elapsedSeconds = call.arguments['elapsedSeconds'] as int;
         _elapsed = Duration(seconds: elapsedSeconds);
         _isRunning = false;
-        debugPrint('[ForegroundService] Timer completed: ${_elapsed.inSeconds}s');
+        debugPrint(
+          '[ForegroundService] Timer completed: ${_elapsed.inSeconds}s',
+        );
         break;
 
       case 'onTimerAction':
@@ -227,7 +240,9 @@ class ForegroundService {
         'isPaused': isPaused,
       });
     } on PlatformException catch (e) {
-      debugPrint('[ForegroundService] Error updating notification: ${e.message}');
+      debugPrint(
+        '[ForegroundService] Error updating notification: ${e.message}',
+      );
     }
   }
 
@@ -245,7 +260,9 @@ class ForegroundService {
   /// Get current timer state (for app restore after kill)
   Future<Map<String, dynamic>?> getTimerState() async {
     try {
-      final result = await _channel.invokeMethod<Map<dynamic, dynamic>>('getTimerState');
+      final result = await _channel.invokeMethod<Map<dynamic, dynamic>>(
+        'getTimerState',
+      );
       if (result != null) {
         return Map<String, dynamic>.from(result);
       }

@@ -5,7 +5,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:intl/intl.dart';
-import 'package:odyssey/src/constants/app_theme.dart';
 import 'package:odyssey/src/features/activities/model/activity.dart';
 import 'package:odyssey/src/features/time_tracker/data/time_tracking_repository.dart';
 import 'package:odyssey/src/features/time_tracker/domain/time_tracking_record.dart';
@@ -652,7 +651,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
               builder: (context, value, child) {
                 return Transform.scale(
                   scale: value,
-                  child: Text('🍅', style: TextStyle(fontSize: 64)),
+                  child: const Text('🍅', style: TextStyle(fontSize: 64)),
                 );
               },
             ),
@@ -673,10 +672,10 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                 color: const Color(0xFF27AE60).withOpacity(0.15),
                 borderRadius: BorderRadius.circular(20),
               ),
-              child: Text(
+              child: const Text(
                 '+25 XP',
                 style: TextStyle(
-                  color: const Color(0xFF27AE60),
+                  color: Color(0xFF27AE60),
                   fontWeight: FontWeight.w600,
                   fontSize: 18,
                 ),
@@ -718,7 +717,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                 _pomodoroTimeLeft = _pomodoroDuration;
               });
             },
-            child: Text('Fechar'),
+            child: const Text('Fechar'),
           ),
           ElevatedButton(
             onPressed: () {
@@ -732,7 +731,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
               isLongBreak
                   ? 'Pausa Longa (${_longBreakDuration.inMinutes}min)'
                   : 'Pausa (${_shortBreakDuration.inMinutes}min)',
-              style: TextStyle(color: Colors.white),
+              style: const TextStyle(color: Colors.white),
             ),
           ),
         ],
@@ -986,7 +985,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Text('🍅', style: TextStyle(fontSize: 16)),
+                          const Text('🍅', style: TextStyle(fontSize: 16)),
                           const SizedBox(width: 6),
                           Text(
                             'Pomodoro',
@@ -1163,7 +1162,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
         // Header
         Row(
           children: [
-            Icon(Icons.history_rounded, size: 18, color: pomodoroColor),
+            const Icon(Icons.history_rounded, size: 18, color: pomodoroColor),
             const SizedBox(width: 8),
             Text(
               'Sessões de Hoje',
@@ -1183,7 +1182,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                 ),
                 child: Text(
                   '${sessions.length}',
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
                     color: pomodoroColor,
@@ -1554,7 +1553,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(icon, style: TextStyle(fontSize: 18)),
+        Text(icon, style: const TextStyle(fontSize: 18)),
         const SizedBox(width: 8),
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1910,7 +1909,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
         final displayTime = _isRunning ? _elapsedTime : totalDuration;
 
         // Progress para o ring (baseado em meta diária de 8h)
-        final dailyGoalSeconds = 8 * 60 * 60;
+        const dailyGoalSeconds = 8 * 60 * 60;
         final progress = (totalSeconds / dailyGoalSeconds).clamp(0.0, 1.0);
 
         return Padding(
@@ -2255,8 +2254,8 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                   ),
                   TextButton.icon(
                     onPressed: () => _showAllTasksDialog(context, allRecords),
-                    icon: Icon(Icons.history_rounded, size: 18),
-                    label: Text('Histórico'),
+                    icon: const Icon(Icons.history_rounded, size: 18),
+                    label: const Text('Histórico'),
                     style: TextButton.styleFrom(
                       foregroundColor: colorScheme.primary,
                     ),
@@ -2718,9 +2717,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
 
     // Format start time
     final startTime = DateFormat('HH:mm').format(record.startTime);
-    final endTime = record.endTime != null
-        ? DateFormat('HH:mm').format(record.endTime!)
-        : null;
+    final endTime = DateFormat('HH:mm').format(record.endTime);
 
     return GestureDetector(
       onTap: () {
@@ -2878,7 +2875,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        '$startTime${endTime != null ? ' → $endTime' : ''}',
+                        '$startTime${' → $endTime'}',
                         style: TextStyle(
                           fontSize: 12,
                           color: colorScheme.onSurfaceVariant,
@@ -3067,7 +3064,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                     ),
                   ],
                 ),
-                child: Icon(Icons.add_rounded, color: Colors.white, size: 30),
+                child: const Icon(Icons.add_rounded, color: Colors.white, size: 30),
               ),
             ),
           ),
@@ -3320,7 +3317,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                                         children: [
                                           Text(
                                             project,
-                                            style: TextStyle(
+                                            style: const TextStyle(
                                               fontWeight: FontWeight.w600,
                                               fontSize: 14,
                                             ),
@@ -3484,7 +3481,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
       builder: (context) => AlertDialog(
         backgroundColor: Theme.of(context).colorScheme.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text('Nova Categoria'),
+        title: const Text('Nova Categoria'),
         content: TextField(
           controller: controller,
           autofocus: true,
@@ -3493,7 +3490,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
             filled: true,
             fillColor: Theme.of(
               context,
-            ).colorScheme.surfaceVariant.withOpacity(0.3),
+            ).colorScheme.surfaceContainerHighest.withOpacity(0.3),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide.none,
@@ -3503,7 +3500,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('Cancelar'),
+            child: const Text('Cancelar'),
           ),
           ElevatedButton(
             onPressed: () {
@@ -3521,7 +3518,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                 Navigator.pop(context);
               }
             },
-            child: Text('Criar'),
+            child: const Text('Criar'),
           ),
         ],
       ),
@@ -3536,7 +3533,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
       builder: (context) => AlertDialog(
         backgroundColor: Theme.of(context).colorScheme.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text('Editar Categoria'),
+        title: const Text('Editar Categoria'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -3548,7 +3545,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                 filled: true,
                 fillColor: Theme.of(
                   context,
-                ).colorScheme.surfaceVariant.withOpacity(0.3),
+                ).colorScheme.surfaceContainerHighest.withOpacity(0.3),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                   borderSide: BorderSide.none,
@@ -3570,7 +3567,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
           ),
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('Cancelar'),
+            child: const Text('Cancelar'),
           ),
           ElevatedButton(
             onPressed: () {
@@ -3587,7 +3584,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                 Navigator.pop(context);
               }
             },
-            child: Text('Salvar'),
+            child: const Text('Salvar'),
           ),
         ],
       ),
@@ -3600,12 +3597,12 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
       builder: (context) => AlertDialog(
         backgroundColor: Theme.of(context).colorScheme.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text('Apagar Categoria?'),
+        title: const Text('Apagar Categoria?'),
         content: Text('Deseja apagar a categoria "$categoryName"?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('Cancelar'),
+            child: const Text('Cancelar'),
           ),
           ElevatedButton(
             onPressed: () {
@@ -3618,7 +3615,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
             style: ElevatedButton.styleFrom(
               backgroundColor: Theme.of(context).colorScheme.error,
             ),
-            child: Text('Apagar', style: TextStyle(color: Colors.white)),
+            child: const Text('Apagar', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -3633,7 +3630,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
       builder: (context) => AlertDialog(
         backgroundColor: Theme.of(context).colorScheme.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text('Editar Projeto'),
+        title: const Text('Editar Projeto'),
         content: TextField(
           controller: controller,
           autofocus: true,
@@ -3642,7 +3639,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
             filled: true,
             fillColor: Theme.of(
               context,
-            ).colorScheme.surfaceVariant.withOpacity(0.3),
+            ).colorScheme.surfaceContainerHighest.withOpacity(0.3),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide.none,
@@ -3652,7 +3649,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('Cancelar'),
+            child: const Text('Cancelar'),
           ),
           ElevatedButton(
             onPressed: () async {
@@ -3663,7 +3660,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                 Navigator.pop(context);
               }
             },
-            child: Text('Salvar'),
+            child: const Text('Salvar'),
           ),
         ],
       ),
@@ -3694,7 +3691,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
       builder: (context) => AlertDialog(
         backgroundColor: Theme.of(context).colorScheme.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text('Apagar Projeto?'),
+        title: const Text('Apagar Projeto?'),
         content: Text(
           taskCount > 0
               ? 'O projeto "$projectName" tem $taskCount tarefa(s). As tarefas serão mantidas, mas ficarão sem projeto.'
@@ -3703,7 +3700,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('Cancelar'),
+            child: const Text('Cancelar'),
           ),
           ElevatedButton(
             onPressed: () async {
@@ -3713,7 +3710,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
             style: ElevatedButton.styleFrom(
               backgroundColor: Theme.of(context).colorScheme.error,
             ),
-            child: Text('Apagar', style: TextStyle(color: Colors.white)),
+            child: const Text('Apagar', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -3746,7 +3743,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
       builder: (context) => AlertDialog(
         backgroundColor: Theme.of(context).colorScheme.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text('Novo Projeto'),
+        title: const Text('Novo Projeto'),
         content: TextField(
           controller: projectNameController,
           autofocus: true,
@@ -3755,7 +3752,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
             filled: true,
             fillColor: Theme.of(
               context,
-            ).colorScheme.surfaceVariant.withOpacity(0.3),
+            ).colorScheme.surfaceContainerHighest.withOpacity(0.3),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide.none,
@@ -3765,7 +3762,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('Cancelar'),
+            child: const Text('Cancelar'),
           ),
           ElevatedButton(
             onPressed: () {
@@ -3779,7 +3776,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                 _showAddTaskDialog();
               }
             },
-            child: Text('Criar'),
+            child: const Text('Criar'),
           ),
         ],
       ),
@@ -4006,8 +4003,9 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                           _selectedCategory = selectedCategory;
                           _selectedProject =
                               selectedProject ?? projectController.text;
-                          if (_selectedProject?.isEmpty ?? true)
+                          if (_selectedProject?.isEmpty ?? true) {
                             _selectedProject = null;
+                          }
                         });
                         _startTimer(customTask: _taskNameController.text);
                       }
@@ -4020,7 +4018,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                         borderRadius: BorderRadius.circular(12),
                       ),
                     ),
-                    child: Text(
+                    child: const Text(
                       'Iniciar Timer',
                       style: TextStyle(fontWeight: FontWeight.w600),
                     ),
@@ -4073,7 +4071,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                         color: Colors.white.withOpacity(0.08),
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: Icon(
+                      child: const Icon(
                         Icons.keyboard_arrow_down_rounded,
                         color: Colors.white70,
                         size: 24,
@@ -4119,7 +4117,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                 children: [
                   Text(
                     taskName,
-                    style: TextStyle(
+                    style: const TextStyle(
                       color: Colors.white,
                       fontSize: 24,
                       fontWeight: FontWeight.w600,
@@ -4254,7 +4252,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
               child: Center(
                 child: Text(
                   _formatDurationShort(displayTime),
-                  style: TextStyle(
+                  style: const TextStyle(
                     color: Colors.white,
                     fontSize: 56,
                     fontWeight: FontWeight.w300,
@@ -4289,7 +4287,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                   color: Theme.of(context).colorScheme.surfaceContainerHighest,
                   shape: BoxShape.circle,
                 ),
-                child: Icon(
+                child: const Icon(
                   Icons.keyboard_arrow_down,
                   color: Colors.white,
                   size: 28,
@@ -4321,7 +4319,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                     ),
                   ],
                 ),
-                child: Icon(Icons.stop_rounded, color: Colors.white, size: 36),
+                child: const Icon(Icons.stop_rounded, color: Colors.white, size: 36),
               ),
             ),
 
@@ -4340,7 +4338,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                   color: Theme.of(context).colorScheme.surfaceContainerHighest,
                   shape: BoxShape.circle,
                 ),
-                child: Icon(Icons.close, color: Colors.white, size: 24),
+                child: const Icon(Icons.close, color: Colors.white, size: 24),
               ),
             ),
           ],
@@ -4475,7 +4473,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                               color: Colors.white.withValues(alpha: 0.08),
                             ),
                           ),
-                          child: Icon(
+                          child: const Icon(
                             Icons.arrow_back_rounded,
                             color: Colors.white60,
                             size: 22,
@@ -4546,7 +4544,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                               color: Colors.white.withValues(alpha: 0.08),
                             ),
                           ),
-                          child: Icon(
+                          child: const Icon(
                             Icons.tune_rounded,
                             color: Colors.white60,
                             size: 22,
@@ -4778,7 +4776,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
               children: [
                 Text(
                   taskName,
-                  style: TextStyle(
+                  style: const TextStyle(
                     color: Colors.white,
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
@@ -4845,7 +4843,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                 color: Colors.white.withOpacity(0.1),
                 shape: BoxShape.circle,
               ),
-              child: Icon(Icons.close, color: Colors.white54, size: 18),
+              child: const Icon(Icons.close, color: Colors.white54, size: 18),
             ),
           ),
         ],
@@ -4977,7 +4975,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                   // Campo nome da tarefa
                   TextField(
                     controller: taskController,
-                    style: TextStyle(color: Colors.white),
+                    style: const TextStyle(color: Colors.white),
                     decoration: InputDecoration(
                       labelText: 'Nome da tarefa',
                       labelStyle: TextStyle(
@@ -5079,7 +5077,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                                 : null,
                           ),
                           child: isSelected
-                              ? Icon(Icons.check, color: Colors.white, size: 18)
+                              ? const Icon(Icons.check, color: Colors.white, size: 18)
                               : null,
                         ),
                       );
@@ -5181,7 +5179,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                           borderRadius: BorderRadius.circular(14),
                         ),
                       ),
-                      child: Text(
+                      child: const Text(
                         'Criar Tarefa',
                         style: TextStyle(
                           color: Colors.white,
@@ -5291,11 +5289,11 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
   }) {
     return Column(
       children: [
-        Text(icon, style: TextStyle(fontSize: 20)),
+        Text(icon, style: const TextStyle(fontSize: 20)),
         const SizedBox(height: 4),
         Text(
           value,
-          style: TextStyle(
+          style: const TextStyle(
             color: Colors.white,
             fontSize: 18,
             fontWeight: FontWeight.w600,
@@ -5416,7 +5414,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                                       : Colors.white.withOpacity(0.1),
                                   borderRadius: BorderRadius.circular(10),
                                 ),
-                                child: Text(
+                                child: const Text(
                                   '⏱️',
                                   style: TextStyle(fontSize: 20),
                                 ),
@@ -5509,7 +5507,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                                       ),
                                       child: Column(
                                         children: [
-                                          Text(
+                                          const Text(
                                             '🔔',
                                             style: TextStyle(fontSize: 18),
                                           ),
@@ -5575,7 +5573,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                                       ),
                                       child: Column(
                                         children: [
-                                          Text(
+                                          const Text(
                                             '🕐',
                                             style: TextStyle(fontSize: 18),
                                           ),
@@ -5734,7 +5732,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                                     ).colorScheme.primary.withOpacity(0.2)
                                   : Theme.of(
                                       context,
-                                    ).colorScheme.surfaceVariant,
+                                    ).colorScheme.surfaceContainerHighest,
                               borderRadius: BorderRadius.circular(12),
                               border: selectedAmbient == 'none'
                                   ? Border.all(
@@ -5747,7 +5745,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                             ),
                             child: Row(
                               children: [
-                                Text('🔇', style: TextStyle(fontSize: 22)),
+                                const Text('🔇', style: TextStyle(fontSize: 22)),
                                 const SizedBox(width: 12),
                                 Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -5823,7 +5821,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                                           ).colorScheme.primary.withOpacity(0.2)
                                         : Theme.of(
                                             context,
-                                          ).colorScheme.surfaceVariant,
+                                          ).colorScheme.surfaceContainerHighest,
                                     borderRadius: BorderRadius.circular(12),
                                     border: isSelected
                                         ? Border.all(
@@ -5838,7 +5836,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                                     children: [
                                       Text(
                                         info.name.split(' ')[0],
-                                        style: TextStyle(fontSize: 22),
+                                        style: const TextStyle(fontSize: 22),
                                       ),
                                       const SizedBox(width: 12),
                                       Expanded(
@@ -5879,9 +5877,9 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                                               .isSoundDownloaded(entry.key),
                                           builder: (context, snapshot) {
                                             if (snapshot.data == true) {
-                                              return Icon(
+                                              return const Icon(
                                                 Icons.download_done,
-                                                color: const Color(0xFF27AE60),
+                                                color: Color(0xFF27AE60),
                                                 size: 18,
                                               );
                                             }
@@ -6017,7 +6015,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
         decoration: BoxDecoration(
           color: isSelected
               ? Theme.of(context).colorScheme.primary.withOpacity(0.2)
-              : Theme.of(context).colorScheme.surfaceVariant,
+              : Theme.of(context).colorScheme.surfaceContainerHighest,
           borderRadius: BorderRadius.circular(20),
           border: isSelected
               ? Border.all(
@@ -6053,11 +6051,11 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
             Text('Sair do Pomodoro?'),
           ],
         ),
-        content: Text('O timer será pausado, mas seu progresso será mantido.'),
+        content: const Text('O timer será pausado, mas seu progresso será mantido.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('Continuar'),
+            child: const Text('Continuar'),
           ),
           ElevatedButton(
             onPressed: () {
@@ -6068,7 +6066,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFFFF6B6B),
             ),
-            child: Text('Sair', style: TextStyle(color: Colors.white)),
+            child: const Text('Sair', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -6294,7 +6292,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                                           ).colorScheme.primary.withOpacity(0.2)
                                         : Theme.of(
                                             context,
-                                          ).colorScheme.surfaceVariant,
+                                          ).colorScheme.surfaceContainerHighest,
                                     borderRadius: BorderRadius.circular(20),
                                     border: isSelected
                                         ? Border.all(
@@ -6349,7 +6347,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                             activeColor: Theme.of(context).colorScheme.primary,
                             inactiveColor: Theme.of(
                               context,
-                            ).colorScheme.surfaceVariant,
+                            ).colorScheme.surfaceContainerHighest,
                             onChanged: (value) {
                               setModalState(() => ambientVolume = value);
                               soundService.setAmbientVolume(value);
@@ -6411,7 +6409,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                           borderRadius: BorderRadius.circular(12),
                         ),
                       ),
-                      child: Text(
+                      child: const Text(
                         'Salvar',
                         style: TextStyle(
                           color: Colors.white,
@@ -6471,7 +6469,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                 alignment: Alignment.center,
                 child: Text(
                   '$value${unit.isNotEmpty ? " $unit" : ""}',
-                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
                 ),
               ),
               GestureDetector(
@@ -6545,7 +6543,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                           ).colorScheme.surfaceContainerHighest,
                           borderRadius: BorderRadius.circular(10),
                         ),
-                        child: Icon(
+                        child: const Icon(
                           Icons.arrow_back,
                           color: Colors.white,
                           size: 20,
@@ -6751,7 +6749,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
               ),
               Text(
                 value,
-                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 20),
+                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 20),
               ),
             ],
           ),

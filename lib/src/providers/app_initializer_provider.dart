@@ -31,6 +31,7 @@ import 'package:odyssey/src/utils/services/foreground_service.dart';
 import 'package:odyssey/src/utils/services/backup_service.dart';
 import 'package:odyssey/src/utils/services/firebase_service.dart';
 import 'package:odyssey/src/security/secure_hive_manager.dart';
+import 'package:odyssey/src/shared/data/isar_service.dart';
 import 'package:odyssey/src/features/onboarding/services/showcase_service.dart';
 
 enum AppInitStatus { initial, loading, success, error }
@@ -90,6 +91,10 @@ class AppInitializer extends StateNotifier<AppInitState> {
       _registerHiveAdapters();
       await _preOpenHiveBoxes();
       debugPrint('✅ [AppInit] Hive: ${stopwatch.elapsedMilliseconds}ms');
+
+      // 2.1. Isar Init
+      await IsarService.getInstance();
+      debugPrint('✅ [AppInit] Isar: ${stopwatch.elapsedMilliseconds}ms');
 
       // 2.5. ShowcaseService Init (precisa do Hive)
       await ShowcaseService.init();
@@ -162,8 +167,8 @@ class AppInitializer extends StateNotifier<AppInitState> {
     if (!Hive.isAdapterRegistered(ActivityImplAdapter().typeId)) {
       Hive.registerAdapter(ActivityImplAdapter());
     }
-    if (!Hive.isAdapterRegistered(TimeTrackingRecordAdapter().typeId)) {
-      Hive.registerAdapter(TimeTrackingRecordAdapter());
+    if (!Hive.isAdapterRegistered(TimeTrackingRecordImplAdapter().typeId)) {
+      Hive.registerAdapter(TimeTrackingRecordImplAdapter());
     }
     if (!Hive.isAdapterRegistered(HabitAdapter().typeId)) {
       Hive.registerAdapter(HabitAdapter());
@@ -224,7 +229,6 @@ class AppInitializer extends StateNotifier<AppInitState> {
       // Boxes sensíveis - abrir COM criptografia
       await Future.wait([
         Hive.openBox('notes_v2', encryptionCipher: cipher),
-        Hive.openBox('quotes'), // quotes não é sensível
         Hive.openBox<Book>('books_v3'), // books não é sensível
       ]);
       debugPrint('🔐 Hive boxes pré-abertos com criptografia');
@@ -236,7 +240,6 @@ class AppInitializer extends StateNotifier<AppInitState> {
       try {
         await Future.wait([
           Hive.openBox('notes_v2'),
-          Hive.openBox('quotes'),
           Hive.openBox<Book>('books_v3'),
         ]);
         debugPrint(

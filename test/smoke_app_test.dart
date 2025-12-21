@@ -78,7 +78,7 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   setUp(() async {
-    await SharedPreferences.setMockInitialValues({
+    SharedPreferences.setMockInitialValues({
       'splash_animation_enabled': false, // reduz espera do splash no teste
     });
   });
