@@ -21,6 +21,7 @@ import 'package:odyssey/src/features/mood_records/domain/mood_log/mood_record.da
 import 'package:odyssey/src/features/habits/data/habit_repository.dart';
 import 'package:odyssey/src/features/habits/domain/habit.dart';
 import 'package:odyssey/src/features/gamification/data/gamification_repository.dart';
+
 import 'package:odyssey/src/features/notes/data/notes_repository.dart';
 import 'package:odyssey/src/features/time_tracker/data/time_tracking_repository.dart';
 import 'package:odyssey/src/features/time_tracker/domain/time_tracking_record.dart';
@@ -33,6 +34,7 @@ import 'package:odyssey/src/features/tasks/presentation/tasks_screen.dart';
 import 'package:odyssey/src/features/tasks/presentation/widgets/task_form_sheet.dart';
 import 'package:odyssey/src/features/notes/presentation/notes_screen.dart';
 import 'package:odyssey/src/features/library/presentation/library_screen.dart';
+
 import 'package:odyssey/src/features/library/domain/book.dart';
 import 'package:odyssey/src/features/tasks/data/task_repository.dart';
 import 'package:odyssey/src/features/tasks/data/synced_task_repository.dart';
@@ -67,8 +69,6 @@ import 'package:odyssey/src/features/community/domain/post.dart';
 import 'package:odyssey/src/features/community/domain/topic.dart';
 import 'package:odyssey/src/features/community/presentation/widgets/user_avatar.dart';
 import 'package:odyssey/src/features/settings/presentation/settings_screen.dart';
-import 'package:odyssey/src/features/settings/presentation/modern_notification_settings_screen.dart';
-import 'package:odyssey/src/features/subscription/presentation/donation_screen.dart';
 
 // Frases e insights profundos: Nietzsche, Spinoza, Maslow, Psicologia e Ciência
 const List<String> _dailyInsights = [
@@ -173,11 +173,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   Timer? _floatingHeaderTimer;
   bool _isScrolling = false;
 
-  // Side Menu Animation (Rive App Style)
-  late AnimationController _menuAnimController;
-  late Animation<double> _menuAnimation;
-  bool _isMenuOpen = false;
-
   @override
   void initState() {
     super.initState();
@@ -227,47 +222,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
     // Floating header scroll detection
     _scrollController.addListener(_onScroll);
-
-    // Side Menu Animation Controller (Rive App Style)
-    _menuAnimController = AnimationController(
-      duration: const Duration(milliseconds: 300),
-      vsync: this,
-    );
-    _menuAnimation = Tween<double>(begin: 0, end: 1).animate(
-      CurvedAnimation(parent: _menuAnimController, curve: Curves.easeOutCubic),
-    );
-  }
-
-  void _toggleSideMenu() {
-    HapticFeedback.mediumImpact();
-    setState(() => _isMenuOpen = !_isMenuOpen);
-    if (_isMenuOpen) {
-      _menuAnimController.forward();
-    } else {
-      _menuAnimController.reverse();
-    }
   }
 
   void _onScroll() {
-    // Mostrar header flutuante quando scrollar para baixo (além de 80px)
-    final shouldShow = _scrollController.offset > 80;
-
-    if (shouldShow != _showFloatingHeader) {
-      setState(() => _showFloatingHeader = shouldShow);
-    }
-
-    // Marcar como scrollando
-    if (!_isScrolling) {
-      setState(() => _isScrolling = true);
-    }
-
-    // Resetar timer de auto-hide
-    _floatingHeaderTimer?.cancel();
-    _floatingHeaderTimer = Timer(const Duration(seconds: 2), () {
-      if (mounted && _showFloatingHeader) {
-        setState(() => _isScrolling = false);
-      }
-    });
+    // Scroll listener kept for potential future use or analytics
   }
 
   Future<void> _initHabitRepo() async {
@@ -311,7 +269,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
     _floatingHeaderTimer?.cancel();
-    _menuAnimController.dispose();
+
     super.dispose();
   }
 
@@ -375,482 +333,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   @override
   Widget build(BuildContext context) {
     final monthFormat = DateFormat('MMMM yyyy', 'pt_BR');
-    final settings = ref.watch(settingsProvider);
+    // Performance: watch apenas as propriedades necessárias
+    final userName = ref.watch(settingsProvider.select((s) => s.userName));
+    final avatarPath = ref.watch(settingsProvider.select((s) => s.avatarPath));
     final colors = Theme.of(context).colorScheme;
 
-    // Cor de fundo quando o menu está aberto (escuro estilo Rive App)
-    final menuBgColor = Theme.of(context).brightness == Brightness.dark
-        ? const Color(0xFF17203A)
-        : const Color(0xFF1E2A47);
-
-    return Scaffold(
-      extendBody: true,
-      backgroundColor: menuBgColor,
-      body: Stack(
-        children: [
-          // Fundo quando menu está aberto
-          Positioned.fill(child: Container(color: menuBgColor)),
-
-          // ==========================================
-          // SIDE MENU (Atrás do conteúdo principal)
-          // ==========================================
-          RepaintBoundary(
-            child: AnimatedBuilder(
-              animation: _menuAnimation,
-              builder: (context, child) {
-                return Transform(
-                  alignment: Alignment.center,
-                  transform: Matrix4.identity()
-                    ..setEntry(3, 2, 0.001)
-                    ..rotateY(((1 - _menuAnimation.value) * -30) * pi / 180)
-                    ..translate((1 - _menuAnimation.value) * -300),
-                  child: child,
-                );
-              },
-              child: FadeTransition(
-                opacity: _menuAnimation,
-                child: _buildSideMenu(settings, colors),
-              ),
-            ),
-          ),
-
-          // ==========================================
-          // CONTEÚDO PRINCIPAL (Animado quando menu abre)
-          // ==========================================
-          RepaintBoundary(
-            child: AnimatedBuilder(
-              animation: _menuAnimation,
-              builder: (context, child) {
-                return Transform.scale(
-                  scale: 1 - (_menuAnimation.value * 0.1),
-                  child: Transform.translate(
-                    offset: Offset(_menuAnimation.value * 265, 0),
-                    child: Transform(
-                      alignment: Alignment.center,
-                      transform: Matrix4.identity()
-                        ..setEntry(3, 2, 0.001)
-                        ..rotateY((_menuAnimation.value * 30) * pi / 180),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(
-                          _menuAnimation.value * 24,
-                        ),
-                        child: child,
-                      ),
-                    ),
-                  ),
-                );
-              },
-              child: GestureDetector(
-                onTap: _isMenuOpen ? _toggleSideMenu : null,
-                child: AbsorbPointer(
-                  absorbing: _isMenuOpen,
-                  child: _buildMainContent(monthFormat, settings, colors),
-                ),
-              ),
-            ),
-          ),
-
-          // ==========================================
-          // MENU BUTTON (Hamburger/Close)
-          // ==========================================
-          RepaintBoundary(
-            child: AnimatedBuilder(
-              animation: _menuAnimation,
-              builder: (context, child) {
-                return SafeArea(
-                  child: Row(
-                    children: [
-                      SizedBox(width: _menuAnimation.value * 216),
-                      child!,
-                    ],
-                  ),
-                );
-              },
-              child: GestureDetector(
-                onTap: _toggleSideMenu,
-                child: MouseRegion(
-                  cursor: SystemMouseCursors.click,
-                  child: Container(
-                    width: 44,
-                    height: 44,
-                    margin: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: colors.surface,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: colors.outline.withOpacity(0.1),
-                      ),
-                    ),
-                    child: AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 200),
-                      child: Icon(
-                        _isMenuOpen ? Icons.close_rounded : Icons.menu_rounded,
-                        key: ValueKey(_isMenuOpen),
-                        color: colors.onSurface,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-
-          // ==========================================
-          // FLOATING HEADER (aparece durante scroll)
-          // ==========================================
-          if (!_isMenuOpen)
-            AnimatedPositioned(
-              duration: const Duration(milliseconds: 300),
-              curve: Curves.easeOutCubic,
-              top: (_showFloatingHeader && _isScrolling) ? 0 : -80,
-              left: 0,
-              right: 0,
-              child: _buildFloatingHeader(settings, colors),
-            ),
-        ],
-      ),
-    );
-  }
-
-  // ==========================================
-  // SIDE MENU - Estilo Rive App
-  // ==========================================
-  Widget _buildSideMenu(AppSettings settings, ColorScheme colors) {
-    final stats = ref.read(userStatsProvider);
-    final title = UserTitles.getTitleForXP(stats.totalXP);
-
-    return SafeArea(
-      child: Container(
-        width: 288,
-        padding: const EdgeInsets.symmetric(vertical: 24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header do Menu
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Row(
-                children: [
-                  // Avatar
-                  GestureDetector(
-                    onTap: () {
-                      _toggleSideMenu();
-                      ref.read(navigationProvider.notifier).goToProfile();
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.all(2),
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: LinearGradient(
-                          colors: [colors.primary, colors.tertiary],
-                        ),
-                      ),
-                      child: CircleAvatar(
-                        radius: 24,
-                        backgroundColor: const Color(0xFF17203A),
-                        backgroundImage: settings.avatarPath != null
-                            ? FileImage(File(settings.avatarPath!))
-                            : null,
-                        child: settings.avatarPath == null
-                            ? Text(
-                                settings.userName.isNotEmpty
-                                    ? settings.userName[0].toUpperCase()
-                                    : 'O',
-                                style: const TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                ),
-                              )
-                            : null,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  // Info
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          settings.userName.isNotEmpty
-                              ? settings.userName
-                              : 'Viajante',
-                          style: const TextStyle(
-                            fontSize: 17,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                            decoration: TextDecoration.none,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          '${title.emoji} ${title.name}',
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: Colors.white.withOpacity(0.7),
-                            decoration: TextDecoration.none,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 32),
-
-            // Menu Items
-            Expanded(
-              child: SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _menuSectionLabel('NAVEGAÇÃO'),
-                    _sideMenuItem(Icons.home_rounded, 'Início', true, () {
-                      _toggleSideMenu();
-                    }),
-                    _sideMenuItem(
-                      Icons.person_rounded,
-                      'Meu Perfil',
-                      false,
-                      () {
-                        _toggleSideMenu();
-                        ref.read(navigationProvider.notifier).goToProfile();
-                      },
-                    ),
-                    _sideMenuItem(
-                      Icons.calendar_month_rounded,
-                      'Calendário',
-                      false,
-                      () {
-                        _toggleSideMenu();
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const HabitsCalendarScreen(),
-                          ),
-                        );
-                      },
-                    ),
-                    _sideMenuItem(
-                      Icons.library_books_rounded,
-                      'Biblioteca',
-                      false,
-                      () {
-                        _toggleSideMenu();
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const LibraryScreen(),
-                          ),
-                        );
-                      },
-                    ),
-
-                    const SizedBox(height: 24),
-                    _menuSectionLabel('PROGRESSO'),
-                    _sideMenuItem(
-                      Icons.insights_rounded,
-                      'Estatísticas',
-                      false,
-                      () {
-                        _toggleSideMenu();
-                        ref
-                            .read(navigationProvider.notifier)
-                            .goToProfile(tabIndex: 0);
-                      },
-                    ),
-                    _sideMenuItem(
-                      Icons.emoji_events_rounded,
-                      'Conquistas',
-                      false,
-                      () {
-                        _toggleSideMenu();
-                        ref
-                            .read(navigationProvider.notifier)
-                            .goToProfile(tabIndex: 2);
-                      },
-                    ),
-                    _sideMenuItem(Icons.flag_rounded, 'Metas', false, () {
-                      _toggleSideMenu();
-                      ref
-                          .read(navigationProvider.notifier)
-                          .goToProfile(tabIndex: 4);
-                    }),
-
-                    const SizedBox(height: 24),
-                    _menuSectionLabel('CONFIGURAÇÕES'),
-                    _sideMenuItem(
-                      Icons.settings_rounded,
-                      'Preferências',
-                      false,
-                      () {
-                        _toggleSideMenu();
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const SettingsScreen(),
-                          ),
-                        );
-                      },
-                    ),
-                    _sideMenuItem(
-                      Icons.notifications_rounded,
-                      'Notificações',
-                      false,
-                      () {
-                        _toggleSideMenu();
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) =>
-                                const ModernNotificationSettingsScreen(),
-                          ),
-                        );
-                      },
-                    ),
-                    _sideMenuItem(Icons.favorite_rounded, 'Apoiar', false, () {
-                      _toggleSideMenu();
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const DonationScreen(),
-                        ),
-                      );
-                    }),
-                  ],
-                ),
-              ),
-            ),
-
-            // Dark Mode Toggle
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Row(
-                children: [
-                  Icon(
-                    Theme.of(context).brightness == Brightness.dark
-                        ? Icons.light_mode_rounded
-                        : Icons.dark_mode_rounded,
-                    color: Colors.white.withOpacity(0.6),
-                    size: 24,
-                  ),
-                  const SizedBox(width: 14),
-                  const Expanded(
-                    child: Text(
-                      'Modo Escuro',
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white,
-                        decoration: TextDecoration.none,
-                      ),
-                    ),
-                  ),
-                  Switch.adaptive(
-                    value: Theme.of(context).brightness == Brightness.dark,
-                    activeColor: colors.primary,
-                    onChanged: (v) {
-                      ref
-                          .read(settingsProvider.notifier)
-                          .setThemeMode(v ? ThemeMode.dark : ThemeMode.light);
-                      HapticFeedback.mediumImpact();
-                    },
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 16),
-
-            // Version
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Text(
-                'Odyssey v1.0.0',
-                style: TextStyle(
-                  fontSize: 11,
-                  color: Colors.white.withOpacity(0.4),
-                  decoration: TextDecoration.none,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _menuSectionLabel(String label) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 8, 24, 8),
-      child: Text(
-        label,
-        style: TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w700,
-          color: Colors.white.withOpacity(0.5),
-          letterSpacing: 1.2,
-          decoration: TextDecoration.none,
-        ),
-      ),
-    );
-  }
-
-  Widget _sideMenuItem(
-    IconData icon,
-    String label,
-    bool isSelected,
-    VoidCallback onTap,
-  ) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: () {
-          HapticFeedback.lightImpact();
-          onTap();
-        },
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-          decoration: BoxDecoration(
-            color: isSelected
-                ? Colors.white.withOpacity(0.1)
-                : Colors.transparent,
-            border: Border(
-              left: BorderSide(
-                color: isSelected ? Colors.white : Colors.transparent,
-                width: 3,
-              ),
-            ),
-          ),
-          child: Row(
-            children: [
-              Icon(
-                icon,
-                color: isSelected
-                    ? Colors.white
-                    : Colors.white.withOpacity(0.7),
-                size: 22,
-              ),
-              const SizedBox(width: 14),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                  color: isSelected
-                      ? Colors.white
-                      : Colors.white.withOpacity(0.7),
-                  decoration: TextDecoration.none,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
+    return _buildMainContent(monthFormat, userName, avatarPath, colors);
   }
 
   // ==========================================
@@ -858,13 +346,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   // ==========================================
   Widget _buildMainContent(
     DateFormat monthFormat,
-    AppSettings settings,
+    String userName,
+    String? avatarPath,
     ColorScheme colors,
   ) {
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
-        top: false,
+        top: true,
         child: Stack(
           children: [
             // Main scrollable content
@@ -877,22 +366,45 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   // ==========================================
                   // HEADER CYBERPUNK - RELÓGIO DIGITAL EM TEMPO REAL
                   // ==========================================
+                  // ==========================================
+                  // HEADER MINIMALISTA
+                  // ==========================================
                   SliverToBoxAdapter(
                     child: Padding(
-                      padding: const EdgeInsets.fromLTRB(
-                        70,
-                        16,
-                        20,
-                        0,
-                      ), // Extra left para menu button
-                      child: Builder(
-                        builder: (context) {
-                          final settings = ref.watch(settingsProvider);
-                          return _WellnessHeader(
-                            avatarPath: settings.avatarPath,
-                            userName: settings.userName,
-                            onMenuTap: _toggleSideMenu,
-                            onCalendarTap: () {
+                      padding: const EdgeInsets.fromLTRB(24, 16, 20, 0),
+                      child: Row(
+                        children: [
+                          // Spacer to avoid overlap with the drawer toggle button on the left
+                          const SizedBox(width: 48),
+                          Expanded(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                Text(
+                                  '${_getGreeting()},',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.onSurfaceVariant,
+                                  ),
+                                ),
+                                Text(
+                                  userName,
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.onSurface,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          IconButton(
+                            onPressed: () {
                               HapticFeedback.lightImpact();
                               Navigator.push(
                                 context,
@@ -902,9 +414,28 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                                 ),
                               );
                             },
-                            onAddTap: () => _showSmartAddSheet(context),
-                          );
-                        },
+                            icon: const Icon(Icons.calendar_month_rounded),
+                            style: IconButton.styleFrom(
+                              backgroundColor: Theme.of(context)
+                                  .colorScheme
+                                  .surfaceContainerHighest
+                                  .withOpacity(0.5),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          IconButton(
+                            onPressed: () => _showSmartAddSheet(context),
+                            icon: const Icon(Icons.add),
+                            style: IconButton.styleFrom(
+                              backgroundColor: Theme.of(
+                                context,
+                              ).colorScheme.primary,
+                              foregroundColor: Theme.of(
+                                context,
+                              ).colorScheme.onPrimary,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
@@ -1175,7 +706,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               top: (_showFloatingHeader && _isScrolling) ? 0 : -80,
               left: 0,
               right: 0,
-              child: _buildFloatingHeader(settings, colors),
+              child: _buildFloatingHeader(userName, avatarPath, colors),
             ),
           ],
         ),
@@ -1183,7 +714,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     );
   }
 
-  Widget _buildFloatingHeader(AppSettings settings, ColorScheme colors) {
+  Widget _buildFloatingHeader(
+    String userName,
+    String? avatarPath,
+    ColorScheme colors,
+  ) {
     return ClipRRect(
       child: BackdropFilter(
         filter: ui.ImageFilter.blur(sigmaX: 15, sigmaY: 15),
@@ -1199,10 +734,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             children: [
               // Avatar
               GestureDetector(
-                onTap: () {
-                  HapticFeedback.lightImpact();
-                  _showModernSideMenu(context);
-                },
+                onTap: () {},
                 child: Container(
                   padding: const EdgeInsets.all(2),
                   decoration: BoxDecoration(
@@ -1214,13 +746,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   child: CircleAvatar(
                     radius: 18,
                     backgroundColor: colors.surface,
-                    backgroundImage: settings.avatarPath != null
-                        ? FileImage(File(settings.avatarPath!))
+                    backgroundImage: avatarPath != null
+                        ? FileImage(File(avatarPath))
                         : null,
-                    child: settings.avatarPath == null
+                    child: avatarPath == null
                         ? Text(
-                            settings.userName.isNotEmpty
-                                ? settings.userName[0].toUpperCase()
+                            userName.isNotEmpty
+                                ? userName[0].toUpperCase()
                                 : 'U',
                             style: TextStyle(
                               fontSize: 14,
@@ -1236,7 +768,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               // Nome
               Expanded(
                 child: Text(
-                  settings.userName.isNotEmpty ? settings.userName : 'Viajante',
+                  userName.isNotEmpty ? userName : 'Viajante',
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
@@ -2098,77 +1630,93 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               CurvedAnimation(parent: anim1, curve: Curves.easeOutBack),
             ),
             child: Center(
-              child: Container(
-                margin: const EdgeInsets.all(32),
-                padding: const EdgeInsets.all(32),
-                decoration: BoxDecoration(
-                  color: colors.surface,
-                  borderRadius: BorderRadius.circular(24),
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Ícone animado
-                    TweenAnimationBuilder<double>(
-                      tween: Tween(begin: 0, end: 1),
-                      duration: const Duration(milliseconds: 600),
-                      curve: Curves.elasticOut,
-                      builder: (context, value, child) {
-                        return Transform.scale(
-                          scale: value,
-                          child: Container(
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: [
-                                  colors.primary,
-                                  colors.primary.withOpacity(0.7),
-                                ],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
+              child: Material(
+                color: Colors.transparent,
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxWidth: MediaQuery.of(context).size.width * 0.85,
+                    maxHeight: MediaQuery.of(context).size.height * 0.5,
+                  ),
+                  child: Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 24),
+                    padding: const EdgeInsets.all(28),
+                    decoration: BoxDecoration(
+                      color: colors.surface,
+                      borderRadius: BorderRadius.circular(24),
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        // Ícone animado
+                        TweenAnimationBuilder<double>(
+                          tween: Tween(begin: 0, end: 1),
+                          duration: const Duration(milliseconds: 600),
+                          curve: Curves.elasticOut,
+                          builder: (context, value, child) {
+                            return Transform.scale(
+                              scale: value,
+                              child: Container(
+                                padding: const EdgeInsets.all(14),
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      colors.primary,
+                                      colors.primary.withOpacity(0.7),
+                                    ],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                  ),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.favorite_rounded,
+                                  color: Colors.white,
+                                  size: 28,
+                                ),
                               ),
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(
-                              Icons.favorite_rounded,
-                              color: Colors.white,
-                              size: 32,
+                            );
+                          },
+                        ),
+                        const SizedBox(height: 16),
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            moodEmoji != null
+                                ? 'Compartilhando $moodEmoji'
+                                : 'Indo para a comunidade',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: colors.onSurface,
                             ),
                           ),
-                        );
-                      },
+                        ),
+                        const SizedBox(height: 6),
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            'Sua experiência inspira outros! ✨',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: colors.onSurfaceVariant,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        // Loading indicator
+                        SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: colors.primary,
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 20),
-                    Text(
-                      moodEmoji != null
-                          ? 'Compartilhando $moodEmoji'
-                          : 'Compartilhando com a comunidade',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: colors.onSurface,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Sua experiência pode inspirar outros! ✨',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: colors.onSurfaceVariant,
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    // Loading indicator
-                    SizedBox(
-                      width: 24,
-                      height: 24,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: colors.primary,
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ),
             ),
@@ -6797,7 +6345,7 @@ extension _HomeScreenStateDataInsights on _HomeScreenState {
 
     // Mostrar feedback visual de sucesso
     if (mounted) {
-      setState(() {}); // Força rebuild para atualizar lista
+      refresh(); // Força rebuild para atualizar lista
       FeedbackService.showSuccess(
         context,
         '✅ Tarefa criada!',
@@ -7132,562 +6680,6 @@ extension _HomeScreenStateDataInsights on _HomeScreenState {
                 ),
               ),
             ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  // ==========================================
-  // MENU LATERAL MODERNO - Flutuante com efeito 3D
-  // ==========================================
-  void _showModernSideMenu(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    final settings = ref.read(settingsProvider);
-    final stats = ref.read(userStatsProvider);
-    final title = UserTitles.getTitleForXP(stats.totalXP);
-    final screenWidth = MediaQuery.of(context).size.width;
-
-    showGeneralDialog(
-      context: context,
-      barrierDismissible: true,
-      barrierLabel: 'Menu',
-      barrierColor: Colors.black.withOpacity(0.3),
-      transitionDuration: const Duration(milliseconds: 350),
-      pageBuilder: (context, animation, secondaryAnimation) {
-        return const SizedBox.shrink();
-      },
-      transitionBuilder: (context, animation, secondaryAnimation, child) {
-        final slideAnimation =
-            Tween<Offset>(begin: const Offset(-1, 0), end: Offset.zero).animate(
-              CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
-            );
-
-        final scaleAnimation = Tween<double>(begin: 0.95, end: 1.0).animate(
-          CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
-        );
-
-        // Efeito 3D leve - rotação
-        final rotateAnimation = Tween<double>(begin: 0.05, end: 0.0).animate(
-          CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
-        );
-
-        return Stack(
-          children: [
-            // Menu flutuante
-            SlideTransition(
-              position: slideAnimation,
-              child: Transform(
-                alignment: Alignment.centerLeft,
-                transform: Matrix4.identity()
-                  ..setEntry(3, 2, 0.001)
-                  ..rotateY(rotateAnimation.value),
-                child: ScaleTransition(
-                  scale: scaleAnimation,
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: Container(
-                      width: screenWidth * 0.78,
-                      height: double.infinity,
-                      margin: const EdgeInsets.only(
-                        left: 12,
-                        top: 50,
-                        bottom: 50,
-                      ),
-                      decoration: BoxDecoration(
-                        color: colors.surface.withOpacity(0.92),
-                        borderRadius: BorderRadius.circular(32),
-                        border: Border.all(
-                          color: colors.outline.withOpacity(0.08),
-                          width: 1,
-                        ),
-                      ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(32),
-                        child: BackdropFilter(
-                          filter: ui.ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-                          child: SafeArea(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                // Header do Menu
-                                Padding(
-                                  padding: const EdgeInsets.all(24),
-                                  child: Row(
-                                    children: [
-                                      // Avatar
-                                      GestureDetector(
-                                        onTap: () {
-                                          Navigator.pop(context);
-                                          ref
-                                              .read(navigationProvider.notifier)
-                                              .goToProfile();
-                                        },
-                                        child: Container(
-                                          padding: const EdgeInsets.all(3),
-                                          decoration: BoxDecoration(
-                                            shape: BoxShape.circle,
-                                            gradient: LinearGradient(
-                                              colors: [
-                                                colors.primary,
-                                                colors.tertiary,
-                                              ],
-                                            ),
-                                          ),
-                                          child: CircleAvatar(
-                                            radius: 28,
-                                            backgroundColor: colors.surface,
-                                            backgroundImage:
-                                                settings.avatarPath != null
-                                                ? FileImage(
-                                                    File(settings.avatarPath!),
-                                                  )
-                                                : null,
-                                            child: settings.avatarPath == null
-                                                ? Text(
-                                                    settings.userName.isNotEmpty
-                                                        ? settings.userName[0]
-                                                              .toUpperCase()
-                                                        : 'O',
-                                                    style: TextStyle(
-                                                      fontSize: 22,
-                                                      fontWeight:
-                                                          FontWeight.bold,
-                                                      color: colors.primary,
-                                                    ),
-                                                  )
-                                                : null,
-                                          ),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 16),
-                                      // Info
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              settings.userName.isNotEmpty
-                                                  ? settings.userName
-                                                  : 'Viajante',
-                                              style: TextStyle(
-                                                fontSize: 18,
-                                                fontWeight: FontWeight.bold,
-                                                color: colors.onSurface,
-                                              ),
-                                            ),
-                                            const SizedBox(height: 4),
-                                            Container(
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                    horizontal: 8,
-                                                    vertical: 3,
-                                                  ),
-                                              decoration: BoxDecoration(
-                                                gradient: LinearGradient(
-                                                  colors: [
-                                                    colors.primary.withOpacity(
-                                                      0.15,
-                                                    ),
-                                                    colors.tertiary.withOpacity(
-                                                      0.15,
-                                                    ),
-                                                  ],
-                                                ),
-                                                borderRadius:
-                                                    BorderRadius.circular(12),
-                                              ),
-                                              child: Text(
-                                                '${title.emoji} ${title.name}',
-                                                style: TextStyle(
-                                                  fontSize: 11,
-                                                  fontWeight: FontWeight.w600,
-                                                  color: colors.primary,
-                                                ),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-
-                                // XP Badge
-                                Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 24,
-                                  ),
-                                  child: Container(
-                                    padding: const EdgeInsets.all(16),
-                                    decoration: BoxDecoration(
-                                      gradient: LinearGradient(
-                                        colors: [
-                                          colors.primaryContainer.withOpacity(
-                                            0.5,
-                                          ),
-                                          colors.secondaryContainer.withOpacity(
-                                            0.3,
-                                          ),
-                                        ],
-                                      ),
-                                      borderRadius: BorderRadius.circular(16),
-                                    ),
-                                    child: Row(
-                                      children: [
-                                        Icon(
-                                          Icons.star_rounded,
-                                          color: Colors.amber,
-                                          size: 28,
-                                        ),
-                                        const SizedBox(width: 12),
-                                        Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              'Nível ${stats.level}',
-                                              style: TextStyle(
-                                                fontSize: 16,
-                                                fontWeight: FontWeight.bold,
-                                                color: colors.onSurface,
-                                              ),
-                                            ),
-                                            Text(
-                                              '${stats.totalXP} XP',
-                                              style: TextStyle(
-                                                fontSize: 12,
-                                                color: colors.onSurfaceVariant,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                        const Spacer(),
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 12,
-                                            vertical: 6,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: colors.primary,
-                                            borderRadius: BorderRadius.circular(
-                                              20,
-                                            ),
-                                          ),
-                                          child: Text(
-                                            '${(stats.levelProgress * 100).round()}%',
-                                            style: const TextStyle(
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.bold,
-                                              color: Colors.white,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-
-                                const SizedBox(height: 24),
-
-                                // Menu Items
-                                Expanded(
-                                  child: SingleChildScrollView(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 12,
-                                    ),
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        _menuSectionTitle('Navegação', colors),
-                                        _modernMenuItem(
-                                          context,
-                                          Icons.home_rounded,
-                                          'Início',
-                                          colors.primary,
-                                          () {
-                                            Navigator.pop(context);
-                                          },
-                                          colors,
-                                        ),
-                                        _modernMenuItem(
-                                          context,
-                                          Icons.person_rounded,
-                                          'Meu Perfil',
-                                          colors.secondary,
-                                          () {
-                                            Navigator.pop(context);
-                                            ref
-                                                .read(
-                                                  navigationProvider.notifier,
-                                                )
-                                                .goToProfile();
-                                          },
-                                          colors,
-                                        ),
-                                        _modernMenuItem(
-                                          context,
-                                          Icons.calendar_month_rounded,
-                                          'Calendário',
-                                          WellnessColors.primary,
-                                          () {
-                                            Navigator.pop(context);
-                                            Navigator.push(
-                                              context,
-                                              MaterialPageRoute(
-                                                builder: (_) =>
-                                                    const HabitsCalendarScreen(),
-                                              ),
-                                            );
-                                          },
-                                          colors,
-                                        ),
-                                        _modernMenuItem(
-                                          context,
-                                          Icons.library_books_rounded,
-                                          'Biblioteca',
-                                          Colors.teal,
-                                          () {
-                                            Navigator.pop(context);
-                                            Navigator.push(
-                                              context,
-                                              MaterialPageRoute(
-                                                builder: (_) =>
-                                                    const LibraryScreen(),
-                                              ),
-                                            );
-                                          },
-                                          colors,
-                                        ),
-
-                                        const SizedBox(height: 12),
-                                        _menuSectionTitle('Progresso', colors),
-                                        _modernMenuItem(
-                                          context,
-                                          Icons.insights_rounded,
-                                          'Estatísticas',
-                                          Colors.orange,
-                                          () {
-                                            Navigator.pop(context);
-                                            ref
-                                                .read(
-                                                  navigationProvider.notifier,
-                                                )
-                                                .goToProfile(tabIndex: 0);
-                                          },
-                                          colors,
-                                        ),
-                                        _modernMenuItem(
-                                          context,
-                                          Icons.emoji_events_rounded,
-                                          'Conquistas',
-                                          Colors.amber,
-                                          () {
-                                            Navigator.pop(context);
-                                            ref
-                                                .read(
-                                                  navigationProvider.notifier,
-                                                )
-                                                .goToProfile(tabIndex: 2);
-                                          },
-                                          colors,
-                                        ),
-                                        _modernMenuItem(
-                                          context,
-                                          Icons.flag_rounded,
-                                          'Metas',
-                                          Colors.green,
-                                          () {
-                                            Navigator.pop(context);
-                                            ref
-                                                .read(
-                                                  navigationProvider.notifier,
-                                                )
-                                                .goToProfile(tabIndex: 4);
-                                          },
-                                          colors,
-                                        ),
-
-                                        const SizedBox(height: 12),
-                                        _menuSectionTitle(
-                                          'Configurações',
-                                          colors,
-                                        ),
-                                        _modernMenuItem(
-                                          context,
-                                          Icons.settings_rounded,
-                                          'Preferências',
-                                          colors.onSurfaceVariant,
-                                          () {
-                                            Navigator.pop(context);
-                                            Navigator.push(
-                                              context,
-                                              MaterialPageRoute(
-                                                builder: (_) =>
-                                                    const SettingsScreen(),
-                                              ),
-                                            );
-                                          },
-                                          colors,
-                                        ),
-                                        _modernMenuItem(
-                                          context,
-                                          Theme.of(context).brightness ==
-                                                  Brightness.dark
-                                              ? Icons.light_mode_rounded
-                                              : Icons.dark_mode_rounded,
-                                          Theme.of(context).brightness ==
-                                                  Brightness.dark
-                                              ? 'Modo Claro'
-                                              : 'Modo Escuro',
-                                          Theme.of(context).brightness ==
-                                                  Brightness.dark
-                                              ? Colors.amber
-                                              : Colors.indigo,
-                                          () {
-                                            final isDark =
-                                                Theme.of(context).brightness ==
-                                                Brightness.dark;
-                                            ref
-                                                .read(settingsProvider.notifier)
-                                                .setThemeMode(
-                                                  isDark
-                                                      ? ThemeMode.light
-                                                      : ThemeMode.dark,
-                                                );
-                                            HapticFeedback.mediumImpact();
-                                          },
-                                          colors,
-                                        ),
-                                        _modernMenuItem(
-                                          context,
-                                          Icons.notifications_rounded,
-                                          'Notificações',
-                                          Colors.red.shade400,
-                                          () {
-                                            Navigator.pop(context);
-                                            Navigator.push(
-                                              context,
-                                              MaterialPageRoute(
-                                                builder: (_) =>
-                                                    const ModernNotificationSettingsScreen(),
-                                              ),
-                                            );
-                                          },
-                                          colors,
-                                        ),
-                                        _modernMenuItem(
-                                          context,
-                                          Icons.favorite_rounded,
-                                          'Apoiar Odyssey',
-                                          Colors.pink,
-                                          () {
-                                            Navigator.pop(context);
-                                            Navigator.push(
-                                              context,
-                                              MaterialPageRoute(
-                                                builder: (_) =>
-                                                    const DonationScreen(),
-                                              ),
-                                            );
-                                          },
-                                          colors,
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-
-                                // Footer
-                                Padding(
-                                  padding: const EdgeInsets.all(24),
-                                  child: Text(
-                                    'Odyssey v1.0.0',
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      color: colors.onSurfaceVariant
-                                          .withOpacity(0.5),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  Widget _menuSectionTitle(String title, ColorScheme colors) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
-      child: Text(
-        title.toUpperCase(),
-        style: TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w700,
-          color: colors.onSurfaceVariant.withOpacity(0.5),
-          letterSpacing: 1.2,
-        ),
-      ),
-    );
-  }
-
-  Widget _modernMenuItem(
-    BuildContext context,
-    IconData icon,
-    String label,
-    Color iconColor,
-    VoidCallback onTap,
-    ColorScheme colors,
-  ) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: () {
-          HapticFeedback.lightImpact();
-          onTap();
-        },
-        borderRadius: BorderRadius.circular(16),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: iconColor.withOpacity(0.12),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(icon, color: iconColor, size: 20),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w500,
-                    color: colors.onSurface,
-                  ),
-                ),
-              ),
-              Icon(
-                Icons.chevron_right_rounded,
-                color: colors.onSurfaceVariant.withOpacity(0.3),
-                size: 20,
-              ),
-            ],
           ),
         ),
       ),
@@ -9229,153 +8221,6 @@ class _NewsCarouselWidgetState extends State<_NewsCarouselWidget> {
 // ==========================================
 // 🌆 CYBERPUNK HEADER - MINIMALISTA
 // ==========================================
-class _WellnessHeader extends StatelessWidget {
-  final VoidCallback onMenuTap;
-  final VoidCallback onCalendarTap;
-  final VoidCallback onAddTap;
-  final String? avatarPath;
-  final String userName;
-
-  const _WellnessHeader({
-    required this.onMenuTap,
-    required this.onCalendarTap,
-    required this.onAddTap,
-    this.avatarPath,
-    this.userName = '',
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        _buildAvatar(context),
-        const SizedBox(width: 16),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                _timeOfDay,
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                'Olá, ${userName.isNotEmpty ? userName : "Viajante"}',
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: Theme.of(context).colorScheme.onSurface,
-                  letterSpacing: -0.5,
-                ),
-              ),
-            ],
-          ),
-        ),
-        Row(
-          children: [
-            _buildIconButton(
-              context,
-              icon: Icons.calendar_today_rounded,
-              onTap: onCalendarTap,
-            ),
-            const SizedBox(width: 12),
-            _buildIconButton(
-              context,
-              icon: Icons.add_rounded,
-              onTap: onAddTap,
-              isPrimary: true,
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  String get _timeOfDay {
-    final hour = DateTime.now().hour;
-    if (hour < 12) return 'Bom dia';
-    if (hour < 18) return 'Boa tarde';
-    return 'Boa noite';
-  }
-
-  Widget _buildAvatar(BuildContext context) {
-    final hasAvatar = avatarPath != null && avatarPath!.isNotEmpty;
-    return GestureDetector(
-      onTap: onMenuTap,
-      child: Container(
-        padding: const EdgeInsets.all(3),
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          border: Border.all(
-            color: WellnessColors.primary.withOpacity(0.3),
-            width: 2,
-          ),
-        ),
-        child: CircleAvatar(
-          radius: 24,
-          backgroundColor: WellnessColors.primary.withOpacity(0.1),
-          backgroundImage: hasAvatar ? FileImage(File(avatarPath!)) : null,
-          child: !hasAvatar
-              ? Text(
-                  userName.isNotEmpty ? userName[0].toUpperCase() : 'U',
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: WellnessColors.primary,
-                  ),
-                )
-              : null,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildIconButton(
-    BuildContext context, {
-    required IconData icon,
-    required VoidCallback onTap,
-    bool isPrimary = false,
-  }) {
-    final colors = Theme.of(context).colorScheme;
-
-    if (isPrimary) {
-      // Botão primário (+) com gradiente vibrante
-      return GestureDetector(
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [colors.primary, colors.tertiary],
-            ),
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Icon(icon, color: Colors.white, size: 22),
-        ),
-      );
-    }
-
-    // Botões secundários
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: colors.surface,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: colors.outline.withOpacity(0.1)),
-        ),
-        child: Icon(icon, color: colors.onSurfaceVariant, size: 22),
-      ),
-    );
-  }
-}
 
 // ==========================================
 // CARD DE VISÃO GERAL DO DIA

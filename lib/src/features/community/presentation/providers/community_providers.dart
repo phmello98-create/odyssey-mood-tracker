@@ -1,4 +1,5 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../auth/presentation/providers/sync_providers.dart';
 import '../../data/community_repository.dart';
@@ -88,6 +89,7 @@ final feedSortOrderProvider = StateProvider<FeedSortOrder>(
 final selectedTagProvider = StateProvider<String?>((ref) => null);
 
 /// Stream provider para o feed de posts (com filtros e fallback para mock data)
+/// Inclui timeout para evitar loading infinito no mobile
 final feedProvider = StreamProvider<List<Post>>((ref) {
   final topic = ref.watch(selectedTopicProvider);
   final postType = ref.watch(selectedPostTypeProvider);
@@ -107,17 +109,33 @@ final feedProvider = StreamProvider<List<Post>>((ref) {
     if (repo == null) {
       return Stream.value(_getMockPosts(topic, postType, selectedTag));
     }
+
+    // Cria um stream com timeout para evitar loading infinito
+    // Se o Firestore não responder em 10 segundos, usa mock data
     return repo
         .watchFeed(limit: 50)
+        .timeout(
+          const Duration(seconds: 10),
+          onTimeout: (sink) {
+            // Timeout atingido, emite mock data
+            sink.add(_getMockPosts(topic, postType, selectedTag));
+          },
+        )
         .map((posts) {
+          // Se recebeu lista vazia do Firestore, usa mock data para UX melhor
+          if (posts.isEmpty) {
+            return _getMockPosts(topic, postType, selectedTag);
+          }
           return _filterPosts(posts, topic, postType, selectedTag);
         })
-        .handleError((error) {
-          // Se Firebase falhar, usa mock data
-          return Stream.value(_getMockPosts(topic, postType, selectedTag));
+        .handleError((error, stackTrace) {
+          // Se Firebase falhar, retorna mock data
+          debugPrint('FeedProvider error: $error');
+          return _getMockPosts(topic, postType, selectedTag);
         });
   } catch (e) {
     // Fallback para mock data se Firebase não estiver disponível
+    debugPrint('FeedProvider catch: $e');
     return Stream.value(_getMockPosts(topic, postType, selectedTag));
   }
 });

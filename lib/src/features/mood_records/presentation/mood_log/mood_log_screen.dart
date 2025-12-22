@@ -1240,7 +1240,7 @@ class _MoodRecordsScreenState extends ConsumerState<MoodRecordsScreen> {
 
   Widget _buildIOSAddButton(ColorScheme colors) {
     return Positioned(
-      bottom: 24,
+      bottom: 110,
       right: 20,
       child: GestureDetector(
         onTap: () {

@@ -61,19 +61,19 @@ class ModernNotificationScheduler {
   /// Define configurações padrão
   Future<void> _setDefaultsIfNeeded() async {
     if (!_prefs!.containsKey(_keyMoodReminderEnabled)) {
-      await _prefs!.setBool(_keyMoodReminderEnabled, true);
+      await _prefs!.setBool(_keyMoodReminderEnabled, false);
       await _prefs!.setString(_keyMoodReminderTime, '20:00');
     }
     if (!_prefs!.containsKey(_keyTaskReminderEnabled)) {
-      await _prefs!.setBool(_keyTaskReminderEnabled, true);
+      await _prefs!.setBool(_keyTaskReminderEnabled, false);
       await _prefs!.setInt(_keyTaskCheckInterval, 60); // 1 hora
     }
     if (!_prefs!.containsKey(_keyHabitReminderEnabled)) {
-      await _prefs!.setBool(_keyHabitReminderEnabled, true);
+      await _prefs!.setBool(_keyHabitReminderEnabled, false);
       await _prefs!.setInt(_keyHabitCheckInterval, 180); // 3 horas
     }
     if (!_prefs!.containsKey(_keyMotivationEnabled)) {
-      await _prefs!.setBool(_keyMotivationEnabled, true);
+      await _prefs!.setBool(_keyMotivationEnabled, false);
       await _prefs!.setInt(_keyMotivationFrequency, 2); // 2x por dia
     }
   }
@@ -81,7 +81,7 @@ class ModernNotificationScheduler {
   /// Agenda notificações diárias
   Future<void> _scheduleDailyNotifications() async {
     // Agendar lembrete de humor
-    if (_prefs!.getBool(_keyMoodReminderEnabled) ?? true) {
+    if (_prefs!.getBool(_keyMoodReminderEnabled) ?? false) {
       await _scheduleMoodReminder();
     }
   }
@@ -130,7 +130,12 @@ class ModernNotificationScheduler {
     }
 
     // Verificação inicial para execuções subsequentes
-    _checkAndSendNotifications();
+    // Aguardar um pouco para não spamar notificações assim que o app abre
+    Future.delayed(const Duration(seconds: 10), () {
+      if (_dailyCheckTimer != null && _dailyCheckTimer!.isActive) {
+        _checkAndSendNotifications();
+      }
+    });
   }
 
   /// Verifica e envia notificações pendentes
@@ -138,17 +143,17 @@ class ModernNotificationScheduler {
     debugPrint('🔔 Verificando notificações pendentes...');
 
     // Verificar tarefas
-    if (_prefs!.getBool(_keyTaskReminderEnabled) ?? true) {
+    if (_prefs!.getBool(_keyTaskReminderEnabled) ?? false) {
       await _checkPendingTasks();
     }
 
     // Verificar hábitos
-    if (_prefs!.getBool(_keyHabitReminderEnabled) ?? true) {
+    if (_prefs!.getBool(_keyHabitReminderEnabled) ?? false) {
       await _checkPendingHabits();
     }
 
     // Enviar motivação aleatória
-    if (_prefs!.getBool(_keyMotivationEnabled) ?? true) {
+    if (_prefs!.getBool(_keyMotivationEnabled) ?? false) {
       await _maybeSendMotivation();
     }
   }
@@ -350,7 +355,7 @@ class ModernNotificationScheduler {
     final timeStr =
         '${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')}';
     await _prefs!.setString(_keyMoodReminderTime, timeStr);
-    if (_prefs!.getBool(_keyMoodReminderEnabled) ?? true) {
+    if (_prefs!.getBool(_keyMoodReminderEnabled) ?? false) {
       await _scheduleMoodReminder();
     }
   }
@@ -378,15 +383,15 @@ class ModernNotificationScheduler {
   // ==================== GETTERS ====================
 
   bool get isMoodReminderEnabled =>
-      _prefs!.getBool(_keyMoodReminderEnabled) ?? true;
+      _prefs!.getBool(_keyMoodReminderEnabled) ?? false;
   String get moodReminderTime =>
       _prefs!.getString(_keyMoodReminderTime) ?? '20:00';
   bool get isTaskReminderEnabled =>
-      _prefs!.getBool(_keyTaskReminderEnabled) ?? true;
+      _prefs!.getBool(_keyTaskReminderEnabled) ?? false;
   bool get isHabitReminderEnabled =>
-      _prefs!.getBool(_keyHabitReminderEnabled) ?? true;
+      _prefs!.getBool(_keyHabitReminderEnabled) ?? false;
   bool get isMotivationEnabled =>
-      _prefs!.getBool(_keyMotivationEnabled) ?? true;
+      _prefs!.getBool(_keyMotivationEnabled) ?? false;
   int get motivationFrequency => _prefs!.getInt(_keyMotivationFrequency) ?? 2;
 
   /// Limpa timer ao descartar

@@ -67,15 +67,38 @@ class CommunityRepository {
     }
 
     try {
-      // Buscar perfil público do usuário
-      final profile = await getProfile(user.uid);
+      // Tentar buscar perfil público do usuário, com fallback para dados do auth
+      String userName = user.displayName ?? 'Usuário';
+      String? userPhotoUrl = user.photoURL;
+      int userLevel = 1;
+
+      try {
+        final profile = await getProfile(user.uid).timeout(
+          const Duration(seconds: 5),
+          onTimeout: () => PublicUserProfile(
+            userId: user.uid,
+            displayName: user.displayName ?? 'Usuário',
+            level: 1,
+            totalXP: 0,
+            createdAt: DateTime.now(),
+            lastActive: DateTime.now(),
+          ),
+        );
+        userName = profile.displayName;
+        userPhotoUrl = profile.photoUrl ?? user.photoURL;
+        userLevel = profile.level;
+      } catch (_) {
+        // Usar dados do Firebase Auth como fallback
+        userName = user.displayName ?? 'Usuário';
+        userPhotoUrl = user.photoURL;
+      }
 
       final now = DateTime.now();
       final postData = {
         'userId': user.uid,
-        'userName': profile.displayName,
-        'userPhotoUrl': profile.photoUrl,
-        'userLevel': profile.level,
+        'userName': userName,
+        'userPhotoUrl': userPhotoUrl,
+        'userLevel': userLevel,
         'content': dto.content,
         'type': dto.type.name,
         'metadata': dto.metadata,

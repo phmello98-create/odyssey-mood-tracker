@@ -2357,6 +2357,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get search => 'Search';
 
   @override
+  String get searchHint => 'Search in history...';
+
+  @override
   String get searchBookOnline => 'Search Book Online';
 
   @override

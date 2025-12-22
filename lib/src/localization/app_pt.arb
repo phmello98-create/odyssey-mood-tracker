@@ -744,6 +744,7 @@
   "saved": "Salvo",
   "saving": "Salvando...",
   "search": "Buscar",
+  "searchHint": "Buscar no histórico...",
   "searchBookOnline": "Buscar Livro Online",
   "searchCoverOnline": "Buscar Capa Online",
   "searchDiary": "Buscar no Diário",

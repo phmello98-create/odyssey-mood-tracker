@@ -2361,6 +2361,9 @@ class AppLocalizationsPt extends AppLocalizations {
   String get search => 'Buscar';
 
   @override
+  String get searchHint => 'Buscar no histórico...';
+
+  @override
   String get searchBookOnline => 'Buscar Livro Online';
 
   @override

@@ -28,6 +28,11 @@ class _LogScreenState extends ConsumerState<LogScreen>
   bool _showMonthlyInsights = false;
   late ScrollController _calendarScrollController;
 
+  // Busca
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+  bool _isSearchExpanded = false;
+
   @override
   void initState() {
     super.initState();
@@ -66,6 +71,7 @@ class _LogScreenState extends ConsumerState<LogScreen>
   void dispose() {
     _viewTabController.dispose();
     _calendarScrollController.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -81,39 +87,118 @@ class _LogScreenState extends ConsumerState<LogScreen>
           // Header
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 24, 20, 8),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      AppLocalizations.of(context)!.history,
-                      style: Theme.of(context).textTheme.headlineMedium
-                          ?.copyWith(fontWeight: FontWeight.w700),
+                    // Título ou campo de busca
+                    Expanded(
+                      child: AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 200),
+                        child: _isSearchExpanded
+                            ? _buildSearchField()
+                            : Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    AppLocalizations.of(context)!.history,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .headlineMedium
+                                        ?.copyWith(fontWeight: FontWeight.w700),
+                                  ),
+                                  Text(
+                                    DateFormat(
+                                      'MMMM yyyy',
+                                      'pt_BR',
+                                    ).format(_selectedDate),
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodyMedium
+                                        ?.copyWith(
+                                          color: Theme.of(
+                                            context,
+                                          ).colorScheme.onSurfaceVariant,
+                                        ),
+                                  ),
+                                ],
+                              ),
+                      ),
                     ),
-                    Text(
-                      DateFormat('MMMM yyyy', 'pt_BR').format(_selectedDate),
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    const SizedBox(width: 12),
+                    // Botão de busca
+                    _buildSearchButton(),
+                    const SizedBox(width: 8),
+                    // View toggle
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Theme.of(context)
+                            .colorScheme
+                            .surfaceContainerHighest
+                            .withValues(alpha: 0.3),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        children: [
+                          _buildViewToggle(Icons.view_list, true),
+                          _buildViewToggle(Icons.grid_view, false),
+                        ],
                       ),
                     ),
                   ],
                 ),
-                // View toggle
-                Container(
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.surfaceContainerHighest
-                        .withValues(alpha: 0.3),
-                    borderRadius: BorderRadius.circular(12),
+                // Indicador de busca ativa
+                if (_searchQuery.isNotEmpty && !_isSearchExpanded)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          _searchQuery = '';
+                          _searchController.clear();
+                        });
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.primaryContainer.withValues(alpha: 0.5),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.search_rounded,
+                              size: 14,
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              '"$_searchQuery"',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: Theme.of(context).colorScheme.primary,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Icon(
+                              Icons.close_rounded,
+                              size: 14,
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                   ),
-                  child: Row(
-                    children: [
-                      _buildViewToggle(Icons.view_list, true),
-                      _buildViewToggle(Icons.grid_view, false),
-                    ],
-                  ),
-                ),
               ],
             ),
           ),
@@ -221,6 +306,111 @@ class _LogScreenState extends ConsumerState<LogScreen>
               ? Colors.white
               : Theme.of(context).colorScheme.onSurfaceVariant,
         ),
+      ),
+    );
+  }
+
+  Widget _buildSearchButton() {
+    final colors = Theme.of(context).colorScheme;
+    final hasActiveSearch = _searchQuery.isNotEmpty;
+
+    return GestureDetector(
+      onTap: () {
+        HapticFeedback.selectionClick();
+        setState(() {
+          _isSearchExpanded = !_isSearchExpanded;
+          if (!_isSearchExpanded && _searchController.text.isNotEmpty) {
+            _searchQuery = _searchController.text;
+          }
+        });
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: _isSearchExpanded || hasActiveSearch
+              ? colors.primary.withValues(alpha: 0.15)
+              : colors.surfaceContainerHighest.withValues(alpha: 0.3),
+          borderRadius: BorderRadius.circular(12),
+          border: hasActiveSearch && !_isSearchExpanded
+              ? Border.all(
+                  color: colors.primary.withValues(alpha: 0.5),
+                  width: 1.5,
+                )
+              : null,
+        ),
+        child: Icon(
+          _isSearchExpanded ? Icons.close_rounded : Icons.search_rounded,
+          size: 20,
+          color: _isSearchExpanded || hasActiveSearch
+              ? colors.primary
+              : colors.onSurfaceVariant,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSearchField() {
+    final colors = Theme.of(context).colorScheme;
+
+    return Container(
+      key: const ValueKey('search_field'),
+      height: 48,
+      decoration: BoxDecoration(
+        color: colors.surfaceContainerHighest.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: colors.primary.withValues(alpha: 0.3),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        children: [
+          const SizedBox(width: 12),
+          Icon(Icons.search_rounded, size: 20, color: colors.primary),
+          const SizedBox(width: 10),
+          Expanded(
+            child: TextField(
+              controller: _searchController,
+              autofocus: true,
+              style: TextStyle(fontSize: 15, color: colors.onSurface),
+              decoration: InputDecoration(
+                hintText: AppLocalizations.of(context)!.searchHint,
+                hintStyle: TextStyle(
+                  color: colors.onSurfaceVariant.withValues(alpha: 0.7),
+                  fontSize: 15,
+                ),
+                border: InputBorder.none,
+                isDense: true,
+                contentPadding: const EdgeInsets.symmetric(vertical: 12),
+              ),
+              onChanged: (value) {
+                setState(() => _searchQuery = value);
+              },
+              onSubmitted: (value) {
+                setState(() {
+                  _searchQuery = value;
+                  _isSearchExpanded = false;
+                });
+              },
+            ),
+          ),
+          if (_searchController.text.isNotEmpty)
+            GestureDetector(
+              onTap: () {
+                _searchController.clear();
+                setState(() => _searchQuery = '');
+              },
+              child: Padding(
+                padding: const EdgeInsets.all(8),
+                child: Icon(
+                  Icons.clear_rounded,
+                  size: 18,
+                  color: colors.onSurfaceVariant,
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }
@@ -831,10 +1021,17 @@ class _LogScreenState extends ConsumerState<LogScreen>
             return FutureBuilder<List<_LogItem>>(
               future: _getAllRecordsForDate(moodBox, timeBox),
               builder: (context, snapshot) {
-                final allItems = snapshot.data ?? [];
+                var allItems = snapshot.data ?? [];
+
+                // Aplicar filtro de busca
+                if (_searchQuery.isNotEmpty) {
+                  allItems = _filterItemsBySearch(allItems, _searchQuery);
+                }
 
                 if (allItems.isEmpty) {
-                  return _buildEmptyState();
+                  return _searchQuery.isNotEmpty
+                      ? _buildEmptySearchState()
+                      : _buildEmptyState();
                 }
 
                 if (_isListView) {
@@ -847,6 +1044,108 @@ class _LogScreenState extends ConsumerState<LogScreen>
           },
         );
       },
+    );
+  }
+
+  /// Filtra os itens de log baseado na query de busca
+  List<_LogItem> _filterItemsBySearch(List<_LogItem> items, String query) {
+    final lowerQuery = query.toLowerCase();
+
+    return items.where((item) {
+      switch (item.type) {
+        case 'mood':
+          final mood = item.data as MoodRecord;
+          // Buscar em notas e atividades do registro de humor
+          final note = mood.note?.toLowerCase() ?? '';
+          final activities = mood.activities
+              .map((a) => a.activityName.toLowerCase())
+              .join(' ');
+          return note.contains(lowerQuery) || activities.contains(lowerQuery);
+
+        case 'time':
+          final time = item.data as TimeTrackingRecord;
+          // Buscar em nome da atividade, categoria, projeto
+          final activityName = time.activityName.toLowerCase();
+          final category = time.category?.toLowerCase() ?? '';
+          final project = time.project?.toLowerCase() ?? '';
+          final notes = time.notes?.toLowerCase() ?? '';
+          return activityName.contains(lowerQuery) ||
+              category.contains(lowerQuery) ||
+              project.contains(lowerQuery) ||
+              notes.contains(lowerQuery);
+
+        case 'habit':
+          final habit = item.data as Habit;
+          // Buscar no nome do hábito
+          return habit.name.toLowerCase().contains(lowerQuery);
+
+        case 'task':
+          final task = item.data as Map;
+          // Buscar no nome da tarefa
+          final name = (task['name'] ?? '').toString().toLowerCase();
+          return name.contains(lowerQuery);
+
+        case 'pomodoro':
+          final session = item.data as Map;
+          // Buscar no nome da tarefa do pomodoro
+          final taskName = (session['taskName'] ?? '').toString().toLowerCase();
+          return taskName.contains(lowerQuery);
+
+        case 'note':
+          final note = item.data as Map;
+          // Buscar no conteúdo da nota
+          final content = (note['content'] ?? '').toString().toLowerCase();
+          return content.contains(lowerQuery);
+
+        default:
+          return false;
+      }
+    }).toList();
+  }
+
+  /// Estado vazio quando busca não encontra resultados
+  Widget _buildEmptySearchState() {
+    final colors = Theme.of(context).colorScheme;
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.search_off_rounded,
+              size: 64,
+              color: colors.onSurfaceVariant.withValues(alpha: 0.4),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Nenhum resultado',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: colors.onSurface,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Nenhum registro encontrado para "$_searchQuery"',
+              style: TextStyle(fontSize: 14, color: colors.onSurfaceVariant),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            TextButton.icon(
+              onPressed: () {
+                setState(() {
+                  _searchQuery = '';
+                  _searchController.clear();
+                });
+              },
+              icon: const Icon(Icons.clear_rounded, size: 18),
+              label: const Text('Limpar busca'),
+            ),
+          ],
+        ),
+      ),
     );
   }
 

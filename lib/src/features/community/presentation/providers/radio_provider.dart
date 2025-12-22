@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:just_audio/just_audio.dart';
+import 'package:just_audio_background/just_audio_background.dart';
 
 // --- State Model ---
 
 enum RadioStatus { stopped, playing, paused, buffering, error }
 
 class RadioTrack {
+  final String id;
   final String title;
   final String artist;
   final String coverUrl;
@@ -14,6 +16,7 @@ class RadioTrack {
   final Color themeColor;
 
   const RadioTrack({
+    required this.id,
     required this.title,
     required this.artist,
     required this.coverUrl,
@@ -70,6 +73,7 @@ class RadioNotifier extends StateNotifier<RadioState> {
   final List<RadioTrack> stations = [
     // Lofi Hip Hop - Hunter.FM Brasil (estável e gratuita)
     const RadioTrack(
+      id: 'lofi_hipHop',
       title: 'Lofi Hip Hop',
       artist: 'Hunter.FM',
       coverUrl:
@@ -79,6 +83,7 @@ class RadioNotifier extends StateNotifier<RadioState> {
     ),
     // Chillout Lounge - 1.FM (europeia, links abertos)
     const RadioTrack(
+      id: 'chillout_lounge',
       title: 'Chillout Lounge',
       artist: '1.FM Network',
       coverUrl:
@@ -88,6 +93,7 @@ class RadioNotifier extends StateNotifier<RadioState> {
     ),
     // Deep House - Deeper Link (NYC, 8000 port)
     const RadioTrack(
+      id: 'deep_house',
       title: 'Deep House',
       artist: 'Deeper Link',
       coverUrl:
@@ -97,6 +103,7 @@ class RadioNotifier extends StateNotifier<RadioState> {
     ),
     // Tech House - United Music (Italy, Direct MP3)
     const RadioTrack(
+      id: 'tech_house',
       title: 'Tech House',
       artist: 'United Music',
       coverUrl:
@@ -106,6 +113,7 @@ class RadioNotifier extends StateNotifier<RadioState> {
     ),
     // Drum & Bass - DnB Base (Working)
     const RadioTrack(
+      id: 'dnb_base',
       title: 'DnB Base',
       artist: 'Laut.FM',
       coverUrl:
@@ -115,6 +123,7 @@ class RadioNotifier extends StateNotifier<RadioState> {
     ),
     // Drum & Bass - Bassdrive (Official)
     const RadioTrack(
+      id: 'bassdrive',
       title: 'Bassdrive',
       artist: 'Worldwide DnB',
       coverUrl:
@@ -124,6 +133,7 @@ class RadioNotifier extends StateNotifier<RadioState> {
     ),
     // Chill Electro Slow - Costa Del Mar (vibe lounge)
     const RadioTrack(
+      id: 'chill_lounge',
       title: 'Chill Lounge',
       artist: 'Costa Del Mar',
       coverUrl:
@@ -133,6 +143,7 @@ class RadioNotifier extends StateNotifier<RadioState> {
     ),
     // Ambient / Nature - Soma FM (Creative Commons)
     const RadioTrack(
+      id: 'drone_zone',
       title: 'Drone Zone',
       artist: 'SomaFM',
       coverUrl:
@@ -192,14 +203,16 @@ class RadioNotifier extends StateNotifier<RadioState> {
     );
 
     try {
-      // Usar AudioSource com headers para evitar ytdl_hook do MPV
+      // Usar AudioSource com metadata para notificação em background
       final audioSource = AudioSource.uri(
         Uri.parse(track.streamUrl),
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Linux; Flutter) OdysseyApp/1.0',
-          'Accept': '*/*',
-          'Connection': 'keep-alive',
-        },
+        tag: MediaItem(
+          id: track.id,
+          title: track.title,
+          artist: track.artist,
+          artUri: Uri.parse(track.coverUrl),
+          album: 'Rádio Odyssey',
+        ),
       );
       await _player.setAudioSource(audioSource);
       await _player.setVolume(state.volume);
@@ -271,7 +284,12 @@ class RadioNotifier extends StateNotifier<RadioState> {
   }
 }
 
-// Provider
+// Provider - Usando keepAlive para manter o player ativo mesmo quando sai da tela
 final radioProvider = StateNotifierProvider<RadioNotifier, RadioState>((ref) {
-  return RadioNotifier();
+  final notifier = RadioNotifier();
+
+  // Manter o provider vivo para não perder o estado
+  ref.keepAlive();
+
+  return notifier;
 });

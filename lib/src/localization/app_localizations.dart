@@ -4568,6 +4568,12 @@ abstract class AppLocalizations {
   /// **'Search'**
   String get search;
 
+  /// No description provided for @searchHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search in history...'**
+  String get searchHint;
+
   /// No description provided for @searchBookOnline.
   ///
   /// In en, this message translates to:

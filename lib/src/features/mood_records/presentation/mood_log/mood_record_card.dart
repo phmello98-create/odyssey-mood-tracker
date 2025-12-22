@@ -46,34 +46,35 @@ class MoodRecordCard extends StatelessWidget {
                     Column(
                       children: [
                         Text(
-                          DateFormat('EEEE, MMMM d').format(record.date).toString(),
+                          DateFormat(
+                            'EEEE, MMMM d',
+                          ).format(record.date).toString(),
                         ),
-                        const SizedBox(
-                          height: 4,
-                        )
+                        const SizedBox(height: 4),
                       ],
                     ),
                   Row(
                     children: [
-                      Text(
-                        record.label,
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                              color: Color(record.color),
-                              fontWeight: FontWeight.bold,
-                            ),
+                      Flexible(
+                        child: Text(
+                          record.label,
+                          style: Theme.of(context).textTheme.titleLarge
+                              ?.copyWith(
+                                color: Color(record.color),
+                                fontWeight: FontWeight.bold,
+                              ),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
+                        ),
                       ),
-                      const SizedBox(
-                        width: 12,
-                      ),
-                      Text(DateFormat.jm().format(record.date).toString())
+                      const SizedBox(width: 12),
+                      Text(DateFormat.jm().format(record.date).toString()),
                     ],
                   ),
                   if (record.activities.isNotEmpty)
                     Column(
                       children: [
-                        const SizedBox(
-                          height: 4,
-                        ),
+                        const SizedBox(height: 4),
                         ActivityChips(
                           record.activities,
                           alignment: WrapAlignment.start,
@@ -83,27 +84,30 @@ class MoodRecordCard extends StatelessWidget {
                   if (record.note != null)
                     Column(
                       children: [
-                        const SizedBox(
-                          height: 4,
-                        ),
+                        const SizedBox(height: 4),
                         RichText(
                           text: TextSpan(
                             style: Theme.of(context).textTheme.bodyLarge,
                             children: [
                               TextSpan(
                                 text: "Note: ",
-                                style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold),
+                                style: Theme.of(context).textTheme.bodyLarge
+                                    ?.copyWith(fontWeight: FontWeight.bold),
                               ),
                               TextSpan(text: record.note!),
                             ],
                           ),
                         ),
                       ],
-                    )
+                    ),
                 ],
               ),
             ),
-            MoodRecordCardOptions(id: id, recordEntry: recordEntry, record: record)
+            MoodRecordCardOptions(
+              id: id,
+              recordEntry: recordEntry,
+              record: record,
+            ),
           ],
         ),
       ),

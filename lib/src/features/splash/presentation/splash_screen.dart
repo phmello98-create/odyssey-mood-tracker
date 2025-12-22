@@ -4,13 +4,14 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:odyssey/src/features/home/presentation/odyssey_home.dart';
-import 'package:odyssey/src/features/auth/presentation/login_screen.dart';
+
 import 'package:odyssey/src/features/auth/presentation/providers/auth_providers.dart';
 import 'package:odyssey/src/features/auth/presentation/providers/migration_providers.dart';
 import 'package:odyssey/src/features/auth/presentation/screens/account_migration_screen.dart';
 import 'package:odyssey/src/providers/app_initializer_provider.dart';
 import 'package:odyssey/src/utils/settings_provider.dart';
 import 'package:odyssey/src/features/onboarding/onboarding.dart';
+import 'package:odyssey/src/features/onboarding/presentation/screens/landing_screen.dart';
 import 'package:odyssey/src/localization/app_localizations.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
@@ -194,7 +195,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
         destination = const OnboardingWrapper(child: OdysseyHome());
       }
     } else {
-      destination = const LoginScreen();
+      destination = const LandingScreen();
     }
 
     Navigator.of(context).pushReplacement(

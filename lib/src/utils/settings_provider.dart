@@ -180,8 +180,61 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
 
   Future<void> setThemeMode(ThemeMode mode) async {
     final prefs = await SharedPreferences.getInstance();
+
+    // Encontrar o tema apropriado para o novo modo
+    var newSelectedTheme = state.selectedTheme;
+    final currentThemeData = AppThemes.getThemeData(state.selectedTheme);
+    final isNewModeDark = mode == ThemeMode.dark;
+
+    // Se o modo mudou (ex: Dark -> Light) e o tema atual não é compatível
+    if (currentThemeData.isDark != isNewModeDark) {
+      if (isNewModeDark) {
+        // Mudando para Dark: Mapear light -> dark
+        switch (state.selectedTheme) {
+          case AppThemeType.lightUltraviolet:
+            newSelectedTheme = AppThemeType.ultraviolet;
+            break;
+          case AppThemeType.lightMint:
+            newSelectedTheme = AppThemeType.emerald;
+            break;
+          case AppThemeType.lightPeach:
+            newSelectedTheme = AppThemeType.sunset;
+            break;
+          case AppThemeType.lightSky:
+            newSelectedTheme =
+                AppThemeType.ocean; // ocean mapeia melhor que midnight
+            break;
+          default:
+            newSelectedTheme = AppThemeType.ultraviolet;
+        }
+      } else {
+        // Mudando para Light: Mapear dark -> light
+        switch (state.selectedTheme) {
+          case AppThemeType.ultraviolet:
+          case AppThemeType.sakura:
+            newSelectedTheme = AppThemeType.lightUltraviolet;
+            break;
+          case AppThemeType.emerald:
+            newSelectedTheme = AppThemeType.lightMint;
+            break;
+          case AppThemeType.sunset:
+            newSelectedTheme = AppThemeType.lightPeach;
+            break;
+          case AppThemeType.ocean:
+          case AppThemeType.midnight:
+            newSelectedTheme = AppThemeType.lightSky;
+            break;
+          default:
+            newSelectedTheme = AppThemeType.lightUltraviolet;
+        }
+      }
+
+      // Salvar o novo tema selecionado
+      await prefs.setInt(_selectedThemeKey, newSelectedTheme.index);
+    }
+
     await prefs.setInt(_themeModeKey, mode.index);
-    state = state.copyWith(themeMode: mode);
+    state = state.copyWith(themeMode: mode, selectedTheme: newSelectedTheme);
   }
 
   Future<void> setSelectedTheme(AppThemeType theme) async {

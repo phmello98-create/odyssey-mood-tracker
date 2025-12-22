@@ -20,21 +20,64 @@ class SchedulerNotificationIds {
 /// Frases motivacionais do app
 class MotivationalQuotes {
   static final List<Map<String, String>> quotes = [
-    {'title': '💪 Você consegue!', 'body': 'Cada pequeno passo te leva mais perto do seu objetivo.'},
-    {'title': '🌟 Brilhe!', 'body': 'Sua consistência é o que te diferencia. Continue assim!'},
-    {'title': '🔥 Foco total!', 'body': 'Lembre-se por que você começou. Você está indo muito bem!'},
-    {'title': '🚀 Em ascensão!', 'body': 'Seu progresso é real. Não desista agora!'},
-    {'title': '✨ Incrível!', 'body': 'Você está construindo hábitos que mudarão sua vida.'},
-    {'title': '🎯 No alvo!', 'body': 'Disciplina é escolher entre o que você quer agora e o que você mais quer.'},
-    {'title': '💎 Valioso!', 'body': 'Seu tempo e esforço são investimentos no seu futuro.'},
-    {'title': '🌈 Positivo!', 'body': 'Cada dia é uma nova oportunidade de ser melhor.'},
-    {'title': '⭐ Estrela!', 'body': 'Você tem o poder de transformar sua rotina.'},
-    {'title': '🏆 Campeão!', 'body': 'Grandes conquistas começam com pequenas ações diárias.'},
-    {'title': '🌱 Crescendo!', 'body': 'Seu jardim de hábitos está florescendo. Continue regando!'},
-    {'title': '💜 Autoamor', 'body': 'Cuidar de você é a base para cuidar de tudo mais.'},
-    {'title': '🎨 Criativo!', 'body': 'Você está pintando sua melhor versão, um dia de cada vez.'},
+    {
+      'title': '💪 Você consegue!',
+      'body': 'Cada pequeno passo te leva mais perto do seu objetivo.',
+    },
+    {
+      'title': '🌟 Brilhe!',
+      'body': 'Sua consistência é o que te diferencia. Continue assim!',
+    },
+    {
+      'title': '🔥 Foco total!',
+      'body': 'Lembre-se por que você começou. Você está indo muito bem!',
+    },
+    {
+      'title': '🚀 Em ascensão!',
+      'body': 'Seu progresso é real. Não desista agora!',
+    },
+    {
+      'title': '✨ Incrível!',
+      'body': 'Você está construindo hábitos que mudarão sua vida.',
+    },
+    {
+      'title': '🎯 No alvo!',
+      'body':
+          'Disciplina é escolher entre o que você quer agora e o que você mais quer.',
+    },
+    {
+      'title': '💎 Valioso!',
+      'body': 'Seu tempo e esforço são investimentos no seu futuro.',
+    },
+    {
+      'title': '🌈 Positivo!',
+      'body': 'Cada dia é uma nova oportunidade de ser melhor.',
+    },
+    {
+      'title': '⭐ Estrela!',
+      'body': 'Você tem o poder de transformar sua rotina.',
+    },
+    {
+      'title': '🏆 Campeão!',
+      'body': 'Grandes conquistas começam com pequenas ações diárias.',
+    },
+    {
+      'title': '🌱 Crescendo!',
+      'body': 'Seu jardim de hábitos está florescendo. Continue regando!',
+    },
+    {
+      'title': '💜 Autoamor',
+      'body': 'Cuidar de você é a base para cuidar de tudo mais.',
+    },
+    {
+      'title': '🎨 Criativo!',
+      'body': 'Você está pintando sua melhor versão, um dia de cada vez.',
+    },
     {'title': '🌊 Flua!', 'body': 'Seja como a água: persistente e adaptável.'},
-    {'title': '🦋 Transformação', 'body': 'Cada registro é um passo na sua jornada de evolução.'},
+    {
+      'title': '🦋 Transformação',
+      'body': 'Cada registro é um passo na sua jornada de evolução.',
+    },
   ];
 
   static Map<String, String> getRandom() {
@@ -63,7 +106,8 @@ class NotificationScheduler {
   static const String _keyMoodEveningEnabled = 'notif_mood_evening_enabled';
   static const String _keyMoodEveningHour = 'notif_mood_evening_hour';
   static const String _keyHabitReminderEnabled = 'notif_habit_reminder_enabled';
-  static const String _keyHabitReminderInterval = 'notif_habit_reminder_interval';
+  static const String _keyHabitReminderInterval =
+      'notif_habit_reminder_interval';
   static const String _keyTaskReminderEnabled = 'notif_task_reminder_enabled';
   static const String _keyTaskReminderInterval = 'notif_task_reminder_interval';
   static const String _keyMotivationEnabled = 'notif_motivation_enabled';
@@ -135,9 +179,9 @@ class NotificationScheduler {
 
   /// Agenda lembretes de humor para manhã e noite
   Future<void> _scheduleMoodReminders() async {
-    final morningEnabled = _prefs!.getBool(_keyMoodMorningEnabled) ?? true;
+    final morningEnabled = _prefs!.getBool(_keyMoodMorningEnabled) ?? false;
     final morningHour = _prefs!.getInt(_keyMoodMorningHour) ?? 8;
-    final eveningEnabled = _prefs!.getBool(_keyMoodEveningEnabled) ?? true;
+    final eveningEnabled = _prefs!.getBool(_keyMoodEveningEnabled) ?? false;
     final eveningHour = _prefs!.getInt(_keyMoodEveningHour) ?? 20;
 
     // Cancelar existentes
@@ -177,10 +221,14 @@ class NotificationScheduler {
     bool? eveningEnabled,
     int? eveningHour,
   }) async {
-    if (morningEnabled != null) await _prefs!.setBool(_keyMoodMorningEnabled, morningEnabled);
-    if (morningHour != null) await _prefs!.setInt(_keyMoodMorningHour, morningHour);
-    if (eveningEnabled != null) await _prefs!.setBool(_keyMoodEveningEnabled, eveningEnabled);
-    if (eveningHour != null) await _prefs!.setInt(_keyMoodEveningHour, eveningHour);
+    if (morningEnabled != null)
+      await _prefs!.setBool(_keyMoodMorningEnabled, morningEnabled);
+    if (morningHour != null)
+      await _prefs!.setInt(_keyMoodMorningHour, morningHour);
+    if (eveningEnabled != null)
+      await _prefs!.setBool(_keyMoodEveningEnabled, eveningEnabled);
+    if (eveningHour != null)
+      await _prefs!.setInt(_keyMoodEveningHour, eveningHour);
 
     await _scheduleMoodReminders();
   }
@@ -193,7 +241,7 @@ class NotificationScheduler {
   void _startHabitCheckTimer() {
     _habitCheckTimer?.cancel();
 
-    final enabled = _prefs!.getBool(_keyHabitReminderEnabled) ?? true;
+    final enabled = _prefs!.getBool(_keyHabitReminderEnabled) ?? false;
     if (!enabled) return;
 
     final intervalMinutes = _prefs!.getInt(_keyHabitReminderInterval) ?? 30;
@@ -203,10 +251,12 @@ class NotificationScheduler {
       (_) => _checkPendingHabits(),
     );
 
-    // Verificar imediatamente também
-    _checkPendingHabits();
+    // NÃO verificar imediatamente - evita notificações no primeiro uso
+    // _checkPendingHabits();
 
-    debugPrint('📅 Timer de hábitos iniciado (intervalo: ${intervalMinutes}min)');
+    debugPrint(
+      '📅 Timer de hábitos iniciado (intervalo: ${intervalMinutes}min)',
+    );
   }
 
   /// Verifica hábitos pendentes e envia notificação
@@ -216,7 +266,9 @@ class NotificationScheduler {
     try {
       final today = DateTime.now();
       final habits = _habitRepo!.getHabitsForDate(today);
-      final pendingHabits = habits.where((h) => !h.isCompletedOn(today)).toList();
+      final pendingHabits = habits
+          .where((h) => !h.isCompletedOn(today))
+          .toList();
 
       if (pendingHabits.isEmpty) return;
 
@@ -230,7 +282,8 @@ class NotificationScheduler {
 
       await _showInstantNotification(
         id: SchedulerNotificationIds.habitPendingCheck,
-        title: '🎯 $count ${count == 1 ? 'hábito pendente' : 'hábitos pendentes'}',
+        title:
+            '🎯 $count ${count == 1 ? 'hábito pendente' : 'hábitos pendentes'}',
         body: '$habitNames$suffix ainda não foram concluídos hoje.',
         channelKey: NotificationService.channelReminders,
       );
@@ -246,8 +299,10 @@ class NotificationScheduler {
     bool? enabled,
     int? intervalMinutes,
   }) async {
-    if (enabled != null) await _prefs!.setBool(_keyHabitReminderEnabled, enabled);
-    if (intervalMinutes != null) await _prefs!.setInt(_keyHabitReminderInterval, intervalMinutes);
+    if (enabled != null)
+      await _prefs!.setBool(_keyHabitReminderEnabled, enabled);
+    if (intervalMinutes != null)
+      await _prefs!.setInt(_keyHabitReminderInterval, intervalMinutes);
 
     _startHabitCheckTimer();
   }
@@ -260,7 +315,7 @@ class NotificationScheduler {
   void _startTaskCheckTimer() {
     _taskCheckTimer?.cancel();
 
-    final enabled = _prefs!.getBool(_keyTaskReminderEnabled) ?? true;
+    final enabled = _prefs!.getBool(_keyTaskReminderEnabled) ?? false;
     if (!enabled) return;
 
     final intervalMinutes = _prefs!.getInt(_keyTaskReminderInterval) ?? 30;
@@ -270,10 +325,12 @@ class NotificationScheduler {
       (_) => _checkPendingTasks(),
     );
 
-    // Verificar imediatamente também
-    _checkPendingTasks();
+    // NÃO verificar imediatamente - evita notificações no primeiro uso
+    // _checkPendingTasks();
 
-    debugPrint('📅 Timer de tarefas iniciado (intervalo: ${intervalMinutes}min)');
+    debugPrint(
+      '📅 Timer de tarefas iniciado (intervalo: ${intervalMinutes}min)',
+    );
   }
 
   /// Verifica tarefas pendentes e envia notificação
@@ -307,17 +364,20 @@ class NotificationScheduler {
       final suffix = count > 3 ? ' e mais ${count - 3}' : '';
 
       // Verificar se tem tarefas atrasadas
-      final overdue = relevantTasks.where((t) =>
-          t.dueDate != null && t.dueDate!.isBefore(todayStart)).toList();
+      final overdue = relevantTasks
+          .where((t) => t.dueDate != null && t.dueDate!.isBefore(todayStart))
+          .toList();
 
       String title;
       String body;
 
       if (overdue.isNotEmpty) {
-        title = '⚠️ ${overdue.length} ${overdue.length == 1 ? 'tarefa atrasada' : 'tarefas atrasadas'}!';
+        title =
+            '⚠️ ${overdue.length} ${overdue.length == 1 ? 'tarefa atrasada' : 'tarefas atrasadas'}!';
         body = '$taskNames$suffix precisam de atenção.';
       } else {
-        title = '✅ $count ${count == 1 ? 'tarefa pendente' : 'tarefas pendentes'}';
+        title =
+            '✅ $count ${count == 1 ? 'tarefa pendente' : 'tarefas pendentes'}';
         body = '$taskNames$suffix para hoje.';
       }
 
@@ -360,8 +420,10 @@ class NotificationScheduler {
     bool? enabled,
     int? intervalMinutes,
   }) async {
-    if (enabled != null) await _prefs!.setBool(_keyTaskReminderEnabled, enabled);
-    if (intervalMinutes != null) await _prefs!.setInt(_keyTaskReminderInterval, intervalMinutes);
+    if (enabled != null)
+      await _prefs!.setBool(_keyTaskReminderEnabled, enabled);
+    if (intervalMinutes != null)
+      await _prefs!.setInt(_keyTaskReminderInterval, intervalMinutes);
 
     _startTaskCheckTimer();
   }
@@ -374,31 +436,34 @@ class NotificationScheduler {
   void _startMotivationTimer() {
     _motivationTimer?.cancel();
 
-    final enabled = _prefs!.getBool(_keyMotivationEnabled) ?? true;
+    final enabled = _prefs!.getBool(_keyMotivationEnabled) ?? false;
     if (!enabled) return;
 
     final timesPerDay = _prefs!.getInt(_keyMotivationPerDay) ?? 3;
-    
+
     // Calcular intervalo médio entre notificações
     // Considerando horário ativo de 8h às 22h (14 horas)
     const activeHours = 14;
     final avgIntervalMinutes = (activeHours * 60) ~/ timesPerDay;
-    
+
     // Adicionar variação aleatória (±30%)
     final random = Random();
     final variation = (avgIntervalMinutes * 0.3).toInt();
-    final intervalMinutes = avgIntervalMinutes + random.nextInt(variation * 2) - variation;
+    final intervalMinutes =
+        avgIntervalMinutes + random.nextInt(variation * 2) - variation;
 
     _motivationTimer = Timer.periodic(
       Duration(minutes: intervalMinutes.clamp(30, 300)), // Min 30min, Max 5h
       (_) => _sendMotivation(),
     );
 
-    // Agendar primeira motivação em um horário aleatório
-    final firstDelay = Duration(minutes: random.nextInt(60) + 30);
-    Timer(firstDelay, _sendMotivation);
+    // NÃO enviar motivação imediatamente - evita notificações no primeiro uso
+    // final firstDelay = Duration(minutes: random.nextInt(60) + 30);
+    // Timer(firstDelay, _sendMotivation);
 
-    debugPrint('📅 Timer de motivação iniciado (intervalo médio: ${avgIntervalMinutes}min)');
+    debugPrint(
+      '📅 Timer de motivação iniciado (intervalo médio: ${avgIntervalMinutes}min)',
+    );
   }
 
   /// Envia notificação de motivação
@@ -408,7 +473,8 @@ class NotificationScheduler {
     if (hour < 9 || hour > 21) return;
 
     final quote = MotivationalQuotes.getRandom();
-    final notificationId = SchedulerNotificationIds.motivationBase +
+    final notificationId =
+        SchedulerNotificationIds.motivationBase +
         (DateTime.now().millisecondsSinceEpoch % 100);
 
     await _showInstantNotification(
@@ -427,7 +493,8 @@ class NotificationScheduler {
     int? timesPerDay,
   }) async {
     if (enabled != null) await _prefs!.setBool(_keyMotivationEnabled, enabled);
-    if (timesPerDay != null) await _prefs!.setInt(_keyMotivationPerDay, timesPerDay);
+    if (timesPerDay != null)
+      await _prefs!.setInt(_keyMotivationPerDay, timesPerDay);
 
     _startMotivationTimer();
   }
@@ -472,15 +539,16 @@ class NotificationScheduler {
   /// Obtém configurações atuais
   Map<String, dynamic> getSettings() {
     return {
-      'moodMorningEnabled': _prefs?.getBool(_keyMoodMorningEnabled) ?? true,
+      'moodMorningEnabled': _prefs?.getBool(_keyMoodMorningEnabled) ?? false,
       'moodMorningHour': _prefs?.getInt(_keyMoodMorningHour) ?? 8,
-      'moodEveningEnabled': _prefs?.getBool(_keyMoodEveningEnabled) ?? true,
+      'moodEveningEnabled': _prefs?.getBool(_keyMoodEveningEnabled) ?? false,
       'moodEveningHour': _prefs?.getInt(_keyMoodEveningHour) ?? 20,
-      'habitReminderEnabled': _prefs?.getBool(_keyHabitReminderEnabled) ?? true,
+      'habitReminderEnabled':
+          _prefs?.getBool(_keyHabitReminderEnabled) ?? false,
       'habitReminderInterval': _prefs?.getInt(_keyHabitReminderInterval) ?? 30,
-      'taskReminderEnabled': _prefs?.getBool(_keyTaskReminderEnabled) ?? true,
+      'taskReminderEnabled': _prefs?.getBool(_keyTaskReminderEnabled) ?? false,
       'taskReminderInterval': _prefs?.getInt(_keyTaskReminderInterval) ?? 30,
-      'motivationEnabled': _prefs?.getBool(_keyMotivationEnabled) ?? true,
+      'motivationEnabled': _prefs?.getBool(_keyMotivationEnabled) ?? false,
       'motivationPerDay': _prefs?.getInt(_keyMotivationPerDay) ?? 3,
     };
   }

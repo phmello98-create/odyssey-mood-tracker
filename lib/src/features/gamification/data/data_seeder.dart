@@ -271,7 +271,7 @@ class DataSeeder {
 
     // Dados para popular
     final tasksData = [
-      // Pendentes - Hoje
+      // Pendentes - Hoje (SEM dueTime para não disparar notificações no seed!)
       {
         'title': 'Reunião de Design System',
         'notes':
@@ -280,7 +280,7 @@ class DataSeeder {
         'priority': 'high',
         'category': 'Trabalho',
         'dueDate': iso(now),
-        'dueTime': '14:30',
+        'dueTime': null, // Removido para não disparar notificações
         'createdAt': iso(now.subtract(const Duration(hours: 2))),
       },
       {
@@ -290,7 +290,7 @@ class DataSeeder {
         'priority': 'medium',
         'category': 'Saúde',
         'dueDate': iso(now),
-        'dueTime': '18:00',
+        'dueTime': null, // Removido para não disparar notificações
         'createdAt': iso(now.subtract(const Duration(hours: 4))),
       },
       // Pendentes - Amanhã
@@ -312,7 +312,7 @@ class DataSeeder {
         'priority': 'medium',
         'category': 'Pessoal',
         'dueDate': iso(now.add(const Duration(days: 2))),
-        'dueTime': '10:00',
+        'dueTime': null, // Removido para não disparar notificações
         'createdAt': iso(now.subtract(const Duration(days: 1))),
       },
       // Completadas
@@ -334,7 +334,7 @@ class DataSeeder {
         'priority': 'medium',
         'category': 'Saúde',
         'dueDate': iso(now.subtract(const Duration(days: 3))),
-        'dueTime': '15:00',
+        'dueTime': null, // Removido para não disparar notificações
         'createdAt': iso(now.subtract(const Duration(days: 10))),
         'completedAt': iso(now.subtract(const Duration(days: 3))),
       },
@@ -358,7 +358,8 @@ class DataSeeder {
         name: 'Meditação Diária',
         iconCode: Icons.self_improvement.codePoint,
         colorValue: const Color(0xFF9B51E0).value,
-        scheduledTime: '06:30',
+        scheduledTime:
+            null, // SEM horário para não disparar notificações no seed
         daysOfWeek: [], // Todos os dias
         completedDates: [
           now.subtract(const Duration(days: 1)),
@@ -388,7 +389,8 @@ class DataSeeder {
         name: 'Ler 30 min',
         iconCode: Icons.menu_book.codePoint,
         colorValue: const Color(0xFF07E092).value,
-        scheduledTime: '22:00',
+        scheduledTime:
+            null, // SEM horário para não disparar notificações no seed
         daysOfWeek: [],
         completedDates: [],
         currentStreak: 0,
@@ -401,7 +403,8 @@ class DataSeeder {
         name: 'Corrida Matinal',
         iconCode: Icons.directions_run.codePoint,
         colorValue: const Color(0xFFFF6B6B).value,
-        scheduledTime: '07:00',
+        scheduledTime:
+            null, // SEM horário para não disparar notificações no seed
         daysOfWeek: [1, 3, 5], // Seg, Qua, Sex
         completedDates: [
           now.subtract(const Duration(days: 2)),

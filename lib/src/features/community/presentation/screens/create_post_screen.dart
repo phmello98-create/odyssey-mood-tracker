@@ -481,7 +481,7 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
         ),
         const SizedBox(height: 12),
         Container(
-          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
           decoration: BoxDecoration(
             color: colors.surfaceContainerHighest.withOpacity(0.5),
             borderRadius: BorderRadius.circular(20),
@@ -492,82 +492,86 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
               width: 1.5,
             ),
           ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: _availableMoods.map((mood) {
-              final isSelected = _selectedMoodLabel == mood['label'];
-              final moodColor = Color(mood['color'] as int);
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: _availableMoods.map((mood) {
+                final isSelected = _selectedMoodLabel == mood['label'];
+                final moodColor = Color(mood['color'] as int);
 
-              return GestureDetector(
-                onTap: () {
-                  HapticFeedback.selectionClick();
-                  setState(() {
-                    _selectedMoodLabel = mood['label'] as String;
-                    _selectedMoodEmoji = mood['emoji'] as String;
-                    _selectedMoodAsset = mood['asset'] as String;
-                  });
-                },
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 10,
-                  ),
-                  decoration: BoxDecoration(
-                    color: isSelected
-                        ? moodColor.withOpacity(0.15)
-                        : Colors.transparent,
-                    borderRadius: BorderRadius.circular(16),
-                    border: isSelected
-                        ? Border.all(color: moodColor, width: 2)
-                        : null,
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      AnimatedScale(
-                        scale: isSelected ? 1.15 : 1.0,
-                        duration: const Duration(milliseconds: 200),
-                        child: Container(
-                          width: isSelected ? 44 : 40,
-                          height: isSelected ? 44 : 40,
-                          decoration: BoxDecoration(
-                            color: moodColor.withOpacity(
-                              isSelected ? 0.2 : 0.1,
+                return GestureDetector(
+                  onTap: () {
+                    HapticFeedback.selectionClick();
+                    setState(() {
+                      _selectedMoodLabel = mood['label'] as String;
+                      _selectedMoodEmoji = mood['emoji'] as String;
+                      _selectedMoodAsset = mood['asset'] as String;
+                    });
+                  },
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 8,
+                    ),
+                    margin: const EdgeInsets.symmetric(horizontal: 2),
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? moodColor.withOpacity(0.15)
+                          : Colors.transparent,
+                      borderRadius: BorderRadius.circular(14),
+                      border: isSelected
+                          ? Border.all(color: moodColor, width: 2)
+                          : null,
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        AnimatedScale(
+                          scale: isSelected ? 1.1 : 1.0,
+                          duration: const Duration(milliseconds: 200),
+                          child: Container(
+                            width: isSelected ? 38 : 34,
+                            height: isSelected ? 38 : 34,
+                            decoration: BoxDecoration(
+                              color: moodColor.withOpacity(
+                                isSelected ? 0.2 : 0.1,
+                              ),
+                              borderRadius: BorderRadius.circular(10),
                             ),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Center(
-                            child: SvgPicture.asset(
-                              mood['asset'] as String,
-                              width: isSelected ? 26 : 22,
-                              height: isSelected ? 26 : 22,
-                              colorFilter: ColorFilter.mode(
-                                moodColor,
-                                BlendMode.srcIn,
+                            child: Center(
+                              child: SvgPicture.asset(
+                                mood['asset'] as String,
+                                width: isSelected ? 22 : 18,
+                                height: isSelected ? 22 : 18,
+                                colorFilter: ColorFilter.mode(
+                                  moodColor,
+                                  BlendMode.srcIn,
+                                ),
                               ),
                             ),
                           ),
                         ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        mood['label'] as String,
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: isSelected
-                              ? FontWeight.w700
-                              : FontWeight.w500,
-                          color: isSelected
-                              ? moodColor
-                              : colors.onSurfaceVariant,
+                        const SizedBox(height: 4),
+                        Text(
+                          mood['label'] as String,
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: isSelected
+                                ? FontWeight.w700
+                                : FontWeight.w500,
+                            color: isSelected
+                                ? moodColor
+                                : colors.onSurfaceVariant,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-              );
-            }).toList(),
+                );
+              }).toList(),
+            ),
           ),
         ),
         if (_selectedMoodLabel != null) ...[

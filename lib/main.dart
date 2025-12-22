@@ -23,9 +23,28 @@ import 'package:odyssey/src/features/subscription/services/purchase_service.dart
 import 'package:odyssey/src/features/welcome/services/welcome_service.dart';
 import 'package:toastification/toastification.dart';
 import 'package:just_audio_media_kit/just_audio_media_kit.dart';
+import 'package:just_audio_background/just_audio_background.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Inicializar JustAudioBackground para reprodução em background (Android/iOS)
+  // Isso permite que a rádio continue tocando e mostra notificação na status bar
+  if (Platform.isAndroid || Platform.isIOS) {
+    try {
+      await JustAudioBackground.init(
+        androidNotificationChannelId: 'io.odyssey.moodtracker.radio',
+        androidNotificationChannelName: 'Rádio Odyssey',
+        androidNotificationOngoing: true,
+        androidShowNotificationBadge: true,
+        androidStopForegroundOnPause: false, // Manter notificação mesmo pausado
+        notificationColor: const Color(0xFF6C63FF),
+      );
+      debugPrint('🎵 JustAudioBackground inicializado (Android/iOS)');
+    } catch (e) {
+      debugPrint('⚠️ Erro ao inicializar JustAudioBackground: $e');
+    }
+  }
 
   // Inicializar MediaKit Apenas para Linux/Windows (suporte a streaming de áudio)
   // No Android/iOS, o just_audio usa implementações nativas (ExoPlayer/AVPlayer)

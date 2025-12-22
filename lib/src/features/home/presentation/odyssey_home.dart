@@ -12,6 +12,7 @@ import 'package:odyssey/src/features/tasks/presentation/tasks_screen.dart';
 import 'package:odyssey/src/features/library/presentation/library_screen.dart';
 import 'package:odyssey/src/features/calendar/presentation/calendar_screen.dart';
 import 'package:odyssey/src/features/settings/presentation/settings_screen.dart';
+import 'package:odyssey/src/features/settings/presentation/modern_notification_settings_screen.dart';
 import 'package:odyssey/src/features/onboarding/onboarding.dart';
 import 'package:odyssey/src/features/welcome/services/welcome_service.dart';
 import 'package:odyssey/src/features/welcome/presentation/welcome_back_sheet.dart';
@@ -24,6 +25,15 @@ import 'package:odyssey/src/utils/widgets/floating_timer_widget.dart';
 import 'package:odyssey/src/constants/app_theme.dart';
 import 'package:odyssey/src/localization/app_localizations.dart';
 import 'package:odyssey/src/localization/app_localizations_x.dart';
+import 'package:odyssey/src/utils/settings_provider.dart';
+import 'package:odyssey/src/features/gamification/domain/user_stats.dart';
+import 'package:odyssey/src/features/gamification/data/gamification_repository.dart';
+import 'package:odyssey/src/features/subscription/presentation/donation_screen.dart';
+import 'package:odyssey/src/features/home/presentation/widgets/rive_bottom_bar.dart';
+
+import 'dart:math' as math;
+import 'dart:io';
+import 'dart:ui';
 
 class OdysseyHome extends ConsumerStatefulWidget {
   const OdysseyHome({Key? key}) : super(key: key);
@@ -32,19 +42,25 @@ class OdysseyHome extends ConsumerStatefulWidget {
   ConsumerState<OdysseyHome> createState() => _OdysseyHomeState();
 }
 
-class _OdysseyHomeState extends ConsumerState<OdysseyHome> with SingleTickerProviderStateMixin {
+class _OdysseyHomeState extends ConsumerState<OdysseyHome>
+    with TickerProviderStateMixin {
   int _currentIndex = 0;
   late PageController _pageController;
   late AnimationController _fabAnimationController;
   late Animation<double> _fabScaleAnimation;
 
+  // Side Menu Animation (Rive App Style)
+  late AnimationController _menuAnimController;
+  late Animation<double> _menuAnimation;
+  bool _isMenuOpen = false;
+
   // Main navigation screens (5 items for bottom nav)
   final List<Widget> _mainScreens = const [
-    HomeScreen(),        // Home Dashboard
-    LogScreen(),         // Log/History with calendar
+    HomeScreen(), // Home Dashboard
+    LogScreen(), // Log/History with calendar
     MoodRecordsScreen(), // Mood Log
     TimeTrackerScreen(), // Time Tracker
-    ProfileScreen(),     // Profile with gamification
+    ProfileScreen(), // Profile with gamification
   ];
 
   @override
@@ -56,9 +72,21 @@ class _OdysseyHomeState extends ConsumerState<OdysseyHome> with SingleTickerProv
       vsync: this,
     );
     _fabScaleAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _fabAnimationController, curve: Curves.elasticOut),
+      CurvedAnimation(
+        parent: _fabAnimationController,
+        curve: Curves.elasticOut,
+      ),
     );
     _fabAnimationController.forward();
+
+    // Side Menu Animation Controller
+    _menuAnimController = AnimationController(
+      duration: const Duration(milliseconds: 350),
+      vsync: this,
+    );
+    _menuAnimation = Tween<double>(begin: 0, end: 1).animate(
+      CurvedAnimation(parent: _menuAnimController, curve: Curves.easeOutCubic),
+    );
 
     // Verificar boas-vindas e onboarding
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -70,6 +98,7 @@ class _OdysseyHomeState extends ConsumerState<OdysseyHome> with SingleTickerProv
   void dispose() {
     _pageController.dispose();
     _fabAnimationController.dispose();
+    _menuAnimController.dispose();
     super.dispose();
   }
 
@@ -77,7 +106,8 @@ class _OdysseyHomeState extends ConsumerState<OdysseyHome> with SingleTickerProv
     // Se está na aba Timer (index 3) e o Pomodoro está ativo (rodando ou pausado), mostra aviso
     if (_currentIndex == 3 && index != 3) {
       final timerState = ref.read(timerProvider);
-      if ((timerState.isRunning || timerState.isPaused) && timerState.isPomodoroMode) {
+      if ((timerState.isRunning || timerState.isPaused) &&
+          timerState.isPomodoroMode) {
         _showPomodoroNavigationWarning(index);
         return;
       }
@@ -85,43 +115,73 @@ class _OdysseyHomeState extends ConsumerState<OdysseyHome> with SingleTickerProv
 
     _performNavigation(index);
   }
-  
+
   void _performNavigation(int index) {
+    if (index == _currentIndex) return;
+
     soundService.playNavigation(); // Som de navegação
     HapticFeedback.selectionClick(); // Feedback tátil
+
     setState(() {
       _currentIndex = index;
     });
+
     _pageController.animateToPage(
       index,
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeInOut,
+      duration: const Duration(milliseconds: 400),
+      curve: Curves.easeOutCubic,
     );
-    
+
     // Animate FAB
     _fabAnimationController.reset();
     _fabAnimationController.forward();
+
+    // Se o menu estava aberto, fecha ao navegar
+    if (_isMenuOpen) {
+      _toggleSideMenu();
+    }
   }
-  
+
+  void _toggleSideMenu() {
+    // If not dragging, animate to target
+    final target = _isMenuOpen ? 0.0 : 1.0;
+
+    // If we're already at target, toggle logic needs to run to update state
+    if (_menuAnimController.value == target) {
+      // Toggle logic
+    }
+
+    HapticFeedback.mediumImpact();
+    // Update state based on target
+    setState(() => _isMenuOpen = !_isMenuOpen);
+
+    if (_isMenuOpen) {
+      _menuAnimController.forward();
+    } else {
+      _menuAnimController.reverse();
+    }
+  }
+
   void _checkAndShowWelcome() async {
     final welcomeService = ref.read(welcomeServiceProvider);
     final welcomeType = welcomeService.determineWelcomeType();
-    
+
     // Se não é primeira vez e tem algo para mostrar, mostra o WelcomeBackSheet
-    if (welcomeType != WelcomeType.firstTime && welcomeType != WelcomeType.none) {
+    if (welcomeType != WelcomeType.firstTime &&
+        welcomeType != WelcomeType.none) {
       final user = ref.read(currentUserProvider);
       final userName = user?.displayName ?? 'Usuário';
-      
+
       // Pequeno delay para garantir que a tela está carregada
       await Future.delayed(const Duration(milliseconds: 800));
-      
+
       if (mounted) {
         // Calcula dias fora
         final lastVisit = welcomeService.lastVisit;
-        final daysAway = lastVisit != null 
-            ? DateTime.now().difference(lastVisit).inDays 
+        final daysAway = lastVisit != null
+            ? DateTime.now().difference(lastVisit).inDays
             : 0;
-        
+
         await WelcomeBackSheet.show(
           context: context,
           welcomeType: welcomeType,
@@ -134,20 +194,22 @@ class _OdysseyHomeState extends ConsumerState<OdysseyHome> with SingleTickerProv
             _performNavigation(3); // Timer tab
           },
         );
-        
+
         // Marca que mostrou boas-vindas
         await welcomeService.markWelcomeShown();
       }
     }
   }
-  
+
   void _showPomodoroNavigationWarning(int targetIndex) {
     final l10n = AppLocalizations.of(context)!;
     final timerState = ref.read(timerProvider);
     final timeLeft = timerState.pomodoroTimeLeft;
     final isBreak = timerState.isPomodoroBreak;
     final taskName = timerState.taskName ?? l10n.focus;
-    final accentColor = isBreak ? const Color(0xFF3498DB) : const Color(0xFFFF6B6B);
+    final accentColor = isBreak
+        ? const Color(0xFF3498DB)
+        : const Color(0xFFFF6B6B);
 
     showModalBottomSheet(
       context: context,
@@ -159,7 +221,9 @@ class _OdysseyHomeState extends ConsumerState<OdysseyHome> with SingleTickerProv
             return Container(
               decoration: BoxDecoration(
                 color: Theme.of(context).colorScheme.surface,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(28),
+                ),
               ),
               child: SafeArea(
                 child: Padding(
@@ -173,7 +237,9 @@ class _OdysseyHomeState extends ConsumerState<OdysseyHome> with SingleTickerProv
                         height: 4,
                         margin: const EdgeInsets.only(bottom: 20),
                         decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.3),
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.outline.withValues(alpha: 0.3),
                           borderRadius: BorderRadius.circular(2),
                         ),
                       ),
@@ -193,7 +259,10 @@ class _OdysseyHomeState extends ConsumerState<OdysseyHome> with SingleTickerProv
                                   accentColor.withValues(alpha: 0.05),
                                 ],
                               ),
-                              border: Border.all(color: accentColor.withValues(alpha: 0.3), width: 2),
+                              border: Border.all(
+                                color: accentColor.withValues(alpha: 0.3),
+                                width: 2,
+                              ),
                             ),
                             child: Center(
                               child: Text(
@@ -222,7 +291,9 @@ class _OdysseyHomeState extends ConsumerState<OdysseyHome> with SingleTickerProv
                                   style: TextStyle(
                                     fontSize: 18,
                                     fontWeight: FontWeight.w700,
-                                    color: Theme.of(context).colorScheme.onSurface,
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.onSurface,
                                   ),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
@@ -232,7 +303,10 @@ class _OdysseyHomeState extends ConsumerState<OdysseyHome> with SingleTickerProv
                           ),
                           // Timer badge
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 8,
+                            ),
                             decoration: BoxDecoration(
                               color: accentColor.withValues(alpha: 0.15),
                               borderRadius: BorderRadius.circular(20),
@@ -243,7 +317,9 @@ class _OdysseyHomeState extends ConsumerState<OdysseyHome> with SingleTickerProv
                                 fontSize: 16,
                                 fontWeight: FontWeight.w700,
                                 color: accentColor,
-                                fontFeatures: const [FontFeature.tabularFigures()],
+                                fontFeatures: const [
+                                  FontFeature.tabularFigures(),
+                                ],
                               ),
                             ),
                           ),
@@ -278,7 +354,9 @@ class _OdysseyHomeState extends ConsumerState<OdysseyHome> with SingleTickerProv
                               color: const Color(0xFFFFA556),
                               onTap: () {
                                 Navigator.pop(sheetContext);
-                                consumerRef.read(timerProvider.notifier).pausePomodoro();
+                                consumerRef
+                                    .read(timerProvider.notifier)
+                                    .pausePomodoro();
                                 soundService.stopTimerSounds();
                                 _performNavigation(targetIndex);
                               },
@@ -298,7 +376,9 @@ class _OdysseyHomeState extends ConsumerState<OdysseyHome> with SingleTickerProv
                               color: const Color(0xFFFF6B6B),
                               onTap: () {
                                 Navigator.pop(sheetContext);
-                                consumerRef.read(timerProvider.notifier).resetPomodoro();
+                                consumerRef
+                                    .read(timerProvider.notifier)
+                                    .resetPomodoro();
                                 soundService.stopTimerSounds();
                                 _performNavigation(targetIndex);
                               },
@@ -418,9 +498,9 @@ class _OdysseyHomeState extends ConsumerState<OdysseyHome> with SingleTickerProv
               children: [
                 Text(
                   l10n.more,
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: 20),
                 GridView.count(
@@ -434,43 +514,64 @@ class _OdysseyHomeState extends ConsumerState<OdysseyHome> with SingleTickerProv
                       Icons.auto_graph_outlined,
                       l10n.analytics,
                       UltravioletColors.primary,
-                      () => _navigateToScreen(const AnalyticsScreen(), title: l10n.analytics),
+                      () => _navigateToScreen(
+                        const AnalyticsScreen(),
+                        title: l10n.analytics,
+                      ),
                     ),
                     _buildMoreMenuItem(
                       Icons.note_outlined,
                       l10n.notes,
                       UltravioletColors.tertiary,
-                      () => _navigateToScreen(const NotesScreen(), title: l10n.notes),
+                      () => _navigateToScreen(
+                        const NotesScreen(),
+                        title: l10n.notes,
+                      ),
                     ),
                     _buildMoreMenuItem(
                       Icons.check_circle_outline,
                       l10n.tasks,
                       UltravioletColors.accentGreen,
-                      () => _navigateToScreen(const TasksScreen(), title: l10n.tasks),
+                      () => _navigateToScreen(
+                        const TasksScreen(),
+                        title: l10n.tasks,
+                      ),
                     ),
                     _buildMoreMenuItem(
                       Icons.menu_book_outlined,
                       l10n.library,
                       UltravioletColors.secondary,
-                      () => _navigateToScreen(const LibraryScreen(), title: l10n.library),
+                      () => _navigateToScreen(
+                        const LibraryScreen(),
+                        title: l10n.library,
+                      ),
                     ),
                     _buildMoreMenuItem(
                       Icons.calendar_month_outlined,
                       l10n.calendar,
                       UltravioletColors.accentBlue,
-                      () => _navigateToScreen(const CalendarScreen(), title: l10n.calendar),
+                      () => _navigateToScreen(
+                        const CalendarScreen(),
+                        title: l10n.calendar,
+                      ),
                     ),
                     _buildMoreMenuItem(
                       Icons.explore_outlined,
                       l10n.isEnglish ? 'Discover' : 'Descobrir',
                       const Color(0xFF6366F1),
-                      () => _navigateToScreen(const FeatureDiscoveryScreen(), title: l10n.isEnglish ? 'Discover' : 'Descobrir'),
+                      () => _navigateToScreen(
+                        const FeatureDiscoveryScreen(),
+                        title: l10n.isEnglish ? 'Discover' : 'Descobrir',
+                      ),
                     ),
                     _buildMoreMenuItem(
                       Icons.settings_outlined,
                       l10n.settings,
                       UltravioletColors.onSurfaceVariant,
-                      () => _navigateToScreen(const SettingsScreen(), title: l10n.settings),
+                      () => _navigateToScreen(
+                        const SettingsScreen(),
+                        title: l10n.settings,
+                      ),
                     ),
                   ],
                 ),
@@ -503,16 +604,9 @@ class _OdysseyHomeState extends ConsumerState<OdysseyHome> with SingleTickerProv
             decoration: BoxDecoration(
               color: color.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(
-                color: color.withValues(alpha: 0.3),
-                width: 1,
-              ),
+              border: Border.all(color: color.withValues(alpha: 0.3), width: 1),
             ),
-            child: Icon(
-              icon,
-              color: color,
-              size: 24,
-            ),
+            child: Icon(icon, color: color, size: 24),
           ),
           const SizedBox(height: 8),
           Text(
@@ -530,17 +624,21 @@ class _OdysseyHomeState extends ConsumerState<OdysseyHome> with SingleTickerProv
   void _navigateToScreen(Widget screen, {String? title}) {
     Navigator.push(
       context,
-      AppPageRoutes.material(
-        ScreenWrapper(
-          title: title,
-          child: screen,
-        ),
-      ),
+      AppPageRoutes.material(ScreenWrapper(title: title, child: screen)),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    // Performance: watch apenas as propriedades necessárias para o side menu
+    final userName = ref.watch(settingsProvider.select((s) => s.userName));
+    final avatarPath = ref.watch(settingsProvider.select((s) => s.avatarPath));
+    final colors = Theme.of(context).colorScheme;
+
+    // Cor de fundo quando o menu está aberto (escuro estilo Rive App)
+    // Cor de fundo quando o menu está aberto (agora combinando com o tema do app)
+    final menuBgColor = Theme.of(context).scaffoldBackgroundColor;
+
     // Listen to navigation provider changes
     ref.listen<int>(navigationProvider, (previous, next) {
       if (next != _currentIndex) {
@@ -550,7 +648,10 @@ class _OdysseyHomeState extends ConsumerState<OdysseyHome> with SingleTickerProv
 
     return WillPopScope(
       onWillPop: () async {
-        // Prevent back navigation if on home tab
+        if (_isMenuOpen) {
+          _toggleSideMenu();
+          return false;
+        }
         if (_currentIndex == 0) {
           SystemNavigator.pop();
           return true;
@@ -558,85 +659,547 @@ class _OdysseyHomeState extends ConsumerState<OdysseyHome> with SingleTickerProv
         _onNavigationTap(0);
         return false;
       },
-      child: Stack(
-        children: [
-          Scaffold(
-            body: PageView(
-              controller: _pageController,
-              physics: const NeverScrollableScrollPhysics(),
-              onPageChanged: (index) {
-                setState(() {
-                  _currentIndex = index;
-                });
-              },
-              children: _mainScreens,
-            ),
-            bottomNavigationBar: Container(
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surface,
-                border: Border(
-                  top: BorderSide(
-                    color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.1),
-                    width: 1,
-                  ),
-                ),
-              ),
-              child: SafeArea(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: [
-                      _buildNavItem(context, 0, Icons.home_outlined, Icons.home, AppLocalizations.of(context)!.home),
-                      _buildNavItem(context, 1, Icons.history_outlined, Icons.history, 'Log'),
-                      _buildNavItem(context, 2, Icons.mood_outlined, Icons.mood, AppLocalizations.of(context)!.mood),
-                      _buildNavItem(context, 3, Icons.timer_outlined, Icons.timer, AppLocalizations.of(context)!.timer),
-                      _buildNavItem(context, 4, Icons.person_outline, Icons.person, AppLocalizations.of(context)!.profile),
-                    ],
-                  ),
+      child: Scaffold(
+        backgroundColor: menuBgColor,
+        extendBody: true,
+        body: Stack(
+          children: [
+            // ==========================================
+            // SIDE MENU (Background layer)
+            // ==========================================
+            RepaintBoundary(
+              child: AnimatedBuilder(
+                animation: _menuAnimation,
+                builder: (context, child) {
+                  return Transform(
+                    alignment: Alignment.center,
+                    transform: Matrix4.identity()
+                      ..setEntry(3, 2, 0.001)
+                      ..rotateY(
+                        ((1 - _menuAnimation.value) * -30) * math.pi / 180,
+                      )
+                      ..translate((1 - _menuAnimation.value) * -300),
+                    child: child,
+                  );
+                },
+                child: FadeTransition(
+                  opacity: _menuAnimation,
+                  child: _buildSideMenu(userName, avatarPath, colors),
                 ),
               ),
             ),
-          ),
-          // Floating timer widget - mostra quando timer ativo e fora da tela do timer
-          const FloatingTimerWidget(),
-        ],
+
+            // ==========================================
+            // MAIN CONTENT (Global PageView with 3D animation)
+            // ==========================================
+            RepaintBoundary(
+              child: AnimatedBuilder(
+                animation: _menuAnimation,
+                builder: (context, child) {
+                  return Transform.scale(
+                    scale: 1 - (_menuAnimation.value * 0.1),
+                    child: Transform.translate(
+                      offset: Offset(_menuAnimation.value * 265, 0),
+                      child: Transform(
+                        alignment: Alignment.center,
+                        transform: Matrix4.identity()
+                          ..setEntry(3, 2, 0.001)
+                          ..rotateY(
+                            (_menuAnimation.value * 30) * math.pi / 180,
+                          ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(
+                            _menuAnimation.value * 24,
+                          ),
+                          child: child,
+                        ),
+                      ),
+                    ),
+                  );
+                },
+                child: GestureDetector(
+                  onTap: _isMenuOpen ? _toggleSideMenu : null,
+                  onHorizontalDragStart: (details) {
+                    // Only allow drag on Home screen
+                    if (_currentIndex != 0) return;
+                    // Disable implicit animation while dragging
+                    // controller is now driven by gesture
+                  },
+                  onHorizontalDragUpdate: (details) {
+                    if (_currentIndex != 0) return;
+
+                    // Width of the screen used for normalization
+                    const double dragWidth = 200.0;
+                    // Calculate delta (0.0 to 1.0)
+                    double delta = details.primaryDelta! / dragWidth;
+
+                    // Update controller value
+                    _menuAnimController.value += delta;
+                  },
+                  onHorizontalDragEnd: (details) {
+                    if (_currentIndex != 0) return;
+
+                    // Width of the screen used for normalization
+                    const double dragWidth = 200.0;
+
+                    // Velocity threshold to snap
+                    double kMinFlingVelocity = 365.0;
+
+                    // If moving fast enough
+                    if (details.primaryVelocity!.abs() >= kMinFlingVelocity) {
+                      double visualVelocity =
+                          details.primaryVelocity! / dragWidth;
+
+                      // If flicked right -> Open
+                      if (visualVelocity > 0) {
+                        _menuAnimController.fling(velocity: visualVelocity);
+                        setState(() => _isMenuOpen = true);
+                      }
+                      // If flicked left -> Close
+                      else {
+                        _menuAnimController.fling(velocity: visualVelocity);
+                        setState(() => _isMenuOpen = false);
+                      }
+                    }
+                    // If moving slow, check position
+                    else {
+                      if (_menuAnimController.value > 0.5) {
+                        _menuAnimController.forward();
+                        setState(() => _isMenuOpen = true);
+                      } else {
+                        _menuAnimController.reverse();
+                        setState(() => _isMenuOpen = false);
+                      }
+                    }
+                  },
+                  child: AbsorbPointer(
+                    absorbing: _isMenuOpen,
+                    child: Scaffold(
+                      backgroundColor: Theme.of(
+                        context,
+                      ).scaffoldBackgroundColor,
+                      body: Stack(
+                        children: [
+                          PageView(
+                            controller: _pageController,
+                            physics: const NeverScrollableScrollPhysics(),
+                            onPageChanged: (index) {
+                              setState(() {
+                                _currentIndex = index;
+                              });
+                            },
+                            children: _mainScreens,
+                          ),
+                          // Floating timer widget
+                          const FloatingTimerWidget(),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
+            // ==========================================
+            // MENU BUTTON (Global floating trigger)
+            // ==========================================
+            RepaintBoundary(
+              child: AnimatedBuilder(
+                animation: _menuAnimation,
+                builder: (context, child) {
+                  return SafeArea(
+                    child: Row(
+                      children: [
+                        SizedBox(width: _menuAnimation.value * 216),
+                        child!,
+                      ],
+                    ),
+                  );
+                },
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 200),
+                  child: (_currentIndex != 0 && !_isMenuOpen)
+                      ? const SizedBox.shrink()
+                      : GestureDetector(
+                          key: const ValueKey('menu_button_visible'),
+                          onTap: _toggleSideMenu,
+                          child: Container(
+                            width: 44,
+                            height: 44,
+                            margin: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).scaffoldBackgroundColor,
+                              shape:
+                                  BoxShape.circle, // Circular shape for avatar
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.1),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: Consumer(
+                              builder: (context, ref, _) {
+                                // Performance: watch apenas as propriedades necessárias
+                                final avatarPath = ref.watch(
+                                  settingsProvider.select((s) => s.avatarPath),
+                                );
+                                final userName = ref.watch(
+                                  settingsProvider.select((s) => s.userName),
+                                );
+
+                                if (_isMenuOpen) {
+                                  return Icon(
+                                    Icons.close_rounded,
+                                    key: const ValueKey('close_icon'),
+                                    color: colors.primary,
+                                  );
+                                }
+
+                                if (avatarPath != null &&
+                                    File(avatarPath).existsSync()) {
+                                  return CircleAvatar(
+                                    key: ValueKey(avatarPath),
+                                    backgroundImage: FileImage(
+                                      File(avatarPath),
+                                    ),
+                                    radius: 20,
+                                  );
+                                }
+
+                                return CircleAvatar(
+                                  key: const ValueKey('default_avatar'),
+                                  backgroundColor: colors.primary.withOpacity(
+                                    0.1,
+                                  ),
+                                  child: Text(
+                                    userName.isNotEmpty
+                                        ? userName[0].toUpperCase()
+                                        : 'U',
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                      color: colors.primary,
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        ),
+                ),
+              ),
+            ),
+          ],
+        ),
+        bottomNavigationBar: _buildAnimatedBottomBar(colors),
       ),
     );
   }
 
-  Widget _buildNavItem(BuildContext context, int index, IconData icon, IconData activeIcon, String label) {
-    final isSelected = _currentIndex == index;
-    final colors = Theme.of(context).colorScheme;
-    
-    return Expanded(
-      child: GestureDetector(
-        onTap: () => _onNavigationTap(index),
-        behavior: HitTestBehavior.opaque,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+  // ==========================================
+  // CUSTOM ANIMATED BOTTOM BAR (Rive Style)
+  // ==========================================
+  Widget _buildAnimatedBottomBar(ColorScheme colors) {
+    if (_isMenuOpen) return const SizedBox.shrink();
+
+    return RepaintBoundary(
+      child: AnimatedBuilder(
+        animation: _menuAnimation,
+        builder: (context, child) {
+          return Transform.translate(
+            offset: Offset(0, _menuAnimation.value * 200),
+            child: child,
+          );
+        },
+        child: RiveBottomBar(
+          currentIndex: _currentIndex,
+          onTap: _onNavigationTap,
+        ),
+      ),
+    );
+  }
+
+  // ==========================================
+  // SIDE MENU (Global)
+  // ==========================================
+  Widget _buildSideMenu(
+    String userName,
+    String? avatarPath,
+    ColorScheme colors,
+  ) {
+    final stats = ref.watch(userStatsProvider.select((s) => s.totalXP));
+    final title = UserTitles.getTitleForXP(stats);
+
+    return SafeArea(
+      child: Container(
+        width: 288,
+        padding: const EdgeInsets.symmetric(vertical: 24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // User Header
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(2),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: LinearGradient(
+                        colors: [colors.primary, colors.tertiary],
+                      ),
+                    ),
+                    child: CircleAvatar(
+                      radius: 24,
+                      backgroundColor: const Color(0xFF17203A),
+                      backgroundImage: avatarPath != null
+                          ? FileImage(File(avatarPath))
+                          : null,
+                      child: avatarPath == null
+                          ? Text(
+                              userName.isNotEmpty
+                                  ? userName[0].toUpperCase()
+                                  : 'O',
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            )
+                          : null,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          userName.isNotEmpty ? userName : 'Viajante',
+                          style: const TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                            decoration: TextDecoration.none,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          '${title.emoji} ${title.name}',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Colors.white.withValues(alpha: 0.7),
+                            decoration: TextDecoration.none,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 32),
+
+            // Navigation Items
+            Expanded(
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _menuSectionLabel('NAVEGAÇÃO'),
+                    _sideMenuItem(
+                      Icons.home_rounded,
+                      'Início',
+                      _currentIndex == 0,
+                      () => _performNavigation(0),
+                    ),
+                    _sideMenuItem(
+                      Icons.history_rounded,
+                      'Histórico',
+                      _currentIndex == 1,
+                      () => _performNavigation(1),
+                    ),
+                    _sideMenuItem(
+                      Icons.mood_rounded,
+                      'Humor',
+                      _currentIndex == 2,
+                      () => _performNavigation(2),
+                    ),
+                    _sideMenuItem(
+                      Icons.timer_rounded,
+                      'Foco',
+                      _currentIndex == 3,
+                      () => _performNavigation(3),
+                    ),
+                    _sideMenuItem(
+                      Icons.person_rounded,
+                      'Perfil',
+                      _currentIndex == 4,
+                      () => _performNavigation(4),
+                    ),
+
+                    const SizedBox(height: 24),
+                    _menuSectionLabel('CONFIGURAÇÕES'),
+                    _sideMenuItem(
+                      Icons.settings_rounded,
+                      'Preferências',
+                      false,
+                      () {
+                        _toggleSideMenu();
+                        _navigateToScreen(
+                          const SettingsScreen(),
+                          title: 'Configurações',
+                        );
+                      },
+                    ),
+                    _sideMenuItem(
+                      Icons.notifications_rounded,
+                      'Notificações',
+                      false,
+                      () {
+                        _toggleSideMenu();
+                        _navigateToScreen(
+                          const ModernNotificationSettingsScreen(),
+                          title: 'Notificações',
+                        );
+                      },
+                    ),
+                    _sideMenuItem(Icons.favorite_rounded, 'Apoiar', false, () {
+                      _toggleSideMenu();
+                      _navigateToScreen(
+                        const DonationScreen(),
+                        title: 'Doação',
+                      );
+                    }),
+                  ],
+                ),
+              ),
+            ),
+
+            // Theme Toggle
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Row(
+                children: [
+                  Icon(
+                    Theme.of(context).brightness == Brightness.dark
+                        ? Icons.light_mode_rounded
+                        : Icons.dark_mode_rounded,
+                    color: Colors.white.withValues(alpha: 0.6),
+                    size: 24,
+                  ),
+                  const SizedBox(width: 14),
+                  const Expanded(
+                    child: Text(
+                      'Modo Escuro',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                        decoration: TextDecoration.none,
+                      ),
+                    ),
+                  ),
+                  Switch.adaptive(
+                    value: Theme.of(context).brightness == Brightness.dark,
+                    activeColor: colors.primary,
+                    onChanged: (v) {
+                      ref
+                          .read(settingsProvider.notifier)
+                          .setThemeMode(v ? ThemeMode.dark : ThemeMode.light);
+                      HapticFeedback.mediumImpact();
+                    },
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
+            // Version
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Text(
+                'Odyssey v1.0.0',
+                style: TextStyle(
+                  fontSize: 11,
+                  color: Colors.white.withValues(alpha: 0.4),
+                  decoration: TextDecoration.none,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _menuSectionLabel(String label) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 8, 24, 8),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+          color: Colors.white.withValues(alpha: 0.5),
+          letterSpacing: 1.2,
+          decoration: TextDecoration.none,
+        ),
+      ),
+    );
+  }
+
+  Widget _sideMenuItem(
+    IconData icon,
+    String label,
+    bool isSelected,
+    VoidCallback onTap,
+  ) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () {
+          HapticFeedback.lightImpact();
+          onTap();
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
           decoration: BoxDecoration(
-            color: isSelected ? colors.primary.withValues(alpha: 0.15) : Colors.transparent,
-            borderRadius: BorderRadius.circular(12),
+            color: isSelected
+                ? Colors.white.withValues(alpha: 0.1)
+                : Colors.transparent,
+            border: Border(
+              left: BorderSide(
+                color: isSelected ? Colors.white : Colors.transparent,
+                width: 3,
+              ),
+            ),
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
+          child: Row(
             children: [
               Icon(
-                isSelected ? activeIcon : icon,
-                color: isSelected ? colors.primary : colors.onSurfaceVariant.withValues(alpha: 0.7),
+                icon,
+                color: isSelected
+                    ? Colors.white
+                    : Colors.white.withValues(alpha: 0.7),
                 size: 22,
               ),
-              const SizedBox(height: 2),
+              const SizedBox(width: 14),
               Text(
                 label,
                 style: TextStyle(
-                  color: isSelected ? colors.primary : colors.onSurfaceVariant.withValues(alpha: 0.7),
-                  fontSize: 10,
+                  fontSize: 15,
                   fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                  color: isSelected
+                      ? Colors.white
+                      : Colors.white.withValues(alpha: 0.7),
+                  decoration: TextDecoration.none,
                 ),
-                overflow: TextOverflow.ellipsis,
               ),
             ],
           ),
@@ -652,10 +1215,7 @@ class ScreenWrapper extends StatelessWidget {
   final Widget child;
   final String? title;
 
-  const ScreenWrapper({super.key, 
-    required this.child,
-    this.title,
-  });
+  const ScreenWrapper({super.key, required this.child, this.title});
 
   @override
   Widget build(BuildContext context) {

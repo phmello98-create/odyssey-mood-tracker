@@ -1,11 +1,16 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
-import 'package:audioplayers/audioplayers.dart';
+import 'package:flutter_soloud/flutter_soloud.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// Serviço de som usando audioplayers - multiplataforma e leve
-/// Funciona bem em Linux, Android e iOS
+/// Serviço de som usando flutter_soloud - baixa latência e sem conflito com áudio em background
+///
+/// Vantagens sobre audioplayers:
+/// - Ultra baixa latência (ideal para UI feedback)
+/// - NÃO interfere com áudio de outros apps (YouTube, Spotify, etc.)
+/// - Sons pré-carregados em memória para resposta instantânea
+/// - Otimizado para efeitos sonoros curtos
 class SoundService {
   static final SoundService _instance = SoundService._internal();
   factory SoundService() => _instance;
@@ -16,13 +21,11 @@ class SoundService {
   double _volume = 0.5;
   double _ambientVolume = 0.3;
 
-  // Pool de players para sons curtos (evita criar/destruir players)
-  final List<AudioPlayer> _playerPool = [];
-  static const int _poolSize = 5;
-  int _currentPoolIndex = 0;
+  // Cache de sons carregados (AudioSource)
+  final Map<String, AudioSource> _loadedSounds = {};
 
-  // Player dedicado para sons ambiente (loops)
-  AudioPlayer? _ambientPlayer;
+  // Handles ativos para poder parar sons específicos
+  SoundHandle? _ambientHandle;
   String? _currentAmbientKey;
 
   // Tick do timer
@@ -30,6 +33,9 @@ class SoundService {
   Timer? _tickTimer;
   String _tickType = 'soft_tick';
   double _tickVolume = 0.3;
+
+  // Referência ao SoLoud
+  SoLoud get _soloud => SoLoud.instance;
 
   // Getters/Setters
   bool get soundEnabled => _soundEnabled;
@@ -52,7 +58,7 @@ class SoundService {
 
   bool get isTickingEnabled => _isTickingEnabled;
   bool get isAmbientPlaying =>
-      _ambientPlayer != null && _currentAmbientKey != null;
+      _ambientHandle != null && _currentAmbientKey != null;
   String? get currentAmbientSound => _currentAmbientKey;
   String get tickType => _tickType;
   set tickType(String value) => _tickType = value;
@@ -113,7 +119,7 @@ class SoundService {
     ),
   };
 
-  // Mapa de sons de UI (curtos)
+  // Mapa de sons de UI (curtos) - apenas os essenciais para reduzir memória
   static const Map<String, String> _uiSounds = {
     // === SONS SND (novos, profissionais) ===
     'snd_button': 'sounds/button.wav',
@@ -142,17 +148,12 @@ class SoundService {
     'snd_caution': 'sounds/caution.wav',
     'snd_celebration': 'sounds/celebration.wav',
 
-    // === LEGACY ===
+    // === LEGACY - sons mais usados ===
     'click': 'sounds/ui/clicks/click_soft.ogg',
     'button': 'sounds/ui/clicks/button_click.ogg',
     'success': 'sounds/ui/feedback/success_chime.ogg',
     'fail': 'sounds/ui/feedback/error_beep.ogg',
     'happy': 'sounds/ui/feedback/happy_bop.ogg',
-    'xp': 'sounds/ui/feedback/success_chime.ogg',
-    'coin': 'sounds/ui/feedback/success_chime.ogg',
-    'trophy': 'sounds/ui/feedback/success_chime.ogg',
-    'levelup': 'sounds/ui/feedback/success_chime.ogg',
-    'achievement': 'sounds/ui/notifications/reminder_ding.ogg',
     'timer_end': 'sounds/ui/notifications/alert_ping.ogg',
     'notification': 'sounds/ui/notifications/reminder_general.ogg',
     'scroll_open': 'sounds/ui/popups/modal_open.ogg',
@@ -160,10 +161,9 @@ class SoundService {
     'ready': 'sounds/ui/feedback/add_item.ogg',
     'tick_soft': 'sounds/tick_soft.mp3',
     'tick_clock': 'sounds/tick_clock.mp3',
-    'swipe': 'sounds/ui/transitions/swipe_clean.ogg',
     'mood_select': 'sounds/ui/mood/mood_select.ogg',
 
-    // === NOVOS SONS PROFISSIONAIS ===
+    // === PROFISSIONAIS ===
     'button_click': 'sounds/ui/clicks/button_click.ogg',
     'tap_soft': 'sounds/ui/clicks/tap_soft.ogg',
     'edit_click': 'sounds/ui/clicks/edit_click.ogg',
@@ -189,29 +189,81 @@ class SoundService {
     'mood_tap': 'sounds/ui/mood/mood_tap.ogg',
   };
 
+  /// Sons essenciais para pré-carregar na inicialização
+  /// (os mais usados para resposta instantânea)
+  static const List<String> _essentialSounds = [
+    'snd_button',
+    'snd_tap_01',
+    'snd_tap_02',
+    'snd_tap_03',
+    'snd_select',
+    'snd_toggle_on',
+    'snd_toggle_off',
+    'click',
+    'button',
+    'success',
+    'modal_open',
+    'modal_close',
+  ];
+
   /// Inicializa o serviço de som
   Future<void> init() async {
     if (_initialized) return;
 
     try {
-      // Cria pool de players
-      for (int i = 0; i < _poolSize; i++) {
-        final player = AudioPlayer();
-        await player.setReleaseMode(ReleaseMode.stop);
-        _playerPool.add(player);
-      }
+      debugPrint('🔊 SoundService: Inicializando flutter_soloud...');
 
-      _initialized = true;
+      // Inicializa o SoLoud
+      await _soloud.init();
+      debugPrint('🔊 SoundService: SoLoud engine initialized');
 
       // Carrega configurações salvas
       await _loadSettings();
 
+      // Pré-carrega sons essenciais (aguarda completar)
+      await _preloadEssentialSounds();
+
+      _initialized = true;
+
       debugPrint(
-        '🔊 SoundService initialized with audioplayers (pool size: $_poolSize)',
+        '🔊 SoundService READY: flutter_soloud (low latency, no audio focus conflict)',
       );
-    } catch (e) {
+    } catch (e, stack) {
       debugPrint('⚠️ SoundService init error: $e');
+      debugPrint('Stack: $stack');
       _initialized = false;
+    }
+  }
+
+  /// Pré-carrega sons essenciais para resposta instantânea
+  Future<void> _preloadEssentialSounds() async {
+    for (final key in _essentialSounds) {
+      try {
+        await _loadSound(key);
+      } catch (e) {
+        debugPrint('Warning: Could not preload sound $key: $e');
+      }
+    }
+    debugPrint('🎵 Preloaded ${_loadedSounds.length} essential sounds');
+  }
+
+  /// Carrega um som e retorna o AudioSource
+  Future<AudioSource?> _loadSound(String key) async {
+    // Retorna do cache se já carregado
+    if (_loadedSounds.containsKey(key)) {
+      return _loadedSounds[key];
+    }
+
+    final path = _uiSounds[key];
+    if (path == null) return null;
+
+    try {
+      final source = await _soloud.loadAsset('assets/$path');
+      _loadedSounds[key] = source;
+      return source;
+    } catch (e) {
+      debugPrint('Error loading sound $key: $e');
+      return null;
     }
   }
 
@@ -241,25 +293,15 @@ class SoundService {
     }
   }
 
-  /// Obtém próximo player do pool (round-robin)
-  AudioPlayer _getPoolPlayer() {
-    final player = _playerPool[_currentPoolIndex];
-    _currentPoolIndex = (_currentPoolIndex + 1) % _poolSize;
-    return player;
-  }
-
   /// Toca um som pelo key
   Future<void> _play(String key, {double volume = 0.5}) async {
     if (!_soundEnabled || !_initialized) return;
 
-    final path = _uiSounds[key];
-    if (path == null) return;
-
     try {
-      final player = _getPoolPlayer();
-      await player.stop(); // Para som anterior se existir
-      await player.setVolume(volume * _volume);
-      await player.play(AssetSource(path));
+      final source = await _loadSound(key);
+      if (source == null) return;
+
+      await _soloud.play(source, volume: volume * _volume);
     } catch (e) {
       debugPrint('Sound play error ($key): $e');
     }
@@ -409,22 +451,22 @@ class SoundService {
   // ==========================================
 
   Future<void> playXPGain() async {
-    await _play('xp', volume: 0.4);
+    await _play('success', volume: 0.4);
     await HapticFeedback.lightImpact();
   }
 
   Future<void> playCoin() async {
-    await _play('coin', volume: 0.4);
+    await _play('success', volume: 0.4);
     await HapticFeedback.lightImpact();
   }
 
   Future<void> playTrophy() async {
-    await _play('trophy', volume: 0.5);
+    await _play('success', volume: 0.5);
     await HapticFeedback.mediumImpact();
   }
 
   Future<void> playLevelUp() async {
-    await _play('levelup', volume: 0.55);
+    await _play('success', volume: 0.55);
     await HapticFeedback.heavyImpact();
   }
 
@@ -454,7 +496,7 @@ class SoundService {
   }
 
   Future<void> playProgress() async {
-    await _play('xp', volume: 0.3);
+    await _play('success', volume: 0.3);
   }
 
   // ==========================================
@@ -608,10 +650,12 @@ class SoundService {
     try {
       await stopAmbientSound();
 
-      _ambientPlayer = AudioPlayer();
-      await _ambientPlayer!.setReleaseMode(ReleaseMode.loop);
-      await _ambientPlayer!.setVolume((volume ?? _ambientVolume));
-      await _ambientPlayer!.play(AssetSource(info.source));
+      final source = await _soloud.loadAsset('assets/${info.source}');
+      _ambientHandle = await _soloud.play(
+        source,
+        volume: volume ?? _ambientVolume,
+        looping: true,
+      );
       _currentAmbientKey = key;
 
       debugPrint('🎵 Playing ambient: $key');
@@ -621,18 +665,25 @@ class SoundService {
   }
 
   Future<void> stopAmbientSound() async {
-    if (_ambientPlayer != null) {
-      await _ambientPlayer!.stop();
-      await _ambientPlayer!.dispose();
-      _ambientPlayer = null;
+    if (_ambientHandle != null) {
+      try {
+        await _soloud.stop(_ambientHandle!);
+      } catch (e) {
+        debugPrint('Error stopping ambient: $e');
+      }
+      _ambientHandle = null;
       _currentAmbientKey = null;
     }
   }
 
   Future<void> setAmbientVolume(double volume) async {
     _ambientVolume = volume.clamp(0.0, 1.0);
-    if (_ambientPlayer != null) {
-      await _ambientPlayer!.setVolume(_ambientVolume);
+    if (_ambientHandle != null) {
+      try {
+        _soloud.setVolume(_ambientHandle!, _ambientVolume);
+      } catch (e) {
+        debugPrint('Error setting ambient volume: $e');
+      }
     }
     await _saveSettings();
   }
@@ -696,10 +747,22 @@ class SoundService {
     stopTickSound();
     await stopAmbientSound();
 
-    for (final player in _playerPool) {
-      await player.dispose();
+    // Descarta todos os sons carregados
+    for (final source in _loadedSounds.values) {
+      try {
+        await _soloud.disposeSource(source);
+      } catch (e) {
+        debugPrint('Error disposing sound source: $e');
+      }
     }
-    _playerPool.clear();
+    _loadedSounds.clear();
+
+    // Desliga o SoLoud
+    try {
+      _soloud.deinit();
+    } catch (e) {
+      debugPrint('Error deiniting SoLoud: $e');
+    }
 
     _initialized = false;
   }
@@ -719,7 +782,7 @@ class AmbientSoundInfo {
     required this.category,
   });
 
-  /// Se é som local (sempre true para audioplayers)
+  /// Se é som local (sempre true para flutter_soloud)
   bool get isLocal => true;
 }
 

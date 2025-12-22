@@ -14,6 +14,7 @@ dependencies:
   collection: ^1.17.0
   dynamic_color: ^1.6.3
   fl_chart: ^1.1.1
+  rive: ^0.13.4
   flutter:
     sdk: flutter
 
@@ -93,9 +94,10 @@ dependencies:
   # Timeago para formatação de tempo relativo
   timeago: ^3.7.0
   just_audio: ^0.10.5
+  just_audio_background: ^0.0.1-beta.15  # Background playback com notificação
   just_audio_media_kit: ^2.1.0
   media_kit_libs_linux: ^1.2.1
-  audioplayers: ^6.5.1
+  flutter_soloud: ^3.4.7  # Som de baixa latência, não interfere com outros apps
   isar: ^3.1.0+1
   isar_flutter_libs: ^3.1.0+1
 
@@ -146,7 +148,9 @@ flutter:
     - assets/sounds/timer/
     - assets/app_icon/
     - assets/images/
+    - assets/images/onboarding/
     - assets/icons/
+    - assets/rive/
 
 dependency_overrides:
   intl: 0.20.2  # Override to use the same intl version required by flutter_localizations
