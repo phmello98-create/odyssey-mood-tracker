@@ -28,6 +28,9 @@ class TimerState {
   final int pomodoroSessions;
   final Duration pomodoroDuration;
 
+  // Cronômetro (Stopwatch)
+  final List<Duration> laps;
+
   // Flag para abrir a tela do Pomodoro automaticamente
   final bool shouldOpenPomodoroScreen;
 
@@ -47,6 +50,7 @@ class TimerState {
     this.pomodoroTimeLeft = const Duration(minutes: 25),
     this.pomodoroSessions = 0,
     this.pomodoroDuration = const Duration(minutes: 25),
+    this.laps = const [],
     this.shouldOpenPomodoroScreen = false,
   });
 
@@ -66,6 +70,7 @@ class TimerState {
     Duration? pomodoroTimeLeft,
     int? pomodoroSessions,
     Duration? pomodoroDuration,
+    List<Duration>? laps,
     bool? shouldOpenPomodoroScreen,
   }) {
     return TimerState(
@@ -84,6 +89,7 @@ class TimerState {
       pomodoroTimeLeft: pomodoroTimeLeft ?? this.pomodoroTimeLeft,
       pomodoroSessions: pomodoroSessions ?? this.pomodoroSessions,
       pomodoroDuration: pomodoroDuration ?? this.pomodoroDuration,
+      laps: laps ?? this.laps,
       shouldOpenPomodoroScreen:
           shouldOpenPomodoroScreen ?? this.shouldOpenPomodoroScreen,
     );
@@ -110,6 +116,7 @@ class TimerState {
     'pomodoroTimeLeft': pomodoroTimeLeft.inSeconds,
     'pomodoroSessions': pomodoroSessions,
     'pomodoroDuration': pomodoroDuration.inSeconds,
+    'laps': laps.map((l) => l.inSeconds).toList(),
   };
 
   /// Deserializa da persistência
@@ -132,6 +139,9 @@ class TimerState {
       pomodoroTimeLeft: Duration(seconds: json['pomodoroTimeLeft'] ?? 1500),
       pomodoroSessions: json['pomodoroSessions'] ?? 0,
       pomodoroDuration: Duration(seconds: json['pomodoroDuration'] ?? 1500),
+      laps: (json['laps'] as List? ?? [])
+          .map((s) => Duration(seconds: s as int))
+          .toList(),
     );
   }
 }
@@ -445,7 +455,7 @@ class TimerNotifier extends StateNotifier<TimerState> {
 
     _clearPersistedData();
 
-    state = state.copyWith(isRunning: false, isPaused: false);
+    state = state.copyWith(isRunning: false, isPaused: false, laps: []);
 
     return finalState;
   }
@@ -457,6 +467,24 @@ class TimerNotifier extends StateNotifier<TimerState> {
     _cancelTimerNotification();
     _clearPersistedData();
     state = const TimerState();
+  }
+
+  /// Adiciona uma volta ao cronômetro
+  void addLap() {
+    if (!state.isRunning && !state.isPaused) return;
+
+    final currentElapsed = state.startTime != null
+        ? state.pausedElapsed + DateTime.now().difference(state.startTime!)
+        : state.elapsed;
+
+    state = state.copyWith(laps: [currentElapsed, ...state.laps]);
+    _persistTimerData();
+  }
+
+  /// Limpa as voltas
+  void resetLaps() {
+    state = state.copyWith(laps: []);
+    _persistTimerData();
   }
 
   /// Inicia sessão Pomodoro

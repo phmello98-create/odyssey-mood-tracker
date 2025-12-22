@@ -2525,6 +2525,33 @@ class AppLocalizationsEn extends AppLocalizations {
   String get status => 'Status';
 
   @override
+  String get stopwatch => 'Stopwatch';
+
+  @override
+  String get laps => 'Laps';
+
+  @override
+  String get lap => 'Lap';
+
+  @override
+  String get startStopwatch => 'Start Stopwatch';
+
+  @override
+  String get pauseStopwatch => 'Pause Stopwatch';
+
+  @override
+  String get noLaps => 'No laps recorded';
+
+  @override
+  String get timerComplete => 'Timer complete!';
+
+  @override
+  String get setTime => 'Set time';
+
+  @override
+  String get countdownTimer => 'Timer';
+
+  @override
   String get stop => 'Stop';
 
   @override

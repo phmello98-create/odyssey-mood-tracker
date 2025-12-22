@@ -33,11 +33,13 @@ class AnimatedStatNumber extends StatelessWidget {
       separator: '.',
       prefix: prefix ?? '',
       suffix: suffix ?? '',
-      style: style ?? const TextStyle(
-        fontSize: 32,
-        fontWeight: FontWeight.w700,
-        color: UltravioletColors.onSurface,
-      ),
+      style:
+          style ??
+          const TextStyle(
+            fontSize: 32,
+            fontWeight: FontWeight.w700,
+            color: UltravioletColors.onSurface,
+          ),
     );
   }
 }
@@ -84,13 +86,15 @@ class _AnimatedStatCardState extends State<AnimatedStatCard>
       vsync: this,
     );
 
-    _scaleAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.elasticOut),
-    );
+    _scaleAnimation = Tween<double>(
+      begin: 0.8,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.elasticOut));
 
-    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeOut),
-    );
+    _fadeAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
 
     _slideAnimation = Tween<Offset>(
       begin: const Offset(0, 0.3),
@@ -117,10 +121,7 @@ class _AnimatedStatCardState extends State<AnimatedStatCard>
           opacity: _fadeAnimation,
           child: SlideTransition(
             position: _slideAnimation,
-            child: ScaleTransition(
-              scale: _scaleAnimation,
-              child: child,
-            ),
+            child: ScaleTransition(scale: _scaleAnimation, child: child),
           ),
         );
       },
@@ -160,15 +161,16 @@ class _AnimatedStatCardState extends State<AnimatedStatCard>
                 ],
               ),
               const SizedBox(height: 12),
-              widget.customContent ?? AnimatedStatNumber(
-                value: widget.value,
-                suffix: widget.suffix,
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.w700,
-                  color: widget.color,
-                ),
-              ),
+              widget.customContent ??
+                  AnimatedStatNumber(
+                    value: widget.value,
+                    suffix: widget.suffix,
+                    style: TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.w700,
+                      color: widget.color,
+                    ),
+                  ),
             ],
           ),
         ),
@@ -214,14 +216,12 @@ class _AnimatedProgressBarState extends State<AnimatedProgressBar>
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
-      duration: widget.duration,
-      vsync: this,
-    );
+    _controller = AnimationController(duration: widget.duration, vsync: this);
 
-    _progressAnimation = Tween<double>(begin: 0, end: widget.progress).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic),
-    );
+    _progressAnimation = Tween<double>(
+      begin: 0,
+      end: widget.progress,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
 
     Future.delayed(widget.delay, () {
       if (mounted) _controller.forward();
@@ -232,10 +232,13 @@ class _AnimatedProgressBarState extends State<AnimatedProgressBar>
   void didUpdateWidget(AnimatedProgressBar oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.progress != widget.progress) {
-      _progressAnimation = Tween<double>(
-        begin: _progressAnimation.value,
-        end: widget.progress,
-      ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
+      _progressAnimation =
+          Tween<double>(
+            begin: _progressAnimation.value,
+            end: widget.progress,
+          ).animate(
+            CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic),
+          );
       _controller.forward(from: 0);
     }
   }
@@ -248,7 +251,8 @@ class _AnimatedProgressBarState extends State<AnimatedProgressBar>
 
   @override
   Widget build(BuildContext context) {
-    final radius = widget.borderRadius ?? BorderRadius.circular(widget.height / 2);
+    final radius =
+        widget.borderRadius ?? BorderRadius.circular(widget.height / 2);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -288,7 +292,8 @@ class _AnimatedProgressBarState extends State<AnimatedProgressBar>
         Container(
           height: widget.height,
           decoration: BoxDecoration(
-            color: widget.backgroundColor ?? widget.color.withValues(alpha: 0.15),
+            color:
+                widget.backgroundColor ?? widget.color.withValues(alpha: 0.15),
             borderRadius: radius,
           ),
           child: AnimatedBuilder(
@@ -308,8 +313,8 @@ class _AnimatedProgressBarState extends State<AnimatedProgressBar>
                     borderRadius: radius,
                     boxShadow: [
                       BoxShadow(
-                        color: widget.color.withValues(alpha: 0.4),
-                        blurRadius: 6,
+                        color: widget.color.withValues(alpha: 0.12),
+                        blurRadius: 4,
                         offset: const Offset(0, 2),
                       ),
                     ],
@@ -350,7 +355,8 @@ class AnimatedCircularProgress extends StatefulWidget {
   });
 
   @override
-  State<AnimatedCircularProgress> createState() => _AnimatedCircularProgressState();
+  State<AnimatedCircularProgress> createState() =>
+      _AnimatedCircularProgressState();
 }
 
 class _AnimatedCircularProgressState extends State<AnimatedCircularProgress>
@@ -361,14 +367,12 @@ class _AnimatedCircularProgressState extends State<AnimatedCircularProgress>
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
-      duration: widget.duration,
-      vsync: this,
-    );
+    _controller = AnimationController(duration: widget.duration, vsync: this);
 
-    _progressAnimation = Tween<double>(begin: 0, end: widget.progress).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic),
-    );
+    _progressAnimation = Tween<double>(
+      begin: 0,
+      end: widget.progress,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
 
     Future.delayed(widget.delay, () {
       if (mounted) _controller.forward();
@@ -379,10 +383,13 @@ class _AnimatedCircularProgressState extends State<AnimatedCircularProgress>
   void didUpdateWidget(AnimatedCircularProgress oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.progress != widget.progress) {
-      _progressAnimation = Tween<double>(
-        begin: _progressAnimation.value,
-        end: widget.progress,
-      ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
+      _progressAnimation =
+          Tween<double>(
+            begin: _progressAnimation.value,
+            end: widget.progress,
+          ).animate(
+            CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic),
+          );
       _controller.forward(from: 0);
     }
   }
@@ -409,7 +416,8 @@ class _AnimatedCircularProgressState extends State<AnimatedCircularProgress>
                 value: 1,
                 strokeWidth: widget.strokeWidth,
                 valueColor: AlwaysStoppedAnimation(
-                  widget.backgroundColor ?? widget.color.withValues(alpha: 0.15),
+                  widget.backgroundColor ??
+                      widget.color.withValues(alpha: 0.15),
                 ),
               ),
               // Progress ring
@@ -421,16 +429,18 @@ class _AnimatedCircularProgressState extends State<AnimatedCircularProgress>
               ),
               // Center content
               Center(
-                child: widget.child ?? (widget.showPercentage
-                    ? Text(
-                        '${(_progressAnimation.value * 100).toInt()}%',
-                        style: TextStyle(
-                          fontSize: widget.size * 0.22,
-                          fontWeight: FontWeight.w700,
-                          color: widget.color,
-                        ),
-                      )
-                    : null),
+                child:
+                    widget.child ??
+                    (widget.showPercentage
+                        ? Text(
+                            '${(_progressAnimation.value * 100).toInt()}%',
+                            style: TextStyle(
+                              fontSize: widget.size * 0.22,
+                              fontWeight: FontWeight.w700,
+                              color: widget.color,
+                            ),
+                          )
+                        : null),
               ),
             ],
           );
@@ -472,10 +482,7 @@ class _AnimatedMiniBarChartState extends State<AnimatedMiniBarChart>
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
-      duration: widget.duration,
-      vsync: this,
-    );
+    _controller = AnimationController(duration: widget.duration, vsync: this);
 
     Future.delayed(widget.delay, () {
       if (mounted) _controller.forward();
@@ -512,15 +519,20 @@ class _AnimatedMiniBarChartState extends State<AnimatedMiniBarChart>
               animation: _controller,
               builder: (context, _) {
                 // Staggered animation
-                final progress = ((_controller.value * widget.values.length) - index)
-                    .clamp(0.0, 1.0);
+                final progress =
+                    ((_controller.value * widget.values.length) - index).clamp(
+                      0.0,
+                      1.0,
+                    );
                 final curvedProgress = Curves.elasticOut.transform(progress);
 
                 return Container(
                   width: widget.barWidth,
                   height: widget.height * normalizedValue * curvedProgress,
                   decoration: BoxDecoration(
-                    color: widget.color.withValues(alpha: 0.3 + (0.7 * normalizedValue)),
+                    color: widget.color.withValues(
+                      alpha: 0.3 + (0.7 * normalizedValue),
+                    ),
                     borderRadius: BorderRadius.circular(widget.barWidth / 2),
                   ),
                 );
@@ -567,10 +579,7 @@ class _AnimatedSparklineState extends State<AnimatedSparkline>
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
-      duration: widget.duration,
-      vsync: this,
-    );
+    _controller = AnimationController(duration: widget.duration, vsync: this);
 
     Future.delayed(widget.delay, () {
       if (mounted) _controller.forward();
@@ -642,7 +651,8 @@ class _SparklinePainter extends CustomPainter {
     for (int i = 0; i < values.length; i++) {
       final x = i * stepX;
       final normalizedY = range > 0 ? (values[i] - minValue) / range : 0.5;
-      final y = size.height - (normalizedY * size.height * 0.8) - (size.height * 0.1);
+      final y =
+          size.height - (normalizedY * size.height * 0.8) - (size.height * 0.1);
       points.add(Offset(x, y));
     }
 
@@ -666,10 +676,7 @@ class _SparklinePainter extends CustomPainter {
         ..shader = LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [
-            color.withValues(alpha: 0.3),
-            color.withValues(alpha: 0.05),
-          ],
+          colors: [color.withValues(alpha: 0.3), color.withValues(alpha: 0.05)],
         ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
 
       canvas.drawPath(fillPath, fillPaint);
@@ -744,9 +751,10 @@ class _AnimatedStreakWidgetState extends State<AnimatedStreakWidget>
       TweenSequenceItem(tween: Tween(begin: 0.9, end: 1.0), weight: 40),
     ]).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
 
-    _glowAnimation = Tween<double>(begin: 0, end: 1).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeOut),
-    );
+    _glowAnimation = Tween<double>(
+      begin: 0,
+      end: 1,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
 
     Future.delayed(widget.delay, () {
       if (mounted) _controller.forward();
@@ -779,7 +787,9 @@ class _AnimatedStreakWidgetState extends State<AnimatedStreakWidget>
               border: Border.all(color: Colors.orange.withValues(alpha: 0.3)),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.orange.withValues(alpha: 0.2 * _glowAnimation.value),
+                  color: Colors.orange.withValues(
+                    alpha: 0.2 * _glowAnimation.value,
+                  ),
                   blurRadius: 12 * _glowAnimation.value,
                   spreadRadius: 2 * _glowAnimation.value,
                 ),

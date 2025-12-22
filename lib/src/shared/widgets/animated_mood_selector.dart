@@ -222,9 +222,9 @@ class _MoodEmojiItemState extends State<_MoodEmojiItem>
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
-                          color: widget.emoji.color.withValues(alpha: 0.4),
-                          blurRadius: 20,
-                          spreadRadius: 2,
+                          color: widget.emoji.color.withValues(alpha: 0.15),
+                          blurRadius: 14,
+                          spreadRadius: 0,
                         ),
                       ],
                     )
@@ -257,8 +257,9 @@ class _MoodEmojiItemState extends State<_MoodEmojiItem>
                   color: widget.isSelected
                       ? widget.emoji.color
                       : Colors.grey.shade500,
-                  fontWeight:
-                      widget.isSelected ? FontWeight.bold : FontWeight.normal,
+                  fontWeight: widget.isSelected
+                      ? FontWeight.bold
+                      : FontWeight.normal,
                   fontSize: widget.isSelected ? 13 : 11,
                 ),
                 child: Text(widget.emoji.label),

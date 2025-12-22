@@ -2529,6 +2529,33 @@ class AppLocalizationsPt extends AppLocalizations {
   String get status => 'Status';
 
   @override
+  String get stopwatch => 'Cronômetro';
+
+  @override
+  String get laps => 'Voltas';
+
+  @override
+  String get lap => 'Volta';
+
+  @override
+  String get startStopwatch => 'Iniciar Cronômetro';
+
+  @override
+  String get pauseStopwatch => 'Pausar Cronômetro';
+
+  @override
+  String get noLaps => 'Nenhuma volta registrada';
+
+  @override
+  String get timerComplete => 'Timer concluído!';
+
+  @override
+  String get setTime => 'Definir tempo';
+
+  @override
+  String get countdownTimer => 'Temporizador';
+
+  @override
   String get stop => 'Parar';
 
   @override

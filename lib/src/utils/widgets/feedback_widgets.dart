@@ -4,7 +4,7 @@ import 'package:odyssey/src/utils/services/sound_service.dart';
 
 /// Serviço de feedback visual moderno com toasts customizados
 class FeedbackService {
-  static final GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey = 
+  static final GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey =
       GlobalKey<ScaffoldMessengerState>();
 
   static OverlayEntry? _currentOverlay;
@@ -27,7 +27,7 @@ class FeedbackService {
     _removeCurrentOverlay();
 
     final overlay = Overlay.of(context);
-    
+
     late OverlayEntry overlayEntry;
     overlayEntry = OverlayEntry(
       builder: (context) => _AnimatedToast(
@@ -50,10 +50,14 @@ class FeedbackService {
   }
 
   /// Mostra toast de tarefa concluída com nome
-  static void showTaskCompleted(BuildContext context, String taskName, {int? xp}) {
+  static void showTaskCompleted(
+    BuildContext context,
+    String taskName, {
+    int? xp,
+  }) {
     HapticFeedback.mediumImpact();
     soundService.playComplete();
-    
+
     _showModernToast(
       context,
       duration: const Duration(milliseconds: 2500),
@@ -67,7 +71,11 @@ class FeedbackService {
               color: Colors.white.withValues(alpha: 0.2),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: const Icon(Icons.check_circle_rounded, color: Colors.white, size: 22),
+            child: const Icon(
+              Icons.check_circle_rounded,
+              color: Colors.white,
+              size: 22,
+            ),
           ),
           const SizedBox(width: 12),
           Flexible(
@@ -98,10 +106,7 @@ class FeedbackService {
               ],
             ),
           ),
-          if (xp != null) ...[
-            const SizedBox(width: 12),
-            _buildXPBadge(xp),
-          ],
+          if (xp != null) ...[const SizedBox(width: 12), _buildXPBadge(xp)],
         ],
       ),
     );
@@ -111,7 +116,7 @@ class FeedbackService {
   static void showTaskUncompleted(BuildContext context, String taskName) {
     HapticFeedback.lightImpact();
     soundService.playTap();
-    
+
     _showModernToast(
       context,
       duration: const Duration(milliseconds: 1800),
@@ -125,7 +130,11 @@ class FeedbackService {
               color: Colors.white.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: const Icon(Icons.undo_rounded, color: Colors.white70, size: 20),
+            child: const Icon(
+              Icons.undo_rounded,
+              color: Colors.white70,
+              size: 20,
+            ),
           ),
           const SizedBox(width: 12),
           Flexible(
@@ -161,10 +170,15 @@ class FeedbackService {
   }
 
   /// Mostra toast de hábito concluído com nome
-  static void showHabitCompleted(BuildContext context, String habitName, {int streak = 0, int? xp}) {
+  static void showHabitCompleted(
+    BuildContext context,
+    String habitName, {
+    int streak = 0,
+    int? xp,
+  }) {
     HapticFeedback.mediumImpact();
     soundService.playHabitComplete();
-    
+
     _showModernToast(
       context,
       duration: const Duration(milliseconds: 2500),
@@ -178,7 +192,11 @@ class FeedbackService {
               color: Colors.white.withValues(alpha: 0.2),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: const Icon(Icons.local_fire_department_rounded, color: Colors.orangeAccent, size: 22),
+            child: const Icon(
+              Icons.local_fire_department_rounded,
+              color: Colors.orangeAccent,
+              size: 22,
+            ),
           ),
           const SizedBox(width: 12),
           Flexible(
@@ -201,7 +219,10 @@ class FeedbackService {
                     if (streak > 1) ...[
                       const SizedBox(width: 8),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
                         decoration: BoxDecoration(
                           color: Colors.orangeAccent.withValues(alpha: 0.3),
                           borderRadius: BorderRadius.circular(8),
@@ -232,10 +253,7 @@ class FeedbackService {
               ],
             ),
           ),
-          if (xp != null) ...[
-            const SizedBox(width: 12),
-            _buildXPBadge(xp),
-          ],
+          if (xp != null) ...[const SizedBox(width: 12), _buildXPBadge(xp)],
         ],
       ),
     );
@@ -245,7 +263,7 @@ class FeedbackService {
   static void showHabitUncompleted(BuildContext context, String habitName) {
     HapticFeedback.lightImpact();
     soundService.playTap();
-    
+
     _showModernToast(
       context,
       duration: const Duration(milliseconds: 1800),
@@ -259,7 +277,11 @@ class FeedbackService {
               color: Colors.white.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: const Icon(Icons.replay_rounded, color: Colors.white70, size: 20),
+            child: const Icon(
+              Icons.replay_rounded,
+              color: Colors.white70,
+              size: 20,
+            ),
           ),
           const SizedBox(width: 12),
           Flexible(
@@ -295,9 +317,14 @@ class FeedbackService {
   }
 
   /// Mostra toast de humor registrado
-  static void showMoodRecorded(BuildContext context, String moodEmoji, String moodName, {int? xp}) {
+  static void showMoodRecorded(
+    BuildContext context,
+    String moodEmoji,
+    String moodName, {
+    int? xp,
+  }) {
     HapticFeedback.lightImpact();
-    
+
     _showModernToast(
       context,
       duration: const Duration(milliseconds: 2500),
@@ -342,20 +369,22 @@ class FeedbackService {
               ],
             ),
           ),
-          if (xp != null) ...[
-            const SizedBox(width: 12),
-            _buildXPBadge(xp),
-          ],
+          if (xp != null) ...[const SizedBox(width: 12), _buildXPBadge(xp)],
         ],
       ),
     );
   }
 
   /// Mostra toast de sessão de foco completa
-  static void showFocusSessionComplete(BuildContext context, String taskName, int minutes, {int? xp}) {
+  static void showFocusSessionComplete(
+    BuildContext context,
+    String taskName,
+    int minutes, {
+    int? xp,
+  }) {
     HapticFeedback.heavyImpact();
     soundService.playAchievement();
-    
+
     _showModernToast(
       context,
       duration: const Duration(seconds: 3),
@@ -369,7 +398,11 @@ class FeedbackService {
               color: Colors.white.withValues(alpha: 0.2),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: const Icon(Icons.timer_rounded, color: Colors.white, size: 22),
+            child: const Icon(
+              Icons.timer_rounded,
+              color: Colors.white,
+              size: 22,
+            ),
           ),
           const SizedBox(width: 12),
           Flexible(
@@ -391,7 +424,10 @@ class FeedbackService {
                     ),
                     const SizedBox(width: 8),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.white.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(8),
@@ -421,10 +457,7 @@ class FeedbackService {
               ],
             ),
           ),
-          if (xp != null) ...[
-            const SizedBox(width: 12),
-            _buildXPBadge(xp),
-          ],
+          if (xp != null) ...[const SizedBox(width: 12), _buildXPBadge(xp)],
         ],
       ),
     );
@@ -436,16 +469,13 @@ class FeedbackService {
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [
-            Colors.amber.shade600,
-            Colors.orange.shade800,
-          ],
+          colors: [Colors.amber.shade600, Colors.orange.shade800],
         ),
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.amber.withValues(alpha: 0.4),
-            blurRadius: 8,
+            color: Colors.amber.withValues(alpha: 0.15),
+            blurRadius: 6,
             offset: const Offset(0, 2),
           ),
         ],
@@ -469,7 +499,11 @@ class FeedbackService {
   }
 
   /// Mostra um toast de sucesso com animação
-  static void showSuccess(BuildContext context, String message, {IconData icon = Icons.check_circle}) {
+  static void showSuccess(
+    BuildContext context,
+    String message, {
+    IconData icon = Icons.check_circle,
+  }) {
     HapticFeedback.lightImpact();
     _showModernToast(
       context,
@@ -497,7 +531,11 @@ class FeedbackService {
   }
 
   /// Mostra um toast de erro
-  static void showError(BuildContext context, String message, {IconData icon = Icons.error_outline}) {
+  static void showError(
+    BuildContext context,
+    String message, {
+    IconData icon = Icons.error_outline,
+  }) {
     HapticFeedback.heavyImpact();
     soundService.playError();
     _showModernToast(
@@ -527,7 +565,11 @@ class FeedbackService {
   }
 
   /// Mostra um toast de informação
-  static void showInfo(BuildContext context, String message, {IconData icon = Icons.info_outline}) {
+  static void showInfo(
+    BuildContext context,
+    String message, {
+    IconData icon = Icons.info_outline,
+  }) {
     HapticFeedback.selectionClick();
     _showModernToast(
       context,
@@ -555,7 +597,11 @@ class FeedbackService {
   }
 
   /// Mostra um toast de aviso
-  static void showWarning(BuildContext context, String message, {IconData icon = Icons.warning_amber}) {
+  static void showWarning(
+    BuildContext context,
+    String message, {
+    IconData icon = Icons.warning_amber,
+  }) {
     HapticFeedback.mediumImpact();
     _showModernToast(
       context,
@@ -583,10 +629,15 @@ class FeedbackService {
   }
 
   /// Mostra toast de conquista/achievement
-  static void showAchievement(BuildContext context, String title, String subtitle, {IconData icon = Icons.emoji_events}) {
+  static void showAchievement(
+    BuildContext context,
+    String title,
+    String subtitle, {
+    IconData icon = Icons.emoji_events,
+  }) {
     HapticFeedback.heavyImpact();
     soundService.playAchievement();
-    
+
     _showModernToast(
       context,
       duration: const Duration(seconds: 4),
@@ -601,9 +652,9 @@ class FeedbackService {
               borderRadius: BorderRadius.circular(12),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.amber.withValues(alpha: 0.5),
-                  blurRadius: 12,
-                  spreadRadius: 2,
+                  color: Colors.amber.withValues(alpha: 0.15),
+                  blurRadius: 8,
+                  spreadRadius: 0,
                 ),
               ],
             ),
@@ -656,7 +707,7 @@ class FeedbackService {
   static void showXPGained(BuildContext context, int xp, {String? reason}) {
     HapticFeedback.mediumImpact();
     soundService.playXPGain();
-    
+
     _showModernToast(
       context,
       duration: const Duration(milliseconds: 1800),
@@ -671,7 +722,11 @@ class FeedbackService {
               color: Colors.amber.withValues(alpha: 0.3),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: const Icon(Icons.bolt_rounded, color: Colors.amber, size: 18),
+            child: const Icon(
+              Icons.bolt_rounded,
+              color: Colors.amber,
+              size: 18,
+            ),
           ),
           const SizedBox(width: 10),
           Text(
@@ -700,12 +755,17 @@ class FeedbackService {
       ),
     );
   }
-  
+
   /// Mostra feedback de sucesso com XP (Combinado) - Layout compacto para textos longos
-  static void showSuccessWithXP(BuildContext context, String message, int xp, {String title = 'Concluído!'}) {
+  static void showSuccessWithXP(
+    BuildContext context,
+    String message,
+    int xp, {
+    String title = 'Concluído!',
+  }) {
     HapticFeedback.lightImpact();
     soundService.playHabitComplete();
-    
+
     _showModernToast(
       context,
       duration: const Duration(milliseconds: 2500),
@@ -719,7 +779,11 @@ class FeedbackService {
               color: Colors.white.withValues(alpha: 0.2),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: const Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
+            child: const Icon(
+              Icons.check_circle_rounded,
+              color: Colors.white,
+              size: 20,
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -780,7 +844,8 @@ class _AnimatedToast extends StatefulWidget {
   State<_AnimatedToast> createState() => _AnimatedToastState();
 }
 
-class _AnimatedToastState extends State<_AnimatedToast> with SingleTickerProviderStateMixin {
+class _AnimatedToastState extends State<_AnimatedToast>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
@@ -794,9 +859,10 @@ class _AnimatedToastState extends State<_AnimatedToast> with SingleTickerProvide
       vsync: this,
     );
 
-    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeOut),
-    );
+    _fadeAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
 
     final isTop = widget.alignment == Alignment.topCenter;
     _slideAnimation = Tween<Offset>(
@@ -804,9 +870,10 @@ class _AnimatedToastState extends State<_AnimatedToast> with SingleTickerProvide
       end: Offset.zero,
     ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutBack));
 
-    _scaleAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeOutBack),
-    );
+    _scaleAnimation = Tween<double>(
+      begin: 0.8,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutBack));
 
     _controller.forward();
 
@@ -829,7 +896,7 @@ class _AnimatedToastState extends State<_AnimatedToast> with SingleTickerProvide
   Widget build(BuildContext context) {
     final isTop = widget.alignment == Alignment.topCenter;
     final mediaQuery = MediaQuery.of(context);
-    
+
     return Positioned(
       top: isTop ? mediaQuery.padding.top + 16 : null,
       bottom: !isTop ? mediaQuery.padding.bottom + 90 : null,
@@ -851,7 +918,8 @@ class _AnimatedToastState extends State<_AnimatedToast> with SingleTickerProvide
                     });
                   },
                   onHorizontalDragEnd: (details) {
-                    if (details.primaryVelocity != null && details.primaryVelocity!.abs() > 100) {
+                    if (details.primaryVelocity != null &&
+                        details.primaryVelocity!.abs() > 100) {
                       _controller.reverse().then((_) {
                         widget.onDismiss();
                       });
@@ -859,7 +927,10 @@ class _AnimatedToastState extends State<_AnimatedToast> with SingleTickerProvide
                   },
                   child: Container(
                     constraints: const BoxConstraints(maxWidth: 400),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
                     decoration: BoxDecoration(
                       gradient: widget.gradientColors != null
                           ? LinearGradient(
@@ -868,21 +939,22 @@ class _AnimatedToastState extends State<_AnimatedToast> with SingleTickerProvide
                               end: Alignment.bottomRight,
                             )
                           : null,
-                      color: widget.gradientColors == null 
+                      color: widget.gradientColors == null
                           ? (widget.backgroundColor ?? Colors.grey.shade900)
                           : null,
                       borderRadius: BorderRadius.circular(16),
                       boxShadow: [
                         BoxShadow(
-                          color: (widget.gradientColors?.first ?? Colors.black).withValues(alpha: 0.4),
-                          blurRadius: 20,
-                          offset: const Offset(0, 8),
-                          spreadRadius: -4,
+                          color: (widget.gradientColors?.first ?? Colors.black)
+                              .withValues(alpha: 0.12),
+                          blurRadius: 16,
+                          offset: const Offset(0, 6),
+                          spreadRadius: -2,
                         ),
                         BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.2),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
+                          color: Colors.black.withValues(alpha: 0.08),
+                          blurRadius: 8,
+                          offset: const Offset(0, 3),
                         ),
                       ],
                     ),
@@ -914,10 +986,12 @@ class AnimatedConfirmationOverlay extends StatefulWidget {
   });
 
   @override
-  State<AnimatedConfirmationOverlay> createState() => _AnimatedConfirmationOverlayState();
+  State<AnimatedConfirmationOverlay> createState() =>
+      _AnimatedConfirmationOverlayState();
 }
 
-class _AnimatedConfirmationOverlayState extends State<AnimatedConfirmationOverlay>
+class _AnimatedConfirmationOverlayState
+    extends State<AnimatedConfirmationOverlay>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _scaleAnimation;
@@ -968,9 +1042,9 @@ class _AnimatedConfirmationOverlayState extends State<AnimatedConfirmationOverla
                 borderRadius: BorderRadius.circular(24),
                 boxShadow: [
                   BoxShadow(
-                    color: widget.color.withValues(alpha: 0.4),
-                    blurRadius: 20,
-                    spreadRadius: 5,
+                    color: widget.color.withValues(alpha: 0.15),
+                    blurRadius: 16,
+                    spreadRadius: 2,
                   ),
                 ],
               ),
@@ -1028,9 +1102,10 @@ class _FeedbackButtonState extends State<FeedbackButton>
       duration: const Duration(milliseconds: 100),
       vsync: this,
     );
-    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.95).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-    );
+    _scaleAnimation = Tween<double>(
+      begin: 1.0,
+      end: 0.95,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
   }
 
   @override
@@ -1057,7 +1132,9 @@ class _FeedbackButtonState extends State<FeedbackButton>
           return Transform.scale(
             scale: _scaleAnimation.value,
             child: Container(
-              padding: widget.padding ?? const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              padding:
+                  widget.padding ??
+                  const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               decoration: BoxDecoration(
                 color: widget.backgroundColor ?? Theme.of(context).primaryColor,
                 borderRadius: BorderRadius.circular(12),
@@ -1102,12 +1179,17 @@ Future<bool> showConfirmationDialog(
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(false),
-          child: Text(cancelText, style: TextStyle(color: Colors.white.withValues(alpha: 0.6))),
+          child: Text(
+            cancelText,
+            style: TextStyle(color: Colors.white.withValues(alpha: 0.6)),
+          ),
         ),
         ElevatedButton(
           style: ElevatedButton.styleFrom(
             backgroundColor: confirmColor,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
           ),
           onPressed: () {
             HapticFeedback.lightImpact();

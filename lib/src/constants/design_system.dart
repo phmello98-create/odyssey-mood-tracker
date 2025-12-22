@@ -18,7 +18,10 @@ class OdysseySpacing {
   // Margens de página
   static const double pageHorizontal = 20.0;
   static const double pageVertical = 16.0;
-  static const EdgeInsets page = EdgeInsets.symmetric(horizontal: pageHorizontal, vertical: pageVertical);
+  static const EdgeInsets page = EdgeInsets.symmetric(
+    horizontal: pageHorizontal,
+    vertical: pageVertical,
+  );
 
   // Espaçamento entre cards
   static const double cardGap = 12.0;
@@ -56,7 +59,9 @@ class OdysseyRadius {
 
   // Para botões
   static const BorderRadius button = BorderRadius.all(Radius.circular(14.0));
-  static const BorderRadius buttonLarge = BorderRadius.all(Radius.circular(18.0));
+  static const BorderRadius buttonLarge = BorderRadius.all(
+    Radius.circular(18.0),
+  );
 
   // Para inputs
   static const BorderRadius input = BorderRadius.all(Radius.circular(12.0));
@@ -73,58 +78,67 @@ class OdysseyShadows {
   OdysseyShadows._();
 
   // Sombras sutis
+  /// Sombra sutil - quase imperceptível
   static List<BoxShadow> subtle(Color color) => [
     BoxShadow(
-      color: color.withValues(alpha: 0.08),
-      blurRadius: 8,
+      color: color.withValues(alpha: 0.04),
+      blurRadius: 6,
       offset: const Offset(0, 2),
     ),
   ];
 
   // Sombras médias
+  /// Sombra média - equilibrada
   static List<BoxShadow> medium(Color color) => [
     BoxShadow(
-      color: color.withValues(alpha: 0.12),
-      blurRadius: 12,
-      offset: const Offset(0, 4),
+      color: color.withValues(alpha: 0.06),
+      blurRadius: 10,
+      offset: const Offset(0, 3),
     ),
   ];
 
   // Sombras elevadas
+  /// Sombra elevada - para elementos em destaque
   static List<BoxShadow> elevated(Color color) => [
     BoxShadow(
-      color: color.withValues(alpha: 0.2),
-      blurRadius: 20,
-      offset: const Offset(0, 8),
+      color: color.withValues(alpha: 0.08),
+      blurRadius: 16,
+      offset: const Offset(0, 6),
     ),
   ];
 
   // Sombra de glow para elementos interativos
+  /// Sombra de glow - suave, não ofuscante
   static List<BoxShadow> glow(Color color) => [
     BoxShadow(
-      color: color.withValues(alpha: 0.4),
-      blurRadius: 16,
-      spreadRadius: 2,
+      color: color.withValues(alpha: 0.15),
+      blurRadius: 12,
+      spreadRadius: 0,
     ),
   ];
 
   // Sombra para cards flutuantes
+  /// Sombra para cards - muito sutil
   static List<BoxShadow> card(Color shadowColor) => [
     BoxShadow(
-      color: shadowColor.withValues(alpha: 0.06),
-      blurRadius: 10,
-      offset: const Offset(0, 4),
-    ),
-  ];
-
-  // Sombra para botões pressionados
-  static List<BoxShadow> pressed(Color color) => [
-    BoxShadow(
-      color: color.withValues(alpha: 0.3),
+      color: shadowColor.withValues(alpha: 0.03),
       blurRadius: 8,
       offset: const Offset(0, 2),
     ),
   ];
+
+  // Sombra para botões pressionados
+  /// Sombra para botões pressionados - feedback sutil
+  static List<BoxShadow> pressed(Color color) => [
+    BoxShadow(
+      color: color.withValues(alpha: 0.1),
+      blurRadius: 4,
+      offset: const Offset(0, 1),
+    ),
+  ];
+
+  /// Lista vazia para quando não queremos sombra
+  static List<BoxShadow> none = [];
 }
 
 class OdysseyDurations {

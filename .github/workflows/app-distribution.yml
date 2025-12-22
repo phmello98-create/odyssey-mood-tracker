@@ -1,0 +1,111 @@
+# ==============================================================================
+# 📱 Odyssey - Firebase App Distribution
+# ==============================================================================
+# Este workflow distribui o app automaticamente para beta testers
+# Roda apenas em releases ou quando disparado manualmente
+# ==============================================================================
+
+name: 📱 App Distribution
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      release_notes:
+        description: 'Release notes para os testers'
+        required: false
+        default: 'Nova versão beta disponível!'
+      groups:
+        description: 'Grupos de testers (separados por vírgula)'
+        required: false
+        default: 'internal-testers'
+
+env:
+  FLUTTER_VERSION: '3.24.0'
+  JAVA_VERSION: '17'
+
+jobs:
+  # ============================================================================
+  # JOB: Build & Distribute
+  # ============================================================================
+  distribute:
+    name: 📤 Build & Distribute
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 📥 Checkout
+        uses: actions/checkout@v4
+
+      - name: ☕ Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: ${{ env.JAVA_VERSION }}
+
+      - name: 🐦 Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: 'stable'
+          cache: true
+
+      - name: 📦 Get dependencies
+        run: flutter pub get
+
+      - name: 🔄 Generate code (Freezed, Hive, Isar)
+        run: dart run build_runner build --delete-conflicting-outputs
+
+      - name: 🌐 Generate localizations
+        run: flutter gen-l10n
+
+      # --------------------------------------------------------------------
+      # Configurar keystore para release build
+      # --------------------------------------------------------------------
+      - name: 🔐 Setup Keystore
+        run: |
+          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > android/odyssey-key.jks
+          echo "storeFile=odyssey-key.jks" >> android/key.properties
+          echo "storePassword=${{ secrets.KEYSTORE_PASSWORD }}" >> android/key.properties
+          echo "keyAlias=${{ secrets.KEY_ALIAS }}" >> android/key.properties
+          echo "keyPassword=${{ secrets.KEY_PASSWORD }}" >> android/key.properties
+
+      # --------------------------------------------------------------------
+      # Build Release APK
+      # --------------------------------------------------------------------
+      - name: 🏗️ Build Release APK
+        run: flutter build apk --release
+
+      # --------------------------------------------------------------------
+      # Upload para Firebase App Distribution
+      # --------------------------------------------------------------------
+      - name: 🔐 Authenticate to Firebase
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCLOUD_SERVICE_ACCOUNT_KEY }}
+
+      - name: 📤 Upload to App Distribution
+        uses: wzieba/Firebase-Distribution-Github-Action@v1
+        with:
+          appId: ${{ secrets.FIREBASE_APP_ID }}
+          serviceCredentialsFileContent: ${{ secrets.GCLOUD_SERVICE_ACCOUNT_KEY }}
+          groups: ${{ github.event.inputs.groups || 'internal-testers' }}
+          file: build/app/outputs/flutter-apk/app-release.apk
+          releaseNotes: |
+            ${{ github.event.inputs.release_notes || github.event.release.body || 'Nova versão beta disponível!' }}
+            
+            ---
+            📦 Build: ${{ github.run_number }}
+            🔖 Commit: ${{ github.sha }}
+            🗓️ Data: ${{ github.event.repository.updated_at }}
+
+      # --------------------------------------------------------------------
+      # Notificação (opcional)
+      # --------------------------------------------------------------------
+      - name: 📣 Notify Success
+        if: success()
+        run: |
+          echo "✅ App distribuído com sucesso!"
+          echo "📱 Testers receberão notificação por email"
+          echo ""
+          echo "📊 Dashboard: https://console.firebase.google.com/project/${{ secrets.FIREBASE_PROJECT_ID }}/appdistribution"

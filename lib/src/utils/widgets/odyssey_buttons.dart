@@ -17,10 +17,12 @@ class OdysseyFloatingActionButton extends StatefulWidget {
   }) : super(key: key);
 
   @override
-  State<OdysseyFloatingActionButton> createState() => _OdysseyFloatingActionButtonState();
+  State<OdysseyFloatingActionButton> createState() =>
+      _OdysseyFloatingActionButtonState();
 }
 
-class _OdysseyFloatingActionButtonState extends State<OdysseyFloatingActionButton>
+class _OdysseyFloatingActionButtonState
+    extends State<OdysseyFloatingActionButton>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _scaleAnimation;
@@ -32,9 +34,10 @@ class _OdysseyFloatingActionButtonState extends State<OdysseyFloatingActionButto
       duration: const Duration(milliseconds: 200),
       vsync: this,
     );
-    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.9).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-    );
+    _scaleAnimation = Tween<double>(
+      begin: 1.0,
+      end: 0.9,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
   }
 
   @override
@@ -47,7 +50,8 @@ class _OdysseyFloatingActionButtonState extends State<OdysseyFloatingActionButto
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final backgroundColor = widget.backgroundColor ?? theme.colorScheme.primary;
-    final foregroundColor = widget.foregroundColor ?? theme.colorScheme.onPrimary;
+    final foregroundColor =
+        widget.foregroundColor ?? theme.colorScheme.onPrimary;
 
     return GestureDetector(
       onTapDown: (_) => _controller.forward(),
@@ -111,9 +115,10 @@ class _OdysseyAnimatedButtonState extends State<OdysseyAnimatedButton>
       duration: const Duration(milliseconds: 100),
       vsync: this,
     );
-    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.95).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-    );
+    _scaleAnimation = Tween<double>(
+      begin: 1.0,
+      end: 0.95,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
   }
 
   @override
@@ -146,18 +151,23 @@ class _OdysseyAnimatedButtonState extends State<OdysseyAnimatedButton>
                 borderRadius: BorderRadius.circular(12),
                 boxShadow: [
                   BoxShadow(
-                    color: color.withValues(alpha: 0.3),
-                    blurRadius: 8,
-                    offset: const Offset(0, 4),
+                    color: color.withValues(alpha: 0.08),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
                   ),
                 ],
               ),
               child: Center(
                 child: DefaultTextStyle(
-                  style: TextStyle(
-                    color: textColor,
-                    fontWeight: FontWeight.w600,
-                  ).merge(widget.child is Text ? (widget.child as Text).style : null),
+                  style:
+                      TextStyle(
+                        color: textColor,
+                        fontWeight: FontWeight.w600,
+                      ).merge(
+                        widget.child is Text
+                            ? (widget.child as Text).style
+                            : null,
+                      ),
                   child: widget.child,
                 ),
               ),

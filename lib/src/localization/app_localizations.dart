@@ -4892,6 +4892,60 @@ abstract class AppLocalizations {
   /// **'Status'**
   String get status;
 
+  /// No description provided for @stopwatch.
+  ///
+  /// In en, this message translates to:
+  /// **'Stopwatch'**
+  String get stopwatch;
+
+  /// No description provided for @laps.
+  ///
+  /// In en, this message translates to:
+  /// **'Laps'**
+  String get laps;
+
+  /// No description provided for @lap.
+  ///
+  /// In en, this message translates to:
+  /// **'Lap'**
+  String get lap;
+
+  /// No description provided for @startStopwatch.
+  ///
+  /// In en, this message translates to:
+  /// **'Start Stopwatch'**
+  String get startStopwatch;
+
+  /// No description provided for @pauseStopwatch.
+  ///
+  /// In en, this message translates to:
+  /// **'Pause Stopwatch'**
+  String get pauseStopwatch;
+
+  /// No description provided for @noLaps.
+  ///
+  /// In en, this message translates to:
+  /// **'No laps recorded'**
+  String get noLaps;
+
+  /// No description provided for @timerComplete.
+  ///
+  /// In en, this message translates to:
+  /// **'Timer complete!'**
+  String get timerComplete;
+
+  /// No description provided for @setTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Set time'**
+  String get setTime;
+
+  /// No description provided for @countdownTimer.
+  ///
+  /// In en, this message translates to:
+  /// **'Timer'**
+  String get countdownTimer;
+
   /// No description provided for @stop.
   ///
   /// In en, this message translates to:

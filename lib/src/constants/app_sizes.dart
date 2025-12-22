@@ -62,7 +62,7 @@ class AppRadius {
   static const xl = 20.0;
   static const xxl = 24.0;
   static const full = 999.0;
-  
+
   // BorderRadius pré-definidos
   static final xsBorder = BorderRadius.circular(xs);
   static final smBorder = BorderRadius.circular(sm);
@@ -133,54 +133,63 @@ class AppCurves {
 class AppPadding {
   static const screenH = EdgeInsets.symmetric(horizontal: Sizes.p20);
   static const screenV = EdgeInsets.symmetric(vertical: Sizes.p16);
-  static const screen = EdgeInsets.symmetric(horizontal: Sizes.p20, vertical: Sizes.p16);
-  
+  static const screen = EdgeInsets.symmetric(
+    horizontal: Sizes.p20,
+    vertical: Sizes.p16,
+  );
+
   static const cardAll = EdgeInsets.all(Sizes.p16);
   static const cardCompact = EdgeInsets.all(Sizes.p12);
   static const cardLarge = EdgeInsets.all(Sizes.p20);
-  
+
   static const buttonH = EdgeInsets.symmetric(horizontal: Sizes.p20);
   static const buttonV = EdgeInsets.symmetric(vertical: Sizes.p12);
-  static const button = EdgeInsets.symmetric(horizontal: Sizes.p20, vertical: Sizes.p12);
-  
+  static const button = EdgeInsets.symmetric(
+    horizontal: Sizes.p20,
+    vertical: Sizes.p12,
+  );
+
   static const chipH = EdgeInsets.symmetric(horizontal: Sizes.p12);
   static const chipV = EdgeInsets.symmetric(vertical: Sizes.p6);
-  static const chip = EdgeInsets.symmetric(horizontal: Sizes.p12, vertical: Sizes.p6);
+  static const chip = EdgeInsets.symmetric(
+    horizontal: Sizes.p12,
+    vertical: Sizes.p6,
+  );
 }
 
 /// Sombras padronizadas
 class AppShadows {
   static List<BoxShadow> none = [];
-  
+
   static List<BoxShadow> sm(Color color) => [
     BoxShadow(
-      color: color.withValues(alpha: 0.1),
+      color: color.withValues(alpha: 0.05),
       blurRadius: 4,
       offset: const Offset(0, 2),
     ),
   ];
-  
+
   static List<BoxShadow> md(Color color) => [
     BoxShadow(
-      color: color.withValues(alpha: 0.15),
+      color: color.withValues(alpha: 0.07),
       blurRadius: 8,
-      offset: const Offset(0, 4),
+      offset: const Offset(0, 3),
     ),
   ];
-  
+
   static List<BoxShadow> lg(Color color) => [
     BoxShadow(
-      color: color.withValues(alpha: 0.2),
-      blurRadius: 16,
-      offset: const Offset(0, 8),
+      color: color.withValues(alpha: 0.1),
+      blurRadius: 14,
+      offset: const Offset(0, 6),
     ),
   ];
-  
+
   static List<BoxShadow> glow(Color color) => [
     BoxShadow(
-      color: color.withValues(alpha: 0.4),
-      blurRadius: 12,
-      spreadRadius: 2,
+      color: color.withValues(alpha: 0.12),
+      blurRadius: 10,
+      spreadRadius: 0,
     ),
   ];
 }

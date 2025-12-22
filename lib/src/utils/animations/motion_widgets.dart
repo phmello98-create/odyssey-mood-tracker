@@ -52,10 +52,7 @@ class MotionOpacity extends StatelessWidget {
       motion: motion,
       value: opacity,
       builder: (context, value, child) {
-        return Opacity(
-          opacity: value.clamp(0.0, 1.0),
-          child: child,
-        );
+        return Opacity(opacity: value.clamp(0.0, 1.0), child: child);
       },
       child: child,
     );
@@ -82,10 +79,7 @@ class MotionTranslate extends StatelessWidget {
       value: offset,
       converter: const OffsetMotionConverter(),
       builder: (context, value, child) {
-        return Transform.translate(
-          offset: value,
-          child: child,
-        );
+        return Transform.translate(offset: value, child: child);
       },
       child: child,
     );
@@ -224,7 +218,8 @@ class _MotionCardState extends State<MotionCard> {
                 child: Material(
                   elevation: elevation,
                   color: widget.color ?? Theme.of(context).cardColor,
-                  borderRadius: widget.borderRadius ?? BorderRadius.circular(16),
+                  borderRadius:
+                      widget.borderRadius ?? BorderRadius.circular(16),
                   child: child,
                 ),
               );
@@ -260,7 +255,7 @@ class MotionCheckbox extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = activeColor ?? Theme.of(context).primaryColor;
-    
+
     return GestureDetector(
       onTap: () => onChanged?.call(!value),
       child: SingleMotionBuilder(
@@ -333,7 +328,8 @@ class MotionCircularProgress extends StatelessWidget {
                 painter: _CircularProgressPainter(
                   value: animatedValue,
                   strokeWidth: strokeWidth,
-                  backgroundColor: backgroundColor ?? Colors.grey.withValues(alpha: 0.2),
+                  backgroundColor:
+                      backgroundColor ?? Colors.grey.withValues(alpha: 0.2),
                   valueColor: valueColor ?? Theme.of(context).primaryColor,
                 ),
               ),
@@ -446,10 +442,7 @@ class MotionList extends StatelessWidget {
               direction == Axis.horizontal ? 30 * (1 - value) : 0,
               direction == Axis.vertical ? 20 * (1 - value) : 0,
             ),
-            child: Opacity(
-              opacity: value.clamp(0.0, 1.0),
-              child: child,
-            ),
+            child: Opacity(opacity: value.clamp(0.0, 1.0), child: child),
           );
         },
         child: children[index],
@@ -587,7 +580,7 @@ class MotionSwitch extends StatelessWidget {
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.2),
+                      color: Colors.black.withValues(alpha: 0.08),
                       blurRadius: 4,
                       offset: const Offset(0, 2),
                     ),
@@ -666,16 +659,18 @@ class _MotionFABState extends State<MotionFAB> {
                         ? const EdgeInsets.symmetric(horizontal: 16)
                         : null,
                     decoration: BoxDecoration(
-                      color: widget.backgroundColor ??
+                      color:
+                          widget.backgroundColor ??
                           Theme.of(context).primaryColor,
                       borderRadius: BorderRadius.circular(widget.size / 2),
                       boxShadow: [
                         BoxShadow(
-                          color: (widget.backgroundColor ??
-                                  Theme.of(context).primaryColor)
-                              .withValues(alpha: 0.3),
-                          blurRadius: 12,
-                          offset: const Offset(0, 6),
+                          color:
+                              (widget.backgroundColor ??
+                                      Theme.of(context).primaryColor)
+                                  .withValues(alpha: 0.1),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
                         ),
                       ],
                     ),

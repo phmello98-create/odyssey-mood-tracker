@@ -16,7 +16,13 @@ import 'package:odyssey/src/utils/services/sound_service.dart';
 import 'package:odyssey/src/providers/timer_provider.dart';
 import 'package:odyssey/src/features/onboarding/services/showcase_service.dart'
     as showcase;
+import 'package:odyssey/src/features/time_tracker/presentation/widgets/timer_task_selector.dart';
+import 'package:odyssey/src/features/time_tracker/presentation/widgets/time_tracker_header.dart';
+import 'package:odyssey/src/localization/app_localizations.dart';
+import 'package:odyssey/src/features/time_tracker/widgets/stopwatch_widget.dart';
 import 'package:odyssey/src/features/time_tracker/widgets/tomato_timer_widget.dart';
+
+// ... (other imports remain, just ensuring these are added)
 
 class TimeTrackerScreen extends ConsumerStatefulWidget {
   const TimeTrackerScreen({Key? key}) : super(key: key);
@@ -29,10 +35,15 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
     with TickerProviderStateMixin {
   // Showcase keys
   final GlobalKey _showcaseTasks = GlobalKey();
-  // Showcase keys
   final GlobalKey _showcasePlay = GlobalKey();
-  // Showcase keys
   final GlobalKey _showcaseTimer = GlobalKey();
+
+  // View state
+  bool _showProductivity = false;
+  bool _showWeekStats = false;
+  bool _showFullscreenTimer = false;
+  bool _isHistoryExpanded = false;
+
   // Timer state
   Activity? _selectedActivity;
   String? _customTaskName;
@@ -57,11 +68,6 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
   Duration _shortBreakDuration = const Duration(minutes: 5);
   Duration _longBreakDuration = const Duration(minutes: 15);
   bool _showPomodoroScreen = false; // Nova tela de Pomodoro
-
-  // View state
-  bool _showProductivity = false;
-  bool _showWeekStats = false;
-  bool _showFullscreenTimer = false; // Nova variável para controlar tela cheia
 
   // Tab state - 0 = Tempo Livre, 1 = Pomodoro
 
@@ -134,7 +140,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
     _initShowcase();
 
     // Tab controller para as abas
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
     _tabController.addListener(() {
       if (!_tabController.indexIsChanging) {
         setState(() {});
@@ -1202,32 +1208,13 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
       child: Column(
         children: [
           // Header com botões minimalistas
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                // Projetos
-                _buildHeaderButton(
-                  icon: Icons.folder_outlined,
-                  label: 'Projetos',
-                  onTap: _showProjectsDialog,
-                ),
-                // Add
-                _buildHeaderButton(
-                  icon: Icons.add,
-                  label: 'Add',
-                  onTap: _showAddTaskDialog,
-                  isPrimary: true,
-                ),
-                // Histórico
-                _buildHeaderButton(
-                  icon: Icons.history,
-                  label: 'Histórico',
-                  onTap: _showAllTasksDialogFromNav,
-                ),
-              ],
-            ),
+          // Header com botões minimalistas
+          TimeTrackerHeader(
+            onProjectsTap: _showProjectsDialog,
+            onAddTap: _showAddTaskDialog,
+            onHistoryTap: _isHistoryExpanded
+                ? () {} // Already expanded
+                : _showAllTasksDialogFromNav,
           ),
 
           // Tab Bar - Design minimalista com pills
@@ -1338,6 +1325,62 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                     ),
                   ),
                 ),
+                const SizedBox(width: 12),
+                // Cronômetro
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () {
+                      _tabController.animateTo(2);
+                      HapticFeedback.lightImpact();
+                    },
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 250),
+                      curve: Curves.easeOutCubic,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: _tabController.index == 2
+                            ? Theme.of(context).colorScheme.secondary
+                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(22),
+                        border: Border.all(
+                          color: _tabController.index == 2
+                              ? Theme.of(context).colorScheme.secondary
+                              : Theme.of(
+                                  context,
+                                ).colorScheme.outlineVariant.withOpacity(0.5),
+                          width: 1.5,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.speed_rounded,
+                            size: 18,
+                            color: _tabController.index == 2
+                                ? Theme.of(context).colorScheme.onSecondary
+                                : Theme.of(
+                                    context,
+                                  ).colorScheme.onSurfaceVariant,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            AppLocalizations.of(context)!.stopwatch,
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: _tabController.index == 2
+                                  ? Theme.of(context).colorScheme.onSecondary
+                                  : Theme.of(
+                                      context,
+                                    ).colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
@@ -1350,6 +1393,8 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                 _buildFreeTimeTab(),
                 // Aba 2: Pomodoro
                 _buildPomodoroTab(),
+                // Aba 3: Cronômetro
+                const StopwatchWidget(),
               ],
             ),
           ),
@@ -1362,72 +1407,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
     );
   }
 
-  Widget _buildHeaderButton({
-    required IconData icon,
-    required String label,
-    required VoidCallback onTap,
-    bool isPrimary = false,
-  }) {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: () {
-          HapticFeedback.lightImpact();
-          onTap();
-        },
-        borderRadius: BorderRadius.circular(14),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-          decoration: BoxDecoration(
-            gradient: isPrimary
-                ? LinearGradient(
-                    colors: [
-                      colorScheme.primary,
-                      colorScheme.primary.withOpacity(0.8),
-                    ],
-                  )
-                : null,
-            color: isPrimary
-                ? null
-                : colorScheme.surfaceContainerHighest.withOpacity(0.6),
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color: isPrimary
-                  ? Colors.transparent
-                  : colorScheme.outlineVariant.withOpacity(0.3),
-              width: 1,
-            ),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                icon,
-                size: isPrimary ? 20 : 18,
-                color: isPrimary
-                    ? colorScheme.onPrimary
-                    : colorScheme.onSurfaceVariant,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: isPrimary
-                      ? colorScheme.onPrimary
-                      : colorScheme.onSurfaceVariant,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
+  // _buildHeaderButton extracted to widgets/time_tracker_header.dart
 
   // =====================================================
   // FREE TIME TAB - Aba de Tempo Livre
@@ -1438,6 +1418,50 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
         const SizedBox(height: 8),
         // Timer Card atual
         _buildCurrentTimerCard(),
+        const SizedBox(height: 16),
+
+        // Seletor de tarefas para o Tempo Livre
+        TimerTaskSelector(
+          isPomodoro: false,
+          customTaskName: _customTaskName,
+          taskNameController: _taskNameController,
+          activities: _activities,
+          onNewTaskTap: _showCreateTaskDialog,
+          onTaskSelected: (name, category, project) {
+            setState(() {
+              _customTaskName = name.isEmpty ? null : name;
+              _taskNameController.text = name;
+              _selectedCategory = category;
+              _selectedProject = project;
+            });
+          },
+          onTaskEdited: (index, name, category, project) {
+            setState(() {
+              _activities[index] = {
+                ..._activities[index],
+                'name': name,
+                'category': category,
+                'project': project,
+              };
+
+              if (_customTaskName == _activities[index]['name']) {
+                _customTaskName = name;
+                _taskNameController.text = name;
+              }
+            });
+          },
+          onTaskDeleted: (index) {
+            final deletedName = _activities[index]['name'];
+            setState(() {
+              _activities.removeAt(index);
+              if (_customTaskName == deletedName) {
+                _customTaskName = null;
+                _taskNameController.clear();
+              }
+            });
+          },
+        ),
+
         const SizedBox(height: 16),
         // Lista de tarefas
         Expanded(child: _buildTodayTasksList()),
@@ -1491,8 +1515,47 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
 
               const SizedBox(height: 16),
 
-              // Seletor de tarefa rápido
-              _buildQuickTaskSelector(),
+              // Seletor de tarefa para o Pomodoro
+              TimerTaskSelector(
+                isPomodoro: true,
+                customTaskName: _customTaskName,
+                taskNameController: _taskNameController,
+                activities: _activities,
+                onNewTaskTap: _showCreateTaskDialog,
+                onTaskSelected: (name, category, project) {
+                  setState(() {
+                    _customTaskName = name.isEmpty ? null : name;
+                    _taskNameController.text = name;
+                    _selectedCategory = category;
+                    _selectedProject = project;
+                  });
+                },
+                onTaskEdited: (index, name, category, project) {
+                  setState(() {
+                    _activities[index] = {
+                      ..._activities[index],
+                      'name': name,
+                      'category': category,
+                      'project': project,
+                    };
+
+                    if (_customTaskName == _activities[index]['name']) {
+                      _customTaskName = name;
+                      _taskNameController.text = name;
+                    }
+                  });
+                },
+                onTaskDeleted: (index) {
+                  final deletedName = _activities[index]['name'];
+                  setState(() {
+                    _activities.removeAt(index);
+                    if (_customTaskName == deletedName) {
+                      _customTaskName = null;
+                      _taskNameController.clear();
+                    }
+                  });
+                },
+              ),
 
               const SizedBox(height: 24),
 
@@ -1757,9 +1820,9 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
               shape: BoxShape.circle,
               boxShadow: [
                 BoxShadow(
-                  color: color.withOpacity(0.4),
-                  blurRadius: 20,
-                  offset: const Offset(0, 8),
+                  color: color.withOpacity(0.12),
+                  blurRadius: 16,
+                  offset: const Offset(0, 6),
                 ),
               ],
             ),
@@ -1970,300 +2033,8 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
   }
 
   // Seletor de tarefa rápido - Design moderno
-  Widget _buildQuickTaskSelector() {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Header com título e botão de config
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    width: 4,
-                    height: 16,
-                    decoration: BoxDecoration(
-                      color: _isPomodoroBreak
-                          ? const Color(0xFF3498DB)
-                          : const Color(0xFFE74C3C),
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Escolha uma tarefa',
-                    style: TextStyle(
-                      color: colorScheme.onSurface,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ),
-              GestureDetector(
-                onTap: _showPomodoroSettings,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: colorScheme.surfaceContainerHighest,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.tune_rounded,
-                        size: 14,
-                        color: colorScheme.onSurfaceVariant,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        'Ajustar',
-                        style: TextStyle(
-                          color: colorScheme.onSurfaceVariant,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 12),
-
-        // Tarefa atualmente selecionada (se houver)
-        if (_customTaskName != null) ...[
-          _buildSelectedTaskCard(colorScheme),
-          const SizedBox(height: 12),
-        ],
-
-        // Lista horizontal de tarefas
-        SizedBox(
-          height: 80,
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            itemCount: _activities.length,
-            itemBuilder: (context, index) {
-              final activity = _activities[index];
-              final isSelected = _customTaskName == activity['name'];
-              final color = activity['color'] as Color;
-              final icon = activity['icon'] as IconData;
-              final name = activity['name'] as String;
-
-              return Padding(
-                padding: EdgeInsets.only(
-                  right: index < _activities.length - 1 ? 10 : 0,
-                ),
-                child: GestureDetector(
-                  onTap: () {
-                    setState(() {
-                      if (isSelected) {
-                        // Deselect if tapping same task
-                        _customTaskName = null;
-                        _selectedCategory = null;
-                      } else {
-                        _customTaskName = name;
-                        _selectedCategory = activity['category'] as String?;
-                      }
-                    });
-                    HapticFeedback.lightImpact();
-                  },
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 250),
-                    curve: Curves.easeOutCubic,
-                    width: 100,
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      gradient: isSelected
-                          ? LinearGradient(
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                              colors: [
-                                color.withOpacity(0.25),
-                                color.withOpacity(0.1),
-                              ],
-                            )
-                          : null,
-                      color: isSelected
-                          ? null
-                          : colorScheme.surfaceContainerHighest.withOpacity(
-                              0.6,
-                            ),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: isSelected
-                            ? color.withOpacity(0.6)
-                            : colorScheme.outlineVariant.withOpacity(0.3),
-                        width: isSelected ? 2 : 1,
-                      ),
-                      boxShadow: isSelected
-                          ? [
-                              BoxShadow(
-                                color: color.withOpacity(0.2),
-                                blurRadius: 8,
-                                offset: const Offset(0, 2),
-                              ),
-                            ]
-                          : null,
-                    ),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        // Ícone com background
-                        Container(
-                          width: 32,
-                          height: 32,
-                          decoration: BoxDecoration(
-                            color: isSelected
-                                ? color.withOpacity(0.2)
-                                : colorScheme.surfaceContainerHighest,
-                            shape: BoxShape.circle,
-                          ),
-                          child: Icon(
-                            icon,
-                            color: isSelected
-                                ? color
-                                : colorScheme.onSurfaceVariant,
-                            size: 16,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        // Nome da tarefa (truncado)
-                        Text(
-                          name.length > 10
-                              ? '${name.substring(0, 8)}...'
-                              : name,
-                          style: TextStyle(
-                            color: isSelected
-                                ? color
-                                : colorScheme.onSurfaceVariant,
-                            fontSize: 11,
-                            fontWeight: isSelected
-                                ? FontWeight.w600
-                                : FontWeight.w500,
-                          ),
-                          textAlign: TextAlign.center,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-      ],
-    );
-  }
 
   // Card mostrando a tarefa atualmente selecionada
-  Widget _buildSelectedTaskCard(ColorScheme colorScheme) {
-    final activity = _activities.firstWhere(
-      (a) => a['name'] == _customTaskName,
-      orElse: () => {
-        'name': _customTaskName,
-        'icon': Icons.task_alt,
-        'color': const Color(0xFFE74C3C),
-      },
-    );
-    final color = activity['color'] as Color;
-    final icon = activity['icon'] as IconData;
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [color.withOpacity(0.15), color.withOpacity(0.05)],
-        ),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color.withOpacity(0.3)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.2),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, color: color, size: 20),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Tarefa selecionada',
-                  style: TextStyle(
-                    color: colorScheme.onSurfaceVariant,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  _customTaskName ?? '',
-                  style: TextStyle(
-                    color: colorScheme.onSurface,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          ),
-          GestureDetector(
-            onTap: () {
-              setState(() {
-                _customTaskName = null;
-                _selectedCategory = null;
-              });
-              HapticFeedback.lightImpact();
-            },
-            child: Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: colorScheme.surfaceContainerHighest,
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                Icons.close,
-                size: 16,
-                color: colorScheme.onSurfaceVariant,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // =====================================================
-  // LEGACY - Task Screen (não usado mais, mantido para referência)
-  // =====================================================
-  Widget _buildTaskScreen() {
-    return _buildMainScreen();
-  }
-
   Widget _buildCurrentTimerCard() {
     final colorScheme = Theme.of(context).colorScheme;
     final hasSelectedTask =
@@ -2435,9 +2206,9 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                                   boxShadow: _isRunning
                                       ? [
                                           BoxShadow(
-                                            color: taskColor.withOpacity(0.4),
-                                            blurRadius: 10,
-                                            spreadRadius: 2,
+                                            color: taskColor.withOpacity(0.15),
+                                            blurRadius: 8,
+                                            spreadRadius: 0,
                                           ),
                                         ]
                                       : [],
@@ -3303,301 +3074,6 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
     );
   }
 
-  Widget _buildRecordCard(TimeTrackingRecord record) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final color = record.colorValue != null
-        ? Color(record.colorValue!)
-        : _getActivityColor(record.activityName);
-    final duration = record.duration;
-    final hours = duration.inHours;
-    final minutes = duration.inMinutes.remainder(60);
-    final seconds = duration.inSeconds.remainder(60);
-    final timeStr = hours > 0
-        ? '${hours}h ${minutes}m'
-        : '${minutes}m ${seconds}s';
-
-    final category = record.category ?? 'Pessoal';
-    final project = record.project;
-    final isCompleted = record.isCompleted;
-
-    // Format start time
-    final startTime = DateFormat('HH:mm').format(record.startTime);
-    final endTime = DateFormat('HH:mm').format(record.endTime);
-
-    return GestureDetector(
-      onTap: () {
-        // Show details modal
-      },
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        margin: const EdgeInsets.only(bottom: 10),
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: isCompleted
-              ? colorScheme.surfaceContainerHighest.withOpacity(0.4)
-              : colorScheme.surfaceContainerHighest.withOpacity(0.6),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: isCompleted
-                ? const Color(0xFF27AE60).withOpacity(0.3)
-                : colorScheme.outlineVariant.withOpacity(0.2),
-            width: 1,
-          ),
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Left side: Icon with gradient background
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    color.withOpacity(isCompleted ? 0.15 : 0.25),
-                    color.withOpacity(isCompleted ? 0.08 : 0.1),
-                  ],
-                ),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(
-                IconData(record.iconCode, fontFamily: 'MaterialIcons'),
-                color: isCompleted ? color.withOpacity(0.5) : color,
-                size: 22,
-              ),
-            ),
-            const SizedBox(width: 12),
-
-            // Middle: Task info
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Task name row with completion checkbox
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          record.activityName,
-                          style: TextStyle(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 15,
-                            color: isCompleted
-                                ? colorScheme.onSurfaceVariant
-                                : colorScheme.onSurface,
-                            decoration: isCompleted
-                                ? TextDecoration.lineThrough
-                                : null,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      // Completion checkbox
-                      GestureDetector(
-                        onTap: () async {
-                          HapticFeedback.mediumImpact();
-                          final repo = ref.read(timeTrackingRepositoryProvider);
-                          await repo.toggleCompleted(record.id);
-                          if (!isCompleted && mounted) {
-                            final taskName = record.activityName;
-                            try {
-                              final gamificationRepo = ref.read(
-                                gamificationRepositoryProvider,
-                              );
-                              final gamResult = await gamificationRepo
-                                  .completeTask();
-                              final newBadges = gamResult.newBadges;
-                              if (mounted) {
-                                FeedbackService.showTaskCompleted(
-                                  context,
-                                  taskName,
-                                  xp: 15,
-                                );
-                              }
-                              if (newBadges.isNotEmpty) {
-                                Future.delayed(
-                                  const Duration(milliseconds: 2500),
-                                  () {
-                                    if (mounted) {
-                                      FeedbackService.showAchievement(
-                                        context,
-                                        '${newBadges.first.icon} ${newBadges.first.name}',
-                                        newBadges.first.description,
-                                      );
-                                    }
-                                  },
-                                );
-                              }
-                            } catch (e) {
-                              if (mounted) {
-                                FeedbackService.showTaskCompleted(
-                                  context,
-                                  taskName,
-                                );
-                              }
-                            }
-                          }
-                        },
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
-                          width: 22,
-                          height: 22,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: isCompleted
-                                ? const Color(0xFF27AE60)
-                                : Colors.transparent,
-                            border: Border.all(
-                              color: isCompleted
-                                  ? const Color(0xFF27AE60)
-                                  : colorScheme.outlineVariant,
-                              width: 2,
-                            ),
-                          ),
-                          child: isCompleted
-                              ? const Icon(
-                                  Icons.check,
-                                  color: Colors.white,
-                                  size: 14,
-                                )
-                              : null,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-
-                  // Time info row
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.schedule_rounded,
-                        size: 13,
-                        color: colorScheme.onSurfaceVariant,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        '$startTime${' → $endTime'}',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: color.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(
-                          timeStr,
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: isCompleted
-                                ? const Color(0xFF27AE60)
-                                : color,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  // Category and project
-                  if (project != null && project.isNotEmpty) ...[
-                    const SizedBox(height: 6),
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.folder_outlined,
-                          size: 12,
-                          color: color.withOpacity(0.7),
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          project,
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: color,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ],
-              ),
-            ),
-
-            // Right side: Play button (only if not completed)
-            if (!isCompleted) ...[
-              const SizedBox(width: 8),
-              GestureDetector(
-                onTap: () {
-                  HapticFeedback.lightImpact();
-                  if (_isRunning &&
-                      (_customTaskName == record.activityName ||
-                          _selectedActivity?.activityName ==
-                              record.activityName)) {
-                    _stopTimer();
-                  } else {
-                    if (_isRunning) {
-                      _stopTimer();
-                    }
-                    setState(() {
-                      _taskNameController.text = record.activityName;
-                      _selectedCategory = category;
-                      _selectedProject = project;
-                    });
-                    _startTimer(customTask: record.activityName);
-                  }
-                },
-                child: Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    color:
-                        (_isRunning &&
-                            (_customTaskName == record.activityName ||
-                                _selectedActivity?.activityName ==
-                                    record.activityName))
-                        ? colorScheme.error.withOpacity(0.1)
-                        : color.withOpacity(0.1),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    (_isRunning &&
-                            (_customTaskName == record.activityName ||
-                                _selectedActivity?.activityName ==
-                                    record.activityName))
-                        ? Icons.stop_rounded
-                        : Icons.play_arrow_rounded,
-                    color:
-                        (_isRunning &&
-                            (_customTaskName == record.activityName ||
-                                _selectedActivity?.activityName ==
-                                    record.activityName))
-                        ? colorScheme.error
-                        : color,
-                    size: 20,
-                  ),
-                ),
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-
-  /// Card agrupado que mostra tempo total de múltiplas sessões da mesma atividade
   Widget _buildGroupedRecordCard(
     String activityName,
     List<TimeTrackingRecord> records, {
@@ -5357,927 +4833,6 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
   // =====================================================
   // POMODORO SCREEN - Redireciona para a aba Pomodoro
   // =====================================================
-  Widget _buildPomodoroScreen() {
-    // Redirecionar para a tela principal com a aba de Pomodoro selecionada
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        setState(() {
-          _showPomodoroScreen = false;
-
-          _tabController.animateTo(1);
-        });
-      }
-    });
-
-    // Retornar a tela principal enquanto redireciona
-    return _buildMainScreen();
-  }
-
-  // =====================================================
-  // POMODORO SCREEN LEGACY - Mantido para referência
-  // =====================================================
-  Widget _buildPomodoroScreenLegacy() {
-    const pomodoroColor = Color(0xFFFF6B6B);
-    const breakColor = Color(0xFF667EEA);
-    final currentColor = _isPomodoroBreak ? breakColor : pomodoroColor;
-
-    // Calcular total time para o tomato timer
-    final totalDuration = _isPomodoroBreak
-        ? (_pomodoroSessions >= _pomodoroTotalSessions
-              ? _longBreakDuration
-              : _shortBreakDuration)
-        : _pomodoroDuration;
-
-    return SafeArea(
-      child: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              const Color(0xFF0F0F1E),
-              const Color(0xFF0A0A14),
-              _isPomodoroBreak
-                  ? const Color(0xFF080812)
-                  : const Color(0xFF0A0508),
-            ],
-            stops: const [0.0, 0.6, 1.0],
-          ),
-        ),
-        child: SingleChildScrollView(
-          child: ConstrainedBox(
-            constraints: BoxConstraints(
-              minHeight:
-                  MediaQuery.of(context).size.height -
-                  MediaQuery.of(context).padding.top -
-                  MediaQuery.of(context).padding.bottom,
-            ),
-            child: Column(
-              children: [
-                // Header refinado
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-                  child: Row(
-                    children: [
-                      // Botão voltar
-                      GestureDetector(
-                        onTap: () {
-                          if (_isPomodoroRunning) {
-                            _showExitPomodoroDialog();
-                          } else {
-                            setState(() => _showPomodoroScreen = false);
-                          }
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.06),
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.08),
-                            ),
-                          ),
-                          child: const Icon(
-                            Icons.arrow_back_rounded,
-                            color: Colors.white60,
-                            size: 22,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      // Título e tempo configurado
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              _isPomodoroBreak ? 'Pausa' : 'Foco',
-                              style: TextStyle(
-                                color: currentColor,
-                                fontSize: 18,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            Text(
-                              '${_pomodoroDuration.inMinutes} min por sessão',
-                              style: TextStyle(
-                                color: Colors.white.withValues(alpha: 0.5),
-                                fontSize: 12,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      // Botão de som
-                      GestureDetector(
-                        onTap: _showSoundSettings,
-                        child: Container(
-                          padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(
-                            color: soundService.isAmbientPlaying
-                                ? currentColor.withValues(alpha: 0.15)
-                                : Colors.white.withValues(alpha: 0.06),
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(
-                              color: soundService.isAmbientPlaying
-                                  ? currentColor.withValues(alpha: 0.4)
-                                  : Colors.white.withValues(alpha: 0.08),
-                            ),
-                          ),
-                          child: Icon(
-                            soundService.isAmbientPlaying
-                                ? Icons.music_note
-                                : Icons.music_off_rounded,
-                            color: soundService.isAmbientPlaying
-                                ? currentColor
-                                : Colors.white60,
-                            size: 22,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      // Botão configurações
-                      GestureDetector(
-                        onTap: _showPomodoroSettings,
-                        child: Container(
-                          padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.06),
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.08),
-                            ),
-                          ),
-                          child: const Icon(
-                            Icons.tune_rounded,
-                            color: Colors.white60,
-                            size: 22,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(height: 12),
-
-                // Timer de Tomate estilo relógio
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Column(
-                    children: [
-                      TomatoTimerWidget(
-                        timeLeft: _pomodoroTimeLeft,
-                        totalTime: _pomodoroDuration,
-                        isRunning: _isPomodoroRunning,
-                        isBreak: _isPomodoroBreak,
-                        onStart: _startPomodoro,
-                        onPause: _pausePomodoro,
-                        onReset: _resetPomodoro,
-                      ),
-                      const SizedBox(height: 24),
-                      _buildModernPomodoroControls(),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(height: 20),
-
-                // Seleção de tarefa para o Pomodoro
-                _buildPomodoroTaskSelector(),
-
-                const SizedBox(height: 16),
-
-                // Estatísticas do dia
-                _buildPomodoroStats(),
-
-                const SizedBox(height: 16),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  /// Seletor de tarefas para o Pomodoro
-  Widget _buildPomodoroTaskSelector() {
-    const pomodoroColor = Color(0xFFFF6B6B);
-    final hasTask =
-        _customTaskName != null || _taskNameController.text.isNotEmpty;
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header da seção
-          Row(
-            children: [
-              Text(
-                '📋 Tarefa',
-                style: TextStyle(
-                  color: Colors.white.withOpacity(0.9),
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const Spacer(),
-              // Botão para criar nova tarefa
-              GestureDetector(
-                onTap: _showCreateTaskDialog,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: pomodoroColor.withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: pomodoroColor.withOpacity(0.3)),
-                  ),
-                  child: const Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.add, color: pomodoroColor, size: 16),
-                      SizedBox(width: 4),
-                      Text(
-                        'Nova',
-                        style: TextStyle(
-                          color: pomodoroColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-
-          // Tarefa selecionada ou placeholder
-          if (hasTask)
-            _buildSelectedPomodoroTask()
-          else
-            _buildTaskPlaceholder(),
-
-          const SizedBox(height: 12),
-
-          // Lista horizontal de tarefas rápidas - Design Premium
-          SizedBox(
-            height: 52,
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              itemCount: _activities.length,
-              itemBuilder: (context, index) {
-                final activity = _activities[index];
-                final name = activity['name'] as String;
-                final color = activity['color'] as Color;
-                final icon = activity['icon'] as IconData;
-                final isSelected =
-                    _customTaskName == name || _taskNameController.text == name;
-
-                return GestureDetector(
-                  onTap: () async {
-                    // Se é a mesma tarefa, não faz nada
-                    if (isSelected) return;
-
-                    HapticFeedback.lightImpact();
-
-                    // Se o Pomodoro está rodando, pedir confirmação
-                    if (_isPomodoroRunning && !_isPomodoroBreak) {
-                      final shouldSwitch = await _showSwitchTaskConfirmation(
-                        name,
-                      );
-                      if (shouldSwitch != true) return;
-                    }
-
-                    // Trocar a tarefa
-                    setState(() {
-                      _taskNameController.text = name;
-                      _customTaskName = name;
-                      _selectedCategory = activity['category'] as String?;
-                      _selectedProject = activity['project'] as String?;
-                    });
-
-                    // Atualizar o provider global com a nova tarefa
-                    if (_isPomodoroRunning) {
-                      ref.read(timerProvider.notifier).updateTaskName(name);
-                      FeedbackService.showInfo(context, '🔄 Tarefa: $name');
-                    }
-                  },
-                  onLongPress: () {
-                    HapticFeedback.mediumImpact();
-                    _showEditTaskDialog(activity, index);
-                  },
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 250),
-                    curve: Curves.easeOutCubic,
-                    margin: const EdgeInsets.only(right: 10),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
-                    ),
-                    decoration: BoxDecoration(
-                      gradient: isSelected
-                          ? LinearGradient(
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                              colors: [
-                                color.withOpacity(0.35),
-                                color.withOpacity(0.15),
-                              ],
-                            )
-                          : null,
-                      color: isSelected ? null : Colors.white.withOpacity(0.08),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: isSelected
-                            ? color.withOpacity(0.6)
-                            : Colors.white.withOpacity(0.1),
-                        width: isSelected ? 2 : 1,
-                      ),
-                      boxShadow: isSelected
-                          ? [
-                              BoxShadow(
-                                color: color.withOpacity(0.2),
-                                blurRadius: 8,
-                                offset: const Offset(0, 2),
-                              ),
-                            ]
-                          : null,
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        // Ícone com background
-                        Container(
-                          width: 28,
-                          height: 28,
-                          decoration: BoxDecoration(
-                            color: isSelected
-                                ? color.withOpacity(0.3)
-                                : Colors.white.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Icon(
-                            icon,
-                            color: isSelected ? color : Colors.white60,
-                            size: 16,
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        // Nome
-                        Text(
-                          name.length > 12
-                              ? '${name.substring(0, 12)}...'
-                              : name,
-                          style: TextStyle(
-                            color: isSelected ? Colors.white : Colors.white70,
-                            fontSize: 13,
-                            fontWeight: isSelected
-                                ? FontWeight.w600
-                                : FontWeight.w500,
-                          ),
-                        ),
-                        // Check se selecionado
-                        if (isSelected) ...[
-                          const SizedBox(width: 8),
-                          Container(
-                            width: 18,
-                            height: 18,
-                            decoration: BoxDecoration(
-                              color: color,
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(
-                              Icons.check,
-                              color: Colors.white,
-                              size: 12,
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSelectedPomodoroTask() {
-    final taskName = _customTaskName ?? _taskNameController.text;
-    final color = _getActivityColor(taskName);
-    final activityData = _activities.firstWhere(
-      (a) => a['name'] == taskName,
-      orElse: () => {
-        'icon': Icons.timer,
-        'color': Theme.of(context).colorScheme.primary,
-        'category': null,
-        'project': null,
-      },
-    );
-    final icon = activityData['icon'] as IconData;
-
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [color.withOpacity(0.15), color.withOpacity(0.05)],
-        ),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color.withOpacity(0.3)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.2),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, color: color, size: 22),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  taskName,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    if (_selectedCategory != null) ...[
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          _selectedCategory!,
-                          style: TextStyle(
-                            color: Colors.white.withOpacity(0.6),
-                            fontSize: 11,
-                          ),
-                        ),
-                      ),
-                    ],
-                    if (_selectedProject != null) ...[
-                      const SizedBox(width: 6),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: color.withOpacity(0.2),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          _selectedProject!,
-                          style: TextStyle(color: color, fontSize: 11),
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ],
-            ),
-          ),
-          // Botão limpar seleção
-          GestureDetector(
-            onTap: () {
-              HapticFeedback.lightImpact();
-              setState(() {
-                _customTaskName = null;
-                _taskNameController.clear();
-                _selectedCategory = null;
-                _selectedProject = null;
-              });
-            },
-            child: Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.1),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(Icons.close, color: Colors.white54, size: 18),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTaskPlaceholder() {
-    return GestureDetector(
-      onTap: _showCreateTaskDialog,
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.05),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: Colors.white.withOpacity(0.1),
-            style: BorderStyle.solid,
-          ),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.add_circle_outline,
-              color: Colors.white.withOpacity(0.4),
-              size: 22,
-            ),
-            const SizedBox(width: 10),
-            Text(
-              'Selecione ou crie uma tarefa',
-              style: TextStyle(
-                color: Colors.white.withOpacity(0.5),
-                fontSize: 14,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  /// Dialog para criar nova tarefa
-  void _showCreateTaskDialog() {
-    final taskController = TextEditingController();
-    String? selectedCategory = _categories.isNotEmpty
-        ? _categories.first
-        : null;
-    String? selectedProject;
-    Color selectedColor = Theme.of(context).colorScheme.primary;
-    IconData selectedIcon = Icons.timer;
-
-    final colors = [
-      const Color(0xFF9B51E0),
-      const Color(0xFFFFA556),
-      const Color(0xFFFD5B71),
-      const Color(0xFF07E092),
-      const Color(0xFFFF6B6B),
-      const Color(0xFF667EEA),
-      const Color(0xFF00B4D8),
-      const Color(0xFFFFD93D),
-    ];
-
-    final icons = [
-      Icons.timer,
-      Icons.code,
-      Icons.phone_android,
-      Icons.groups,
-      Icons.menu_book,
-      Icons.fitness_center,
-      Icons.self_improvement,
-      Icons.design_services,
-      Icons.work,
-      Icons.school,
-      Icons.brush,
-      Icons.music_note,
-    ];
-
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setModalState) => Container(
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(context).viewInsets.bottom,
-          ),
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surface,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-          ),
-          child: SafeArea(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Handle
-                  Center(
-                    child: Container(
-                      width: 40,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.outlineVariant,
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-
-                  // Título
-                  const Row(
-                    children: [
-                      Text('✨', style: TextStyle(fontSize: 22)),
-                      SizedBox(width: 8),
-                      Text(
-                        'Nova Tarefa',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-
-                  // Campo nome da tarefa
-                  TextField(
-                    controller: taskController,
-                    style: const TextStyle(color: Colors.white),
-                    decoration: InputDecoration(
-                      labelText: 'Nome da tarefa',
-                      labelStyle: TextStyle(
-                        color: Colors.white.withOpacity(0.5),
-                      ),
-                      hintText: 'Ex: Estudar Flutter',
-                      hintStyle: TextStyle(
-                        color: Colors.white.withOpacity(0.3),
-                      ),
-                      filled: true,
-                      fillColor: Colors.white.withOpacity(0.08),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide.none,
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: selectedColor),
-                      ),
-                      prefixIcon: Icon(selectedIcon, color: selectedColor),
-                    ),
-                    autofocus: true,
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Seletor de ícone
-                  Text(
-                    'Ícone',
-                    style: TextStyle(
-                      color: Colors.white.withOpacity(0.7),
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: icons.map((icon) {
-                      final isSelected = selectedIcon == icon;
-                      return GestureDetector(
-                        onTap: () => setModalState(() => selectedIcon = icon),
-                        child: Container(
-                          width: 44,
-                          height: 44,
-                          decoration: BoxDecoration(
-                            color: isSelected
-                                ? selectedColor.withOpacity(0.2)
-                                : Colors.white.withOpacity(0.08),
-                            borderRadius: BorderRadius.circular(12),
-                            border: isSelected
-                                ? Border.all(color: selectedColor, width: 2)
-                                : null,
-                          ),
-                          child: Icon(
-                            icon,
-                            color: isSelected ? selectedColor : Colors.white60,
-                            size: 22,
-                          ),
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Seletor de cor
-                  Text(
-                    'Cor',
-                    style: TextStyle(
-                      color: Colors.white.withOpacity(0.7),
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 10,
-                    runSpacing: 10,
-                    children: colors.map((color) {
-                      final isSelected = selectedColor == color;
-                      return GestureDetector(
-                        onTap: () => setModalState(() => selectedColor = color),
-                        child: Container(
-                          width: 36,
-                          height: 36,
-                          decoration: BoxDecoration(
-                            color: color,
-                            shape: BoxShape.circle,
-                            border: isSelected
-                                ? Border.all(color: Colors.white, width: 3)
-                                : null,
-                            boxShadow: isSelected
-                                ? [
-                                    BoxShadow(
-                                      color: color.withOpacity(0.5),
-                                      blurRadius: 8,
-                                    ),
-                                  ]
-                                : null,
-                          ),
-                          child: isSelected
-                              ? const Icon(
-                                  Icons.check,
-                                  color: Colors.white,
-                                  size: 18,
-                                )
-                              : null,
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Categoria
-                  Text(
-                    'Categoria',
-                    style: TextStyle(
-                      color: Colors.white.withOpacity(0.7),
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: _categories.map((cat) {
-                      final isSelected = selectedCategory == cat;
-                      return GestureDetector(
-                        onTap: () =>
-                            setModalState(() => selectedCategory = cat),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 14,
-                            vertical: 8,
-                          ),
-                          decoration: BoxDecoration(
-                            color: isSelected
-                                ? selectedColor.withOpacity(0.2)
-                                : Colors.white.withOpacity(0.08),
-                            borderRadius: BorderRadius.circular(20),
-                            border: isSelected
-                                ? Border.all(color: selectedColor)
-                                : null,
-                          ),
-                          child: Text(
-                            cat,
-                            style: TextStyle(
-                              color: isSelected
-                                  ? selectedColor
-                                  : Colors.white70,
-                              fontSize: 13,
-                              fontWeight: isSelected
-                                  ? FontWeight.w600
-                                  : FontWeight.w400,
-                            ),
-                          ),
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                  const SizedBox(height: 24),
-
-                  // Botão criar
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: () {
-                        if (taskController.text.trim().isEmpty) {
-                          FeedbackService.showError(
-                            context,
-                            'Digite um nome para a tarefa',
-                          );
-                          return;
-                        }
-
-                        // Adicionar à lista de atividades
-                        final newActivity = {
-                          'name': taskController.text.trim(),
-                          'icon': selectedIcon,
-                          'color': selectedColor,
-                          'category': selectedCategory,
-                          'project': null,
-                        };
-
-                        setState(() {
-                          _activities.insert(0, newActivity);
-                          _customTaskName = taskController.text.trim();
-                          _taskNameController.text = taskController.text.trim();
-                          _selectedCategory = selectedCategory;
-                          _selectedProject = null;
-                        });
-
-                        Navigator.pop(context);
-                        HapticFeedback.mediumImpact();
-                        FeedbackService.showSuccess(
-                          context,
-                          '✅ Tarefa "${taskController.text.trim()}" criada!',
-                        );
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: selectedColor,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                      ),
-                      child: const Text(
-                        'Criar Tarefa',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPomodoroSessionIndicator() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 40),
-      child: Column(
-        children: [
-          Text(
-            'Sessão ${_pomodoroSessions + 1} de $_pomodoroTotalSessions',
-            style: TextStyle(
-              color: Colors.white.withOpacity(0.5),
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const SizedBox(height: 12),
-          // Maçãs indicando sessões
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: List.generate(_pomodoroTotalSessions, (index) {
-              final isCompleted = index < _pomodoroSessions;
-              final isCurrent = index == _pomodoroSessions;
-              return AnimatedContainer(
-                duration: const Duration(milliseconds: 300),
-                margin: const EdgeInsets.symmetric(horizontal: 4),
-                child: Text(
-                  '🍅',
-                  style: TextStyle(
-                    fontSize: isCurrent ? 28 : 22,
-                    color: isCompleted
-                        ? null
-                        : (isCurrent ? null : Colors.white.withOpacity(0.2)),
-                  ),
-                ),
-              );
-            }),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildPomodoroStats() {
     // Calcular tempo total focado hoje via pomodoro
     final focusMinutes = _pomodoroSessions * 25;
@@ -7077,43 +5632,6 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
             fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
           ),
         ),
-      ),
-    );
-  }
-
-  void _showExitPomodoroDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: Theme.of(context).colorScheme.surface,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Row(
-          children: [
-            Text('🍅', style: TextStyle(fontSize: 24)),
-            SizedBox(width: 8),
-            Text('Sair do Pomodoro?'),
-          ],
-        ),
-        content: const Text(
-          'O timer será pausado, mas seu progresso será mantido.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Continuar'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _pausePomodoro();
-              setState(() => _showPomodoroScreen = false);
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFFF6B6B),
-            ),
-            child: const Text('Sair', style: TextStyle(color: Colors.white)),
-          ),
-        ],
       ),
     );
   }
@@ -7964,6 +6482,80 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
 
   bool _isSameDay(DateTime a, DateTime b) {
     return a.year == b.year && a.month == b.month && a.day == b.day;
+  }
+
+  void _showCreateTaskDialog() {
+    _taskNameController.clear();
+    setState(() {
+      _selectedCategory = 'Trabalho';
+      _selectedProject = 'Odyssey';
+    });
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Nova Tarefa'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: _taskNameController,
+              decoration: const InputDecoration(
+                labelText: 'Nome da tarefa',
+                hintText: 'Ex: Estudar Flutter',
+              ),
+              textCapitalization: TextCapitalization.sentences,
+              autofocus: true,
+            ),
+            const SizedBox(height: 16),
+            DropdownButtonFormField<String>(
+              value: _selectedCategory,
+              decoration: const InputDecoration(labelText: 'Categoria'),
+              items: _categories.map((c) {
+                return DropdownMenuItem(value: c, child: Text(c));
+              }).toList(),
+              onChanged: (v) => setState(() => _selectedCategory = v),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () {
+              if (_taskNameController.text.isNotEmpty) {
+                _addNewActivity(
+                  _taskNameController.text,
+                  _selectedCategory ?? 'Outros',
+                  _selectedProject,
+                );
+                Navigator.pop(context);
+              }
+            },
+            child: const Text('Criar'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _addNewActivity(String name, String category, String? project) {
+    setState(() {
+      _activities.add({
+        'name': name,
+        'icon': Icons.star,
+        'color': const Color(0xFFE74C3C),
+        'category': category,
+        'project': project,
+      });
+
+      _customTaskName = name;
+      _taskNameController.text = name;
+      _selectedCategory = category;
+      _selectedProject = project;
+    });
   }
 }
 
