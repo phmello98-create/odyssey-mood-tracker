@@ -323,6 +323,17 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
   }
 
   void _startTimer({Activity? activity, String? customTask}) {
+    final timerState = ref.read(timerProvider);
+
+    // VALIDAÇÃO: Não permitir iniciar timer livre se Pomodoro está rodando
+    if (timerState.isPomodoroMode && timerState.isRunning) {
+      FeedbackService.showError(
+        context,
+        '🍅 Pomodoro em andamento! Pause-o antes de iniciar outro timer.',
+      );
+      return;
+    }
+
     final taskName = customTask ?? _taskNameController.text;
 
     // Pegar cor e ícone da atividade
@@ -493,97 +504,95 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
 
   // Pomodoro methods
   void _startPomodoro() {
-    soundService.playTimerStart(); // Som de início
+    final timerState = ref.read(timerProvider);
+
+    // VALIDAÇÃO: Não permitir iniciar Pomodoro se timer livre está rodando
+    if (!timerState.isPomodoroMode && timerState.isRunning) {
+      FeedbackService.showError(
+        context,
+        '⏱️ Timer livre em andamento! Pause-o antes de iniciar o Pomodoro.',
+      );
+      return;
+    }
+
+    // Verificar se há um Pomodoro pausado - se sim, retomar em vez de reiniciar
+    if (timerState.isPaused && timerState.isPomodoroMode) {
+      // RETOMAR Pomodoro pausado
+      soundService.playTimerStart();
+      ref.read(timerProvider.notifier).resumePomodoro();
+
+      setState(() {
+        _isPomodoroRunning = true;
+        // NÃO resetar _pomodoroTimeLeft - manter o valor atual
+      });
+
+      _pulseController.repeat(reverse: true);
+      return;
+    }
+
+    // INICIAR novo Pomodoro
+    soundService.playTimerStart();
     final taskName =
         _customTaskName ?? _selectedActivity?.activityName ?? 'Tarefa';
 
+    // Usar o provider global para iniciar o Pomodoro
+    ref
+        .read(timerProvider.notifier)
+        .startPomodoro(
+          taskName: taskName,
+          category: _selectedCategory,
+          project: _selectedProject,
+        );
+
+    // Atualizar estado local apenas para UI
     setState(() {
       _isPomodoroRunning = true;
       _isPomodoroBreak = false;
       _pomodoroTimeLeft = _pomodoroDuration;
     });
 
-    // Agendar notificação de conclusão
-    NotificationService.instance.schedulePomodoroTimer(
-      _pomodoroDuration,
-      taskName,
-    );
-
-    // Mostrar notificação persistente do Pomodoro
-    NotificationService.instance.showTimerRunningNotification(
-      taskName: taskName,
-      elapsed: Duration.zero,
-      isPomodoro: true,
-      pomodoroTimeLeft: _pomodoroDuration,
-    );
+    // Parar timer local antigo se existir
+    _pomodoroTimer?.cancel();
+    _pomodoroTimer = null;
 
     _pulseController.repeat(reverse: true);
-
-    _pomodoroTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (!mounted) {
-        timer.cancel();
-        return;
-      }
-      if (_isPomodoroRunning) {
-        setState(() {
-          _pomodoroTimeLeft = _pomodoroTimeLeft - const Duration(seconds: 1);
-
-          // Atualizar notificação a cada 30 segundos
-          if (_pomodoroTimeLeft.inSeconds % 30 == 0) {
-            NotificationService.instance.updateTimerNotification(
-              taskName: taskName,
-              elapsed: _pomodoroDuration - _pomodoroTimeLeft,
-              isPomodoro: true,
-              pomodoroTimeLeft: _pomodoroTimeLeft,
-            );
-          }
-
-          if (_pomodoroTimeLeft.inSeconds <= 0) {
-            _pomodoroTimer?.cancel();
-            _pulseController.stop();
-            NotificationService.instance.cancelTimerNotification();
-
-            if (!_isPomodoroBreak) {
-              _pomodoroSessions++;
-              _showPomodoroComplete();
-            } else {
-              _startPomodoro();
-            }
-          }
-        });
-      }
-    });
   }
 
   void _pausePomodoro() {
+    // Usar o provider global para pausar
+    ref.read(timerProvider.notifier).pausePomodoro();
+
     setState(() {
       _isPomodoroRunning = false;
     });
     _pomodoroTimer?.cancel();
     _pulseController.stop();
-    NotificationService.instance.cancelPomodoroTimer();
-    NotificationService.instance.cancelTimerNotification();
     // Parar sons do timer
     soundService.stopTimerSounds();
   }
 
   void _resetPomodoro() {
+    // Usar o provider global para resetar
+    ref.read(timerProvider.notifier).resetPomodoro();
+
     _pomodoroTimer?.cancel();
     _pulseController.stop();
     _pulseController.reset();
-    NotificationService.instance.cancelPomodoroTimer();
-    NotificationService.instance.cancelTimerNotification();
     // Parar sons do timer
     soundService.stopTimerSounds();
     setState(() {
       _isPomodoroRunning = false;
       _isPomodoroBreak = false;
       _pomodoroTimeLeft = _pomodoroDuration;
+      _pomodoroSessions = 0;
     });
   }
 
   void _startBreak() {
-    // Verificar se é pausa longa (após completar todas as sessões)
+    // Usar o provider global para iniciar a pausa
+    ref.read(timerProvider.notifier).startBreak();
+
+    // Atualizar estado local para UI
     final isLongBreak = _pomodoroSessions >= _pomodoroTotalSessions;
     final breakDuration = isLongBreak
         ? _longBreakDuration
@@ -599,152 +608,11 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
       }
     });
 
-    // Agendar notificação de fim da pausa
-    NotificationService.instance.scheduleBreakTimer(breakDuration);
+    // Parar timer local antigo se existir
+    _pomodoroTimer?.cancel();
+    _pomodoroTimer = null;
 
     _pulseController.repeat(reverse: true);
-
-    _pomodoroTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (_isPomodoroRunning) {
-        setState(() {
-          _pomodoroTimeLeft = _pomodoroTimeLeft - const Duration(seconds: 1);
-          if (_pomodoroTimeLeft.inSeconds <= 0) {
-            _pomodoroTimer?.cancel();
-            _pulseController.stop();
-            HapticFeedback.mediumImpact();
-            // Notificar que a pausa acabou
-            FeedbackService.showSuccess(
-              context,
-              '☕ Pausa finalizada! Hora de focar 🍅',
-            );
-            _startPomodoro();
-          }
-        });
-      }
-    });
-  }
-
-  void _showPomodoroComplete() {
-    HapticFeedback.heavyImpact();
-    soundService.playTimerEnd(); // Som do timer terminando
-
-    // Verificar se é hora de pausa longa
-    final isLongBreak = _pomodoroSessions >= _pomodoroTotalSessions;
-    final breakDuration = isLongBreak
-        ? _longBreakDuration
-        : _shortBreakDuration;
-
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        backgroundColor: Theme.of(context).colorScheme.surface,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Animação de celebração
-            TweenAnimationBuilder<double>(
-              tween: Tween(begin: 0.0, end: 1.0),
-              duration: const Duration(milliseconds: 600),
-              curve: Curves.elasticOut,
-              builder: (context, value, child) {
-                return Transform.scale(
-                  scale: value,
-                  child: const Text('🍅', style: TextStyle(fontSize: 64)),
-                );
-              },
-            ),
-            const SizedBox(height: 16),
-            Text(
-              isLongBreak
-                  ? 'Parabéns! Meta atingida! 🎉'
-                  : 'Pomodoro Concluído!',
-              style: Theme.of(
-                context,
-              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              decoration: BoxDecoration(
-                color: const Color(0xFF27AE60).withOpacity(0.15),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: const Text(
-                '+25 XP',
-                style: TextStyle(
-                  color: Color(0xFF27AE60),
-                  fontWeight: FontWeight.w600,
-                  fontSize: 18,
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            // Maçãs indicando progresso
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: List.generate(_pomodoroTotalSessions, (index) {
-                final isCompleted = index < _pomodoroSessions;
-                return Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 2),
-                  child: Text(
-                    '🍅',
-                    style: TextStyle(
-                      fontSize: 20,
-                      color: isCompleted ? null : Colors.white.withOpacity(0.2),
-                    ),
-                  ),
-                );
-              }),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              '$_pomodoroSessions de $_pomodoroTotalSessions sessões',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              setState(() {
-                _isPomodoroRunning = false;
-                _pomodoroTimeLeft = _pomodoroDuration;
-              });
-            },
-            child: const Text('Fechar'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _startBreak();
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF34D399),
-            ),
-            child: Text(
-              isLongBreak
-                  ? 'Pausa Longa (${_longBreakDuration.inMinutes}min)'
-                  : 'Pausa (${_shortBreakDuration.inMinutes}min)',
-              style: const TextStyle(color: Colors.white),
-            ),
-          ),
-        ],
-      ),
-    );
-
-    // Gamificação
-    try {
-      final gamificationRepo = ref.read(gamificationRepositoryProvider);
-      gamificationRepo.completeTask();
-    } catch (e) {
-      // Ignore
-    }
   }
 
   String _formatDuration(Duration duration) {
@@ -812,38 +680,80 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
       });
     }
 
-    // Sincronizar estado local com o provider global
-    if (timerState.isRunning && !_isRunning) {
-      // Timer foi iniciado em outro lugar ou restaurado
+    // Sincronizar estado local do TIMER LIVRE com o provider global
+    // IMPORTANTE: Só sincronizar se NÃO estiver em modo Pomodoro
+    if (!timerState.isPomodoroMode) {
+      if (timerState.isRunning && !_isRunning) {
+        // Timer livre foi iniciado em outro lugar ou restaurado
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            setState(() {
+              _isRunning = true;
+              _startTime = timerState.startTime;
+              _elapsedTime = timerState.elapsed;
+              _customTaskName = timerState.taskName;
+              _selectedCategory = timerState.category;
+              _selectedProject = timerState.project;
+            });
+            if (!_pulseController.isAnimating) {
+              _pulseController.repeat(reverse: true);
+            }
+          }
+        });
+      } else if (!timerState.isRunning && _isRunning) {
+        // Timer livre foi parado
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            setState(() {
+              _isRunning = false;
+            });
+            _pulseController.stop();
+            _pulseController.reset();
+          }
+        });
+      } else if (timerState.isRunning) {
+        // Atualizar tempo do timer livre
+        _elapsedTime = timerState.elapsed;
+      }
+    }
+
+    // Sincronizar estado do Pomodoro com o provider global
+    if (timerState.isPomodoroMode) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
-          setState(() {
-            _isRunning = true;
-            _startTime = timerState.startTime;
-            _elapsedTime = timerState.elapsed;
-            _customTaskName = timerState.taskName;
-            _selectedCategory = timerState.category;
-            _selectedProject = timerState.project;
-          });
-          if (!_pulseController.isAnimating) {
-            _pulseController.repeat(reverse: true);
+          final needsUpdate =
+              _isPomodoroRunning != timerState.isRunning ||
+              _isPomodoroBreak != timerState.isPomodoroBreak ||
+              _pomodoroTimeLeft != timerState.pomodoroTimeLeft ||
+              _pomodoroSessions != timerState.pomodoroSessions;
+
+          if (needsUpdate) {
+            setState(() {
+              _isPomodoroRunning = timerState.isRunning;
+              _isPomodoroBreak = timerState.isPomodoroBreak;
+              _pomodoroTimeLeft = timerState.pomodoroTimeLeft;
+              _pomodoroSessions = timerState.pomodoroSessions;
+              _customTaskName = timerState.taskName;
+            });
+
+            if (timerState.isRunning && !_pulseController.isAnimating) {
+              _pulseController.repeat(reverse: true);
+            } else if (!timerState.isRunning && _pulseController.isAnimating) {
+              _pulseController.stop();
+            }
           }
         }
       });
-    } else if (!timerState.isRunning && _isRunning) {
-      // Timer foi parado
+    } else if (_isPomodoroRunning) {
+      // Não está mais em modo Pomodoro, resetar estado local
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
           setState(() {
-            _isRunning = false;
+            _isPomodoroRunning = false;
+            _isPomodoroBreak = false;
           });
-          _pulseController.stop();
-          _pulseController.reset();
         }
       });
-    } else if (timerState.isRunning) {
-      // Atualizar tempo do provider
-      _elapsedTime = timerState.elapsed;
     }
 
     // Se estiver no modo de timer ativo E quiser ver tela cheia
@@ -1457,24 +1367,57 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
   }
 
   void _skipPomodoroSession() {
-    if (_isPomodoroRunning ||
-        _pomodoroTimeLeft.inSeconds < _pomodoroDuration.inSeconds) {
-      _pomodoroTimer?.cancel();
-      _pulseController.stop();
-      if (!_isPomodoroBreak) {
-        setState(() {
-          _pomodoroSessions++;
-          _isPomodoroRunning = false;
-        });
-        _showPomodoroComplete();
-      } else {
-        setState(() {
-          _isPomodoroBreak = false;
-          _isPomodoroRunning = false;
-          _pomodoroTimeLeft = _pomodoroDuration;
-        });
-      }
+    final timerState = ref.read(timerProvider);
+
+    // REGRA 1: Não pode pular durante pausas
+    if (_isPomodoroBreak || timerState.isPomodoroBreak) {
+      FeedbackService.showError(
+        context,
+        '⏸️ Não é possível pular a pausa. Aproveite para descansar!',
+      );
+      return;
     }
+
+    // REGRA 2: Só pode pular após 5 minutos de foco (300 segundos)
+    final elapsedSeconds =
+        _pomodoroDuration.inSeconds - _pomodoroTimeLeft.inSeconds;
+    const minSecondsToSkip = 300; // 5 minutos
+
+    if (elapsedSeconds < minSecondsToSkip) {
+      final remainingToSkip = minSecondsToSkip - elapsedSeconds;
+      final minutesRemaining = (remainingToSkip / 60).ceil();
+      FeedbackService.showWarning(
+        context,
+        '⏰ Foque por mais $minutesRemaining min antes de pular',
+      );
+      return;
+    }
+
+    // REGRA 3: Pular sessão de foco e iniciar pausa automaticamente
+    HapticFeedback.mediumImpact();
+
+    // Parar timer atual
+    _pomodoroTimer?.cancel();
+    _pulseController.stop();
+
+    // Incrementar sessões completadas
+    setState(() {
+      _pomodoroSessions++;
+      _isPomodoroRunning = false;
+    });
+
+    // Feedback de sessão pulada
+    FeedbackService.showSuccess(
+      context,
+      '🍅 Sessão $_pomodoroSessions/$_pomodoroTotalSessions completa!',
+    );
+
+    // Iniciar pausa automaticamente após curto delay
+    Future.delayed(const Duration(milliseconds: 800), () {
+      if (mounted) {
+        _startBreak();
+      }
+    });
   }
 
   // Stats rápidas do Pomodoro - Design compacto inline
@@ -1878,12 +1821,15 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
 
   Widget _buildCurrentTimerCard() {
     final colorScheme = Theme.of(context).colorScheme;
-    final hasSelectedTask = _taskNameController.text.isNotEmpty;
+    final hasSelectedTask =
+        _customTaskName != null || _taskNameController.text.isNotEmpty;
     final taskName = _isRunning
         ? (_customTaskName ?? _selectedActivity?.activityName ?? 'Tarefa')
         : (_taskNameController.text.isEmpty
-              ? 'Toque para começar'
+              ? 'Selecione uma tarefa'
               : _taskNameController.text);
+
+    // Cor baseada no estado
     final taskColor = _isRunning
         ? _getActivityColor(_customTaskName ?? _selectedActivity?.activityName)
         : (hasSelectedTask
@@ -1905,8 +1851,9 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
           0,
           (sum, r) => sum + r.durationInSeconds,
         );
-        final totalDuration = Duration(seconds: totalSeconds);
-        final displayTime = _isRunning ? _elapsedTime : totalDuration;
+        final displayTime = _isRunning
+            ? _elapsedTime
+            : Duration(seconds: totalSeconds);
 
         // Progress para o ring (baseado em meta diária de 8h)
         const dailyGoalSeconds = 8 * 60 * 60;
@@ -1917,279 +1864,270 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
           child: GestureDetector(
             onTap: _isRunning
                 ? () => setState(() => _showFullscreenTimer = true)
-                : (hasSelectedTask
+                : (hasSelectedTask && _taskNameController.text.isNotEmpty
                       ? () => _startTimer(customTask: _taskNameController.text)
                       : null),
             child: Container(
-              padding: const EdgeInsets.all(24),
+              height: 150,
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                   colors: _isRunning
                       ? [
-                          taskColor.withOpacity(0.15),
-                          taskColor.withOpacity(0.05),
+                          taskColor.withOpacity(0.12),
+                          taskColor.withOpacity(0.04),
                         ]
                       : [
-                          colorScheme.surfaceContainerHighest,
-                          colorScheme.surfaceContainerHighest.withOpacity(0.8),
+                          colorScheme.surfaceContainerHighest.withOpacity(0.6),
+                          colorScheme.surfaceContainerHighest.withOpacity(0.3),
                         ],
                 ),
-                borderRadius: BorderRadius.circular(28),
+                borderRadius: BorderRadius.circular(32),
                 border: Border.all(
                   color: _isRunning
-                      ? taskColor.withOpacity(0.4)
-                      : colorScheme.outlineVariant.withOpacity(0.3),
-                  width: _isRunning ? 2 : 1,
+                      ? taskColor.withOpacity(0.3)
+                      : Colors.transparent,
+                  width: 1.5,
                 ),
                 boxShadow: _isRunning
                     ? [
                         BoxShadow(
-                          color: taskColor.withOpacity(0.2),
+                          color: taskColor.withOpacity(0.15),
                           blurRadius: 20,
-                          spreadRadius: 0,
                           offset: const Offset(0, 8),
                         ),
                       ]
                     : [],
               ),
-              child: Row(
+              child: Stack(
                 children: [
-                  // Circular Timer
-                  SizedBox(
-                    width: 100,
-                    height: 100,
-                    child: Stack(
-                      alignment: Alignment.center,
+                  // Elemento decorativo de fundo
+                  Positioned(
+                    right: -30,
+                    top: -30,
+                    child: Container(
+                      width: 150,
+                      height: 150,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: RadialGradient(
+                          colors: [
+                            taskColor.withOpacity(0.1),
+                            taskColor.withOpacity(0.0),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Row(
                       children: [
-                        // Background ring
+                        // Timer Ring Esquerdo
                         SizedBox(
                           width: 100,
                           height: 100,
-                          child: CircularProgressIndicator(
-                            value: 1,
-                            strokeWidth: 8,
-                            backgroundColor: Colors.transparent,
-                            valueColor: AlwaysStoppedAnimation(
-                              colorScheme.outlineVariant.withOpacity(0.2),
-                            ),
-                          ),
-                        ),
-                        // Progress ring
-                        SizedBox(
-                          width: 100,
-                          height: 100,
-                          child: CircularProgressIndicator(
-                            value: _isRunning ? null : progress,
-                            strokeWidth: 8,
-                            backgroundColor: Colors.transparent,
-                            valueColor: AlwaysStoppedAnimation(
-                              _isRunning ? taskColor : colorScheme.primary,
-                            ),
-                            strokeCap: StrokeCap.round,
-                          ),
-                        ),
-                        // Center content
-                        Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            if (_isRunning) ...[
+                          child: Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              // Fundo do anel
+                              SizedBox(
+                                width: 100,
+                                height: 100,
+                                child: CircularProgressIndicator(
+                                  value: 1,
+                                  strokeWidth: 8,
+                                  backgroundColor: Colors.transparent,
+                                  valueColor: AlwaysStoppedAnimation(
+                                    _isRunning
+                                        ? taskColor.withOpacity(0.2)
+                                        : colorScheme.outlineVariant
+                                              .withOpacity(0.2),
+                                  ),
+                                ),
+                              ),
+                              // Progresso
+                              SizedBox(
+                                width: 100,
+                                height: 100,
+                                child: TweenAnimationBuilder<double>(
+                                  duration: const Duration(seconds: 1),
+                                  curve: Curves.easeInOut,
+                                  tween: Tween<double>(
+                                    begin: 0,
+                                    end: _isRunning ? 0.0 : progress,
+                                  ),
+                                  builder: (context, value, _) {
+                                    return CircularProgressIndicator(
+                                      value: _isRunning
+                                          ? null
+                                          : (value > 0
+                                                ? value
+                                                : 0.02), // Mínimo visual
+                                      strokeWidth: 8,
+                                      backgroundColor: Colors.transparent,
+                                      valueColor: AlwaysStoppedAnimation(
+                                        _isRunning
+                                            ? taskColor
+                                            : colorScheme.primary,
+                                      ),
+                                      strokeCap: StrokeCap.round,
+                                    );
+                                  },
+                                ),
+                              ),
+                              // Ícone central
                               Container(
-                                width: 12,
-                                height: 12,
+                                width: 48,
+                                height: 48,
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
-                                  color: const Color(0xFF27AE60),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: const Color(
-                                        0xFF27AE60,
-                                      ).withOpacity(0.5),
-                                      blurRadius: 8,
-                                      spreadRadius: 2,
-                                    ),
-                                  ],
+                                  color: _isRunning
+                                      ? taskColor
+                                      : colorScheme.surface,
+                                  boxShadow: _isRunning
+                                      ? [
+                                          BoxShadow(
+                                            color: taskColor.withOpacity(0.4),
+                                            blurRadius: 10,
+                                            spreadRadius: 2,
+                                          ),
+                                        ]
+                                      : [],
                                 ),
-                              ),
-                              const SizedBox(height: 4),
-                            ] else ...[
-                              Icon(
-                                hasSelectedTask
-                                    ? Icons.play_arrow_rounded
-                                    : Icons.timer_outlined,
-                                size: 28,
-                                color: hasSelectedTask
-                                    ? taskColor
-                                    : colorScheme.onSurfaceVariant,
+                                child: Icon(
+                                  _isRunning
+                                      ? Icons.pause_rounded
+                                      : Icons.play_arrow_rounded,
+                                  color: _isRunning ? Colors.white : taskColor,
+                                  size: 28,
+                                ),
                               ),
                             ],
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 20),
-                  // Info section
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        // Time display
-                        Text(
-                          _formatDuration(displayTime),
-                          style: TextStyle(
-                            color: colorScheme.onSurface,
-                            fontSize: 32,
-                            fontWeight: FontWeight.w600,
-                            letterSpacing: 1,
-                            fontFeatures: const [FontFeature.tabularFigures()],
                           ),
                         ),
-                        const SizedBox(height: 6),
-                        // Task name
-                        Row(
-                          children: [
-                            Container(
-                              width: 8,
-                              height: 8,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: (_isRunning || hasSelectedTask)
-                                    ? taskColor
-                                    : colorScheme.outlineVariant,
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                taskName,
-                                style: TextStyle(
-                                  color: (_isRunning || hasSelectedTask)
-                                      ? colorScheme.onSurface
-                                      : colorScheme.onSurfaceVariant,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ],
-                        ),
-                        // Category/Project tags
-                        if (_selectedProject != null ||
-                            _selectedCategory != null) ...[
-                          const SizedBox(height: 8),
-                          Wrap(
-                            spacing: 6,
-                            runSpacing: 4,
+
+                        const SizedBox(width: 24),
+
+                        // Informações Centrais
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              if (_selectedCategory != null)
-                                _buildMiniTag(
-                                  _selectedCategory!,
-                                  colorScheme.outlineVariant,
+                              Row(
+                                children: [
+                                  if (_isRunning) ...[
+                                    // Dot pulsante
+                                    TweenAnimationBuilder<double>(
+                                      tween: Tween(begin: 0.4, end: 1.0),
+                                      duration: const Duration(
+                                        milliseconds: 1000,
+                                      ),
+                                      curve: Curves.easeInOut,
+                                      onEnd:
+                                          () {}, // Loop handled by parent pulse controller conceptually
+                                      builder: (context, value, _) {
+                                        return Container(
+                                          width: 8,
+                                          height: 8,
+                                          decoration: BoxDecoration(
+                                            shape: BoxShape.circle,
+                                            color: Colors.redAccent.withOpacity(
+                                              value,
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                    const SizedBox(width: 6),
+                                  ],
+                                  Text(
+                                    _isRunning ? 'FOCANDO AGORA' : 'TOTAL HOJE',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: _isRunning
+                                          ? taskColor
+                                          : colorScheme.onSurfaceVariant,
+                                      letterSpacing: 0.5,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                _formatDuration(displayTime),
+                                style: TextStyle(
+                                  fontSize: 36,
+                                  fontWeight: FontWeight.w700,
+                                  color: colorScheme.onSurface,
+                                  fontFeatures: const [
+                                    FontFeature.tabularFigures(),
+                                  ],
+                                  height: 1.1,
+                                  letterSpacing: -1,
                                 ),
-                              if (_selectedProject != null)
-                                _buildMiniTag(
-                                  _selectedProject!,
-                                  taskColor.withOpacity(0.7),
-                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.label_outline_rounded,
+                                    size: 14,
+                                    color: colorScheme.onSurfaceVariant,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Expanded(
+                                    child: Text(
+                                      taskName,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w500,
+                                        color: colorScheme.onSurfaceVariant,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ],
                           ),
-                        ],
+                        ),
+
+                        // Botão Stop (apenas se rodando)
+                        if (_isRunning)
+                          Padding(
+                            padding: const EdgeInsets.only(left: 8),
+                            child: GestureDetector(
+                              onTap: _stopTimer,
+                              child: Container(
+                                width: 44,
+                                height: 44,
+                                decoration: BoxDecoration(
+                                  color: colorScheme.errorContainer,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(
+                                  Icons.stop_rounded,
+                                  color: colorScheme.onErrorContainer,
+                                  size: 24,
+                                ),
+                              ),
+                            ),
+                          ),
                       ],
                     ),
                   ),
-                  // Action button
-                  if (_isRunning) ...[
-                    Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        _buildCircularButton(
-                          icon: Icons.fullscreen_rounded,
-                          color: colorScheme.surfaceContainerHighest,
-                          iconColor: colorScheme.onSurfaceVariant,
-                          onTap: () =>
-                              setState(() => _showFullscreenTimer = true),
-                        ),
-                        const SizedBox(height: 8),
-                        _buildCircularButton(
-                          icon: Icons.stop_rounded,
-                          color: colorScheme.error,
-                          iconColor: colorScheme.onError,
-                          onTap: _stopTimer,
-                        ),
-                      ],
-                    ),
-                  ] else if (hasSelectedTask) ...[
-                    _buildCircularButton(
-                      icon: Icons.play_arrow_rounded,
-                      color: taskColor,
-                      iconColor: Colors.white,
-                      size: 48,
-                      onTap: () =>
-                          _startTimer(customTask: _taskNameController.text),
-                    ),
-                  ],
                 ],
               ),
             ),
           ),
         );
       },
-    );
-  }
-
-  Widget _buildMiniTag(String text, Color color) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: isDark
-            ? colorScheme.surfaceContainerHighest
-            : color.withOpacity(0.12),
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: color.withOpacity(0.3), width: 1),
-      ),
-      child: Text(
-        text,
-        style: TextStyle(
-          color: isDark ? colorScheme.onSurface : color,
-          fontSize: 11,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCircularButton({
-    required IconData icon,
-    required Color color,
-    required Color iconColor,
-    required VoidCallback onTap,
-    double size = 40,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: color,
-          boxShadow: [
-            BoxShadow(
-              color: color.withOpacity(0.3),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Icon(icon, size: size * 0.5, color: iconColor),
-      ),
     );
   }
 
@@ -3064,7 +3002,11 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                     ),
                   ],
                 ),
-                child: const Icon(Icons.add_rounded, color: Colors.white, size: 30),
+                child: const Icon(
+                  Icons.add_rounded,
+                  color: Colors.white,
+                  size: 30,
+                ),
               ),
             ),
           ),
@@ -4319,7 +4261,11 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                     ),
                   ],
                 ),
-                child: const Icon(Icons.stop_rounded, color: Colors.white, size: 36),
+                child: const Icon(
+                  Icons.stop_rounded,
+                  color: Colors.white,
+                  size: 36,
+                ),
               ),
             ),
 
@@ -5077,7 +5023,11 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                                 : null,
                           ),
                           child: isSelected
-                              ? const Icon(Icons.check, color: Colors.white, size: 18)
+                              ? const Icon(
+                                  Icons.check,
+                                  color: Colors.white,
+                                  size: 18,
+                                )
                               : null,
                         ),
                       );
@@ -5745,7 +5695,10 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                             ),
                             child: Row(
                               children: [
-                                const Text('🔇', style: TextStyle(fontSize: 22)),
+                                const Text(
+                                  '🔇',
+                                  style: TextStyle(fontSize: 22),
+                                ),
                                 const SizedBox(width: 12),
                                 Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -6051,7 +6004,9 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
             Text('Sair do Pomodoro?'),
           ],
         ),
-        content: const Text('O timer será pausado, mas seu progresso será mantido.'),
+        content: const Text(
+          'O timer será pausado, mas seu progresso será mantido.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -6469,7 +6424,10 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                 alignment: Alignment.center,
                 child: Text(
                   '$value${unit.isNotEmpty ? " $unit" : ""}',
-                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                  ),
                 ),
               ),
               GestureDetector(
@@ -6749,7 +6707,10 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
               ),
               Text(
                 value,
-                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 20),
+                style: const TextStyle(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 20,
+                ),
               ),
             ],
           ),
