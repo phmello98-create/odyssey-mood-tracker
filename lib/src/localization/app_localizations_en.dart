@@ -3154,4 +3154,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get waterWidgetDescription => 'Track your water intake';
+
+  @override
+  String get preparando => 'Preparing...';
+
+  @override
+  String get errorInit => 'Oops! Something went wrong';
 }

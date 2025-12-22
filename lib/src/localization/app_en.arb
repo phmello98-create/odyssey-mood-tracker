@@ -1013,5 +1013,7 @@
   },
   "waterReset": "Reset",
   "waterWidgetDescription": "Track your water intake",
+  "preparando": "Preparing...",
+  "errorInit": "Oops! Something went wrong",
   "@@locale": "en"
 }

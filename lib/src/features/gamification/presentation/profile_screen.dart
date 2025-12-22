@@ -42,7 +42,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
   String _userName = 'Praticante';
   late List<SkillCategory> _skillCategories;
   int _selectedTabIndex = 0;
-  bool _showCompletedGoals = false;
+  bool _showCompletedGoals = true;
   bool _showGoalSuggestions = false;
 
   // Showcase keys
@@ -1070,7 +1070,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
     ];
 
     final screenWidth = MediaQuery.of(context).size.width;
-    final isNarrow = screenWidth < 400; // Mobile estreito
+    final isNarrow =
+        screenWidth <
+        550; // Mobile e tablets estreitos - aumentado para melhor UX
 
     return Container(
       padding: const EdgeInsets.all(4),
@@ -3792,7 +3794,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                     ),
                   ),
                   if (goal.isCompleted)
-                    const Icon(Icons.check_circle, color: Colors.green, size: 24),
+                    const Icon(
+                      Icons.check_circle,
+                      color: Colors.green,
+                      size: 24,
+                    ),
                 ],
               ),
               const SizedBox(height: 20),

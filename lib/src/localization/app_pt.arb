@@ -1013,5 +1013,7 @@
   },
   "waterReset": "Resetar",
   "waterWidgetDescription": "Acompanhe seu consumo de água",
+  "preparando": "Preparando...",
+  "errorInit": "Ops! Algo deu errado",
   "@@locale": "pt"
 }

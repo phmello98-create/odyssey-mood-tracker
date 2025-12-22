@@ -6097,6 +6097,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Track your water intake'**
   String get waterWidgetDescription;
+
+  /// No description provided for @preparando.
+  ///
+  /// In en, this message translates to:
+  /// **'Preparing...'**
+  String get preparando;
+
+  /// No description provided for @errorInit.
+  ///
+  /// In en, this message translates to:
+  /// **'Oops! Something went wrong'**
+  String get errorInit;
 }
 
 class _AppLocalizationsDelegate

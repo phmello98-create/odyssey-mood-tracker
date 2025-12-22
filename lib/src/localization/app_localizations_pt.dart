@@ -3161,4 +3161,10 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get waterWidgetDescription => 'Acompanhe seu consumo de água';
+
+  @override
+  String get preparando => 'Preparando...';
+
+  @override
+  String get errorInit => 'Ops! Algo deu errado';
 }

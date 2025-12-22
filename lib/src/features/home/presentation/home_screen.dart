@@ -67,6 +67,8 @@ import 'package:odyssey/src/features/community/domain/post.dart';
 import 'package:odyssey/src/features/community/domain/topic.dart';
 import 'package:odyssey/src/features/community/presentation/widgets/user_avatar.dart';
 import 'package:odyssey/src/features/settings/presentation/settings_screen.dart';
+import 'package:odyssey/src/features/settings/presentation/modern_notification_settings_screen.dart';
+import 'package:odyssey/src/features/subscription/presentation/donation_screen.dart';
 
 // Frases e insights profundos: Nietzsche, Spinoza, Maslow, Psicologia e Ciência
 const List<String> _dailyInsights = [
@@ -165,6 +167,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   // Quick task creation controller
   final TextEditingController _quickTaskController = TextEditingController();
 
+  // Floating header scroll detection
+  final ScrollController _scrollController = ScrollController();
+  bool _showFloatingHeader = false;
+  Timer? _floatingHeaderTimer;
+  bool _isScrolling = false;
+
+  // Side Menu Animation (Rive App Style)
+  late AnimationController _menuAnimController;
+  late Animation<double> _menuAnimation;
+  bool _isMenuOpen = false;
+
   @override
   void initState() {
     super.initState();
@@ -211,6 +224,50 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     _insightTimer = Timer.periodic(const Duration(seconds: 30), (_) {
       _setRandomInsight(animate: true);
     });
+
+    // Floating header scroll detection
+    _scrollController.addListener(_onScroll);
+
+    // Side Menu Animation Controller (Rive App Style)
+    _menuAnimController = AnimationController(
+      duration: const Duration(milliseconds: 300),
+      vsync: this,
+    );
+    _menuAnimation = Tween<double>(begin: 0, end: 1).animate(
+      CurvedAnimation(parent: _menuAnimController, curve: Curves.easeOutCubic),
+    );
+  }
+
+  void _toggleSideMenu() {
+    HapticFeedback.mediumImpact();
+    setState(() => _isMenuOpen = !_isMenuOpen);
+    if (_isMenuOpen) {
+      _menuAnimController.forward();
+    } else {
+      _menuAnimController.reverse();
+    }
+  }
+
+  void _onScroll() {
+    // Mostrar header flutuante quando scrollar para baixo (além de 80px)
+    final shouldShow = _scrollController.offset > 80;
+
+    if (shouldShow != _showFloatingHeader) {
+      setState(() => _showFloatingHeader = shouldShow);
+    }
+
+    // Marcar como scrollando
+    if (!_isScrolling) {
+      setState(() => _isScrolling = true);
+    }
+
+    // Resetar timer de auto-hide
+    _floatingHeaderTimer?.cancel();
+    _floatingHeaderTimer = Timer(const Duration(seconds: 2), () {
+      if (mounted && _showFloatingHeader) {
+        setState(() => _isScrolling = false);
+      }
+    });
   }
 
   Future<void> _initHabitRepo() async {
@@ -251,6 +308,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     _staggeredInsightsController.dispose();
     _insightTimer?.cancel();
     _quickTaskController.dispose();
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
+    _floatingHeaderTimer?.cancel();
+    _menuAnimController.dispose();
     super.dispose();
   }
 
@@ -314,292 +375,917 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   @override
   Widget build(BuildContext context) {
     final monthFormat = DateFormat('MMMM yyyy', 'pt_BR');
+    final settings = ref.watch(settingsProvider);
+    final colors = Theme.of(context).colorScheme;
+
+    // Cor de fundo quando o menu está aberto (escuro estilo Rive App)
+    final menuBgColor = Theme.of(context).brightness == Brightness.dark
+        ? const Color(0xFF17203A)
+        : const Color(0xFF1E2A47);
 
     return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      body: SafeArea(
-        child: FadeTransition(
-          opacity: _fadeAnimation,
-          child: CustomScrollView(
-            physics: const BouncingScrollPhysics(),
-            slivers: [
-              // ==========================================
-              // HEADER CYBERPUNK - RELÓGIO DIGITAL EM TEMPO REAL
-              // ==========================================
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-                  child: Builder(
-                    builder: (context) {
-                      final settings = ref.watch(settingsProvider);
-                      return _WellnessHeader(
-                        avatarPath: settings.avatarPath,
-                        userName: settings.userName,
-                        onMenuTap: () {
-                          HapticFeedback.lightImpact();
-                          _showProfileMenu(context, ref);
-                        },
-                        onCalendarTap: () {
-                          HapticFeedback.lightImpact();
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) =>
-                                  const HabitsCalendarScreen(),
-                            ),
-                          );
-                        },
-                        onAddTap: () => _showSmartAddSheet(context),
-                      );
-                    },
+      extendBody: true,
+      backgroundColor: menuBgColor,
+      body: Stack(
+        children: [
+          // Fundo quando menu está aberto
+          Positioned.fill(child: Container(color: menuBgColor)),
+
+          // ==========================================
+          // SIDE MENU (Atrás do conteúdo principal)
+          // ==========================================
+          RepaintBoundary(
+            child: AnimatedBuilder(
+              animation: _menuAnimation,
+              builder: (context, child) {
+                return Transform(
+                  alignment: Alignment.center,
+                  transform: Matrix4.identity()
+                    ..setEntry(3, 2, 0.001)
+                    ..rotateY(((1 - _menuAnimation.value) * -30) * pi / 180)
+                    ..translate((1 - _menuAnimation.value) * -300),
+                  child: child,
+                );
+              },
+              child: FadeTransition(
+                opacity: _menuAnimation,
+                child: _buildSideMenu(settings, colors),
+              ),
+            ),
+          ),
+
+          // ==========================================
+          // CONTEÚDO PRINCIPAL (Animado quando menu abre)
+          // ==========================================
+          RepaintBoundary(
+            child: AnimatedBuilder(
+              animation: _menuAnimation,
+              builder: (context, child) {
+                return Transform.scale(
+                  scale: 1 - (_menuAnimation.value * 0.1),
+                  child: Transform.translate(
+                    offset: Offset(_menuAnimation.value * 265, 0),
+                    child: Transform(
+                      alignment: Alignment.center,
+                      transform: Matrix4.identity()
+                        ..setEntry(3, 2, 0.001)
+                        ..rotateY((_menuAnimation.value * 30) * pi / 180),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(
+                          _menuAnimation.value * 24,
+                        ),
+                        child: child,
+                      ),
+                    ),
+                  ),
+                );
+              },
+              child: GestureDetector(
+                onTap: _isMenuOpen ? _toggleSideMenu : null,
+                child: AbsorbPointer(
+                  absorbing: _isMenuOpen,
+                  child: _buildMainContent(monthFormat, settings, colors),
+                ),
+              ),
+            ),
+          ),
+
+          // ==========================================
+          // MENU BUTTON (Hamburger/Close)
+          // ==========================================
+          RepaintBoundary(
+            child: AnimatedBuilder(
+              animation: _menuAnimation,
+              builder: (context, child) {
+                return SafeArea(
+                  child: Row(
+                    children: [
+                      SizedBox(width: _menuAnimation.value * 216),
+                      child!,
+                    ],
+                  ),
+                );
+              },
+              child: GestureDetector(
+                onTap: _toggleSideMenu,
+                child: MouseRegion(
+                  cursor: SystemMouseCursors.click,
+                  child: Container(
+                    width: 44,
+                    height: 44,
+                    margin: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: colors.surface,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: colors.outline.withOpacity(0.1),
+                      ),
+                    ),
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 200),
+                      child: Icon(
+                        _isMenuOpen ? Icons.close_rounded : Icons.menu_rounded,
+                        key: ValueKey(_isMenuOpen),
+                        color: colors.onSurface,
+                      ),
+                    ),
                   ),
                 ),
               ),
+            ),
+          ),
 
-              // ==========================================
-              // BARRA DE BUSCA GLOBAL
-              // ==========================================
-              const SliverToBoxAdapter(
-                child: Padding(
-                  padding: EdgeInsets.fromLTRB(20, 16, 20, 0),
-                  child: GlobalSearchBar(),
-                ),
-              ),
+          // ==========================================
+          // FLOATING HEADER (aparece durante scroll)
+          // ==========================================
+          if (!_isMenuOpen)
+            AnimatedPositioned(
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeOutCubic,
+              top: (_showFloatingHeader && _isScrolling) ? 0 : -80,
+              left: 0,
+              right: 0,
+              child: _buildFloatingHeader(settings, colors),
+            ),
+        ],
+      ),
+    );
+  }
 
-              // ==========================================
-              // ACTIVITY CARD (Meditation/Yoga)
-              // ==========================================
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-                  child: _buildWellnessActivityCard(),
-                ),
-              ),
+  // ==========================================
+  // SIDE MENU - Estilo Rive App
+  // ==========================================
+  Widget _buildSideMenu(AppSettings settings, ColorScheme colors) {
+    final stats = ref.read(userStatsProvider);
+    final title = UserTitles.getTitleForXP(stats.totalXP);
 
-              // ==========================================
-              // SUGESTÕES INTELIGENTES
-              // ==========================================
-              const SliverToBoxAdapter(
-                child: Padding(
-                  padding: EdgeInsets.fromLTRB(20, 20, 20, 0),
-                  child: HomeSuggestionsWidget(),
-                ),
-              ),
-
-              // ==========================================
-              // INSPIRAÇÃO DO DIA (Highlight)
-              // ==========================================
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-                  child: _buildDailyQuoteWidget(),
-                ),
-              ),
-
-              // ==========================================
-              // REGISTRO DE HUMOR
-              // ==========================================
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-                  child: _buildMoodSection(context),
-                ),
-              ),
-
-              // ==========================================
-              // WIDGETS DINÂMICOS CONFIGURÁVEIS
-              // ==========================================
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-                  child: _buildDynamicWidgets(),
-                ),
-              ),
-
-              // ==========================================
-              // SEÇÃO COMUNIDADE (PLACEHOLDER)
-              // ==========================================
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-                  child: _buildCommunitySection(),
-                ),
-              ),
-
-              // ==========================================
-              // NAVEGAÇÃO DE MÊS
-              // ==========================================
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 8,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Theme.of(
-                        context,
-                      ).colorScheme.surfaceContainerHighest.withOpacity(0.5),
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Material(
-                          color: Colors.transparent,
-                          borderRadius: BorderRadius.circular(12),
-                          child: InkWell(
-                            borderRadius: BorderRadius.circular(12),
-                            onTap: () {
-                              HapticFeedback.selectionClick();
-                              _previousMonth();
-                            },
-                            child: Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Icon(
-                                Icons.chevron_left_rounded,
-                                color: Theme.of(context).colorScheme.primary,
-                                size: 24,
-                              ),
-                            ),
-                          ),
+    return SafeArea(
+      child: Container(
+        width: 288,
+        padding: const EdgeInsets.symmetric(vertical: 24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header do Menu
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Row(
+                children: [
+                  // Avatar
+                  GestureDetector(
+                    onTap: () {
+                      _toggleSideMenu();
+                      ref.read(navigationProvider.notifier).goToProfile();
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.all(2),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: LinearGradient(
+                          colors: [colors.primary, colors.tertiary],
                         ),
-                        const SizedBox(width: 8),
-                        SizedBox(
-                          width: 140,
-                          child: AnimatedSwitcher(
-                            duration: const Duration(milliseconds: 200),
-                            transitionBuilder: (child, animation) {
-                              return FadeTransition(
-                                opacity: animation,
-                                child: SlideTransition(
-                                  position:
-                                      Tween<Offset>(
-                                        begin: const Offset(0, 0.2),
-                                        end: Offset.zero,
-                                      ).animate(
-                                        CurvedAnimation(
-                                          parent: animation,
-                                          curve: Curves.easeOut,
-                                        ),
-                                      ),
-                                  child: child,
+                      ),
+                      child: CircleAvatar(
+                        radius: 24,
+                        backgroundColor: const Color(0xFF17203A),
+                        backgroundImage: settings.avatarPath != null
+                            ? FileImage(File(settings.avatarPath!))
+                            : null,
+                        child: settings.avatarPath == null
+                            ? Text(
+                                settings.userName.isNotEmpty
+                                    ? settings.userName[0].toUpperCase()
+                                    : 'O',
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
                                 ),
-                              );
-                            },
-                            child: Text(
-                              monthFormat.format(_selectedMonth).capitalize(),
-                              key: ValueKey(_selectedMonth.toString()),
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                                color: Theme.of(context).colorScheme.onSurface,
-                              ),
-                            ),
+                              )
+                            : null,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  // Info
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          settings.userName.isNotEmpty
+                              ? settings.userName
+                              : 'Viajante',
+                          style: const TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                            decoration: TextDecoration.none,
                           ),
                         ),
-                        const SizedBox(width: 8),
-                        Material(
-                          color: Colors.transparent,
-                          borderRadius: BorderRadius.circular(12),
-                          child: InkWell(
-                            borderRadius: BorderRadius.circular(12),
-                            onTap: () {
-                              HapticFeedback.selectionClick();
-                              _nextMonth();
-                            },
-                            child: Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Icon(
-                                Icons.chevron_right_rounded,
-                                color: Theme.of(context).colorScheme.primary,
-                                size: 24,
-                              ),
-                            ),
+                        const SizedBox(height: 2),
+                        Text(
+                          '${title.emoji} ${title.name}',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Colors.white.withOpacity(0.7),
+                            decoration: TextDecoration.none,
                           ),
                         ),
                       ],
                     ),
                   ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 32),
+
+            // Menu Items
+            Expanded(
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _menuSectionLabel('NAVEGAÇÃO'),
+                    _sideMenuItem(Icons.home_rounded, 'Início', true, () {
+                      _toggleSideMenu();
+                    }),
+                    _sideMenuItem(
+                      Icons.person_rounded,
+                      'Meu Perfil',
+                      false,
+                      () {
+                        _toggleSideMenu();
+                        ref.read(navigationProvider.notifier).goToProfile();
+                      },
+                    ),
+                    _sideMenuItem(
+                      Icons.calendar_month_rounded,
+                      'Calendário',
+                      false,
+                      () {
+                        _toggleSideMenu();
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const HabitsCalendarScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                    _sideMenuItem(
+                      Icons.library_books_rounded,
+                      'Biblioteca',
+                      false,
+                      () {
+                        _toggleSideMenu();
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const LibraryScreen(),
+                          ),
+                        );
+                      },
+                    ),
+
+                    const SizedBox(height: 24),
+                    _menuSectionLabel('PROGRESSO'),
+                    _sideMenuItem(
+                      Icons.insights_rounded,
+                      'Estatísticas',
+                      false,
+                      () {
+                        _toggleSideMenu();
+                        ref
+                            .read(navigationProvider.notifier)
+                            .goToProfile(tabIndex: 0);
+                      },
+                    ),
+                    _sideMenuItem(
+                      Icons.emoji_events_rounded,
+                      'Conquistas',
+                      false,
+                      () {
+                        _toggleSideMenu();
+                        ref
+                            .read(navigationProvider.notifier)
+                            .goToProfile(tabIndex: 2);
+                      },
+                    ),
+                    _sideMenuItem(Icons.flag_rounded, 'Metas', false, () {
+                      _toggleSideMenu();
+                      ref
+                          .read(navigationProvider.notifier)
+                          .goToProfile(tabIndex: 4);
+                    }),
+
+                    const SizedBox(height: 24),
+                    _menuSectionLabel('CONFIGURAÇÕES'),
+                    _sideMenuItem(
+                      Icons.settings_rounded,
+                      'Preferências',
+                      false,
+                      () {
+                        _toggleSideMenu();
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const SettingsScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                    _sideMenuItem(
+                      Icons.notifications_rounded,
+                      'Notificações',
+                      false,
+                      () {
+                        _toggleSideMenu();
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) =>
+                                const ModernNotificationSettingsScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                    _sideMenuItem(Icons.favorite_rounded, 'Apoiar', false, () {
+                      _toggleSideMenu();
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const DonationScreen(),
+                        ),
+                      );
+                    }),
+                  ],
                 ),
               ),
+            ),
 
-              // ==========================================
-              // SEÇÃO COMBINADA HÁBITOS/TAREFAS
-              // ==========================================
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-                  child: _buildHabitsTasksSection(context),
+            // Dark Mode Toggle
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Row(
+                children: [
+                  Icon(
+                    Theme.of(context).brightness == Brightness.dark
+                        ? Icons.light_mode_rounded
+                        : Icons.dark_mode_rounded,
+                    color: Colors.white.withOpacity(0.6),
+                    size: 24,
+                  ),
+                  const SizedBox(width: 14),
+                  const Expanded(
+                    child: Text(
+                      'Modo Escuro',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                        decoration: TextDecoration.none,
+                      ),
+                    ),
+                  ),
+                  Switch.adaptive(
+                    value: Theme.of(context).brightness == Brightness.dark,
+                    activeColor: colors.primary,
+                    onChanged: (v) {
+                      ref
+                          .read(settingsProvider.notifier)
+                          .setThemeMode(v ? ThemeMode.dark : ThemeMode.light);
+                      HapticFeedback.mediumImpact();
+                    },
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
+            // Version
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Text(
+                'Odyssey v1.0.0',
+                style: TextStyle(
+                  fontSize: 11,
+                  color: Colors.white.withOpacity(0.4),
+                  decoration: TextDecoration.none,
                 ),
               ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
-              // ==========================================
-              // ESTATÍSTICAS RÁPIDAS
-              // ==========================================
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-                  child: _buildQuickStats(context),
+  Widget _menuSectionLabel(String label) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 8, 24, 8),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+          color: Colors.white.withOpacity(0.5),
+          letterSpacing: 1.2,
+          decoration: TextDecoration.none,
+        ),
+      ),
+    );
+  }
+
+  Widget _sideMenuItem(
+    IconData icon,
+    String label,
+    bool isSelected,
+    VoidCallback onTap,
+  ) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () {
+          HapticFeedback.lightImpact();
+          onTap();
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+          decoration: BoxDecoration(
+            color: isSelected
+                ? Colors.white.withOpacity(0.1)
+                : Colors.transparent,
+            border: Border(
+              left: BorderSide(
+                color: isSelected ? Colors.white : Colors.transparent,
+                width: 3,
+              ),
+            ),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                icon,
+                color: isSelected
+                    ? Colors.white
+                    : Colors.white.withOpacity(0.7),
+                size: 22,
+              ),
+              const SizedBox(width: 14),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                  color: isSelected
+                      ? Colors.white
+                      : Colors.white.withOpacity(0.7),
+                  decoration: TextDecoration.none,
                 ),
               ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
-              // ==========================================
-              // GRÁFICO SEMANAL
-              // ==========================================
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-                  child: _buildWeeklyChart(context),
+  // ==========================================
+  // MAIN CONTENT - Conteúdo Principal
+  // ==========================================
+  Widget _buildMainContent(
+    DateFormat monthFormat,
+    AppSettings settings,
+    ColorScheme colors,
+  ) {
+    return Scaffold(
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      body: SafeArea(
+        top: false,
+        child: Stack(
+          children: [
+            // Main scrollable content
+            FadeTransition(
+              opacity: _fadeAnimation,
+              child: CustomScrollView(
+                controller: _scrollController,
+                physics: const BouncingScrollPhysics(),
+                slivers: [
+                  // ==========================================
+                  // HEADER CYBERPUNK - RELÓGIO DIGITAL EM TEMPO REAL
+                  // ==========================================
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(
+                        70,
+                        16,
+                        20,
+                        0,
+                      ), // Extra left para menu button
+                      child: Builder(
+                        builder: (context) {
+                          final settings = ref.watch(settingsProvider);
+                          return _WellnessHeader(
+                            avatarPath: settings.avatarPath,
+                            userName: settings.userName,
+                            onMenuTap: _toggleSideMenu,
+                            onCalendarTap: () {
+                              HapticFeedback.lightImpact();
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) =>
+                                      const HabitsCalendarScreen(),
+                                ),
+                              );
+                            },
+                            onAddTap: () => _showSmartAddSheet(context),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+
+                  // ==========================================
+                  // BARRA DE BUSCA GLOBAL
+                  // ==========================================
+                  const SliverToBoxAdapter(
+                    child: Padding(
+                      padding: EdgeInsets.fromLTRB(20, 16, 20, 0),
+                      child: GlobalSearchBar(),
+                    ),
+                  ),
+
+                  // ==========================================
+                  // ACTIVITY CARD (Meditation/Yoga)
+                  // ==========================================
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+                      child: _buildWellnessActivityCard(),
+                    ),
+                  ),
+
+                  // ==========================================
+                  // SUGESTÕES INTELIGENTES
+                  // ==========================================
+                  const SliverToBoxAdapter(
+                    child: Padding(
+                      padding: EdgeInsets.fromLTRB(20, 20, 20, 0),
+                      child: HomeSuggestionsWidget(),
+                    ),
+                  ),
+
+                  // ==========================================
+                  // INSPIRAÇÃO DO DIA (Highlight)
+                  // ==========================================
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+                      child: _buildDailyQuoteWidget(),
+                    ),
+                  ),
+
+                  // ==========================================
+                  // REGISTRO DE HUMOR
+                  // ==========================================
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+                      child: _buildMoodSection(context),
+                    ),
+                  ),
+
+                  // ==========================================
+                  // WIDGETS DINÂMICOS CONFIGURÁVEIS
+                  // ==========================================
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+                      child: _buildDynamicWidgets(),
+                    ),
+                  ),
+
+                  // ==========================================
+                  // SEÇÃO COMUNIDADE (PLACEHOLDER)
+                  // ==========================================
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+                      child: _buildCommunitySection(),
+                    ),
+                  ),
+
+                  // ==========================================
+                  // NAVEGAÇÃO DE MÊS
+                  // ==========================================
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context)
+                              .colorScheme
+                              .surfaceContainerHighest
+                              .withOpacity(0.5),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Material(
+                              color: Colors.transparent,
+                              borderRadius: BorderRadius.circular(12),
+                              child: InkWell(
+                                borderRadius: BorderRadius.circular(12),
+                                onTap: () {
+                                  HapticFeedback.selectionClick();
+                                  _previousMonth();
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Icon(
+                                    Icons.chevron_left_rounded,
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.primary,
+                                    size: 24,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            SizedBox(
+                              width: 140,
+                              child: AnimatedSwitcher(
+                                duration: const Duration(milliseconds: 200),
+                                transitionBuilder: (child, animation) {
+                                  return FadeTransition(
+                                    opacity: animation,
+                                    child: SlideTransition(
+                                      position:
+                                          Tween<Offset>(
+                                            begin: const Offset(0, 0.2),
+                                            end: Offset.zero,
+                                          ).animate(
+                                            CurvedAnimation(
+                                              parent: animation,
+                                              curve: Curves.easeOut,
+                                            ),
+                                          ),
+                                      child: child,
+                                    ),
+                                  );
+                                },
+                                child: Text(
+                                  monthFormat
+                                      .format(_selectedMonth)
+                                      .capitalize(),
+                                  key: ValueKey(_selectedMonth.toString()),
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.onSurface,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Material(
+                              color: Colors.transparent,
+                              borderRadius: BorderRadius.circular(12),
+                              child: InkWell(
+                                borderRadius: BorderRadius.circular(12),
+                                onTap: () {
+                                  HapticFeedback.selectionClick();
+                                  _nextMonth();
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Icon(
+                                    Icons.chevron_right_rounded,
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.primary,
+                                    size: 24,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  // ==========================================
+                  // SEÇÃO COMBINADA HÁBITOS/TAREFAS
+                  // ==========================================
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+                      child: _buildHabitsTasksSection(context),
+                    ),
+                  ),
+
+                  // ==========================================
+                  // ESTATÍSTICAS RÁPIDAS
+                  // ==========================================
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+                      child: _buildQuickStats(context),
+                    ),
+                  ),
+
+                  // ==========================================
+                  // GRÁFICO SEMANAL
+                  // ==========================================
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+                      child: _buildWeeklyChart(context),
+                    ),
+                  ),
+
+                  // ==========================================
+                  // INSIGHTS BASEADOS EM DADOS
+                  // ==========================================
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+                      child: _buildDataInsights(context),
+                    ),
+                  ),
+
+                  // ==========================================
+                  // WIDGETS DE NOTAS E LEITURAS
+                  // ==========================================
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+                      child: _buildNotesAndReadingsSection(context),
+                    ),
+                  ),
+
+                  // ==========================================
+                  // RESUMO MENSAL
+                  // ==========================================
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
+                      child: _buildMonthlyOverview(context),
+                    ),
+                  ),
+
+                  // ==========================================
+                  // WIDGET DE NOTÍCIAS
+                  // ==========================================
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
+                      child: _buildNewsWidget(context),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // Floating Header (aparece durante scroll)
+            AnimatedPositioned(
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeOutCubic,
+              top: (_showFloatingHeader && _isScrolling) ? 0 : -80,
+              left: 0,
+              right: 0,
+              child: _buildFloatingHeader(settings, colors),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFloatingHeader(AppSettings settings, ColorScheme colors) {
+    return ClipRRect(
+      child: BackdropFilter(
+        filter: ui.ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          decoration: BoxDecoration(
+            color: colors.surface.withOpacity(0.85),
+            border: Border(
+              bottom: BorderSide(color: colors.outline.withOpacity(0.1)),
+            ),
+          ),
+          child: Row(
+            children: [
+              // Avatar
+              GestureDetector(
+                onTap: () {
+                  HapticFeedback.lightImpact();
+                  _showModernSideMenu(context);
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(2),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: LinearGradient(
+                      colors: [colors.primary, colors.tertiary],
+                    ),
+                  ),
+                  child: CircleAvatar(
+                    radius: 18,
+                    backgroundColor: colors.surface,
+                    backgroundImage: settings.avatarPath != null
+                        ? FileImage(File(settings.avatarPath!))
+                        : null,
+                    child: settings.avatarPath == null
+                        ? Text(
+                            settings.userName.isNotEmpty
+                                ? settings.userName[0].toUpperCase()
+                                : 'U',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              color: colors.primary,
+                            ),
+                          )
+                        : null,
+                  ),
                 ),
               ),
-
-              // ==========================================
-              // INSIGHTS BASEADOS EM DADOS
-              // ==========================================
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-                  child: _buildDataInsights(context),
+              const SizedBox(width: 12),
+              // Nome
+              Expanded(
+                child: Text(
+                  settings.userName.isNotEmpty ? settings.userName : 'Viajante',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: colors.onSurface,
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
-
-              // ==========================================
-              // WIDGETS DE NOTAS E LEITURAS
-              // ==========================================
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-                  child: _buildNotesAndReadingsSection(context),
+              // Botão Calendário
+              GestureDetector(
+                onTap: () {
+                  HapticFeedback.lightImpact();
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const HabitsCalendarScreen(),
+                    ),
+                  );
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: colors.surfaceContainerHighest.withOpacity(0.5),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    Icons.calendar_today_rounded,
+                    size: 18,
+                    color: colors.onSurfaceVariant,
+                  ),
                 ),
               ),
-
-              // ==========================================
-              // RESUMO MENSAL
-              // ==========================================
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
-                  child: _buildMonthlyOverview(context),
-                ),
-              ),
-
-              // ==========================================
-              // WIDGET DE NOTÍCIAS
-              // ==========================================
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
-                  child: _buildNewsWidget(context),
+              const SizedBox(width: 8),
+              // Botão Add
+              GestureDetector(
+                onTap: () => _showSmartAddSheet(context),
+                child: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [colors.primary, colors.tertiary],
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(
+                    Icons.add_rounded,
+                    size: 18,
+                    color: Colors.white,
+                  ),
                 ),
               ),
             ],
@@ -649,13 +1335,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           decoration: BoxDecoration(
             color: colors.surface,
             borderRadius: BorderRadius.circular(24),
-            boxShadow: [
-              BoxShadow(
-                color: colors.shadow.withOpacity(0.04),
-                blurRadius: 16,
-                offset: const Offset(0, 4),
-              ),
-            ],
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1026,13 +1705,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             end: Alignment.bottomRight,
           ),
           borderRadius: BorderRadius.circular(32),
-          boxShadow: [
-            BoxShadow(
-              color: WellnessColors.primary.withOpacity(0.1),
-              blurRadius: 14,
-              offset: const Offset(0, 6),
-            ),
-          ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1281,13 +1953,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       decoration: BoxDecoration(
         color: colors.surface,
         borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: colors.shadow.withOpacity(0.04),
-            blurRadius: 16,
-            offset: const Offset(0, 4),
-          ),
-        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1439,13 +2104,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 decoration: BoxDecoration(
                   color: colors.surface,
                   borderRadius: BorderRadius.circular(24),
-                  boxShadow: [
-                    BoxShadow(
-                      color: colors.primary.withOpacity(0.2),
-                      blurRadius: 30,
-                      spreadRadius: 5,
-                    ),
-                  ],
                 ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -1756,13 +2414,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 decoration: BoxDecoration(
                   color: colors.surface,
                   borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: colors.shadow.withOpacity(0.15),
-                      blurRadius: 20,
-                      offset: const Offset(0, 8),
-                    ),
-                  ],
                 ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -1970,118 +2621,113 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   Widget _buildHabitsTasksTabBar(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
 
-    return Container(
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: colors.surfaceContainerHighest.withOpacity(0.5),
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Row(
-        children: [
-          // Tab Hábitos
-          Expanded(
-            child: GestureDetector(
-              onTap: () {
-                HapticFeedback.selectionClick();
-                setState(() => _habitsTasksTabIndex = 0);
-              },
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                padding: const EdgeInsets.symmetric(vertical: 10),
-                decoration: BoxDecoration(
-                  color: _habitsTasksTabIndex == 0
-                      ? colors.primary
-                      : Colors.transparent,
-                  borderRadius: BorderRadius.circular(10),
-                  boxShadow: _habitsTasksTabIndex == 0
-                      ? [
-                          BoxShadow(
-                            color: colors.primary.withOpacity(0.3),
-                            blurRadius: 8,
-                            offset: const Offset(0, 2),
-                          ),
-                        ]
-                      : null,
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.repeat_rounded,
-                      size: 18,
+    // Cores por categoria
+    const habitColor = Color(0xFF4CAF50); // Verde
+    const taskColor = Color(0xFF2196F3); // Azul
+
+    return Row(
+      children: [
+        // Tab Hábitos
+        Expanded(
+          child: GestureDetector(
+            onTap: () {
+              HapticFeedback.selectionClick();
+              setState(() => _habitsTasksTabIndex = 0);
+            },
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 250),
+              margin: const EdgeInsets.symmetric(horizontal: 4),
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              decoration: BoxDecoration(
+                gradient: _habitsTasksTabIndex == 0
+                    ? const LinearGradient(
+                        colors: [habitColor, Color(0xFF66BB6A)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      )
+                    : null,
+                color: _habitsTasksTabIndex == 0
+                    ? null
+                    : colors.surfaceContainerHighest.withOpacity(0.4),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.repeat_rounded,
+                    size: 18,
+                    color: _habitsTasksTabIndex == 0
+                        ? Colors.white
+                        : colors.onSurfaceVariant.withOpacity(0.6),
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Hábitos',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
                       color: _habitsTasksTabIndex == 0
-                          ? colors.onPrimary
-                          : colors.onSurfaceVariant,
+                          ? Colors.white
+                          : colors.onSurfaceVariant.withOpacity(0.6),
                     ),
-                    const SizedBox(width: 6),
-                    Text(
-                      'Hábitos',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: _habitsTasksTabIndex == 0
-                            ? colors.onPrimary
-                            : colors.onSurfaceVariant,
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
           ),
-          // Tab Tarefas
-          Expanded(
-            child: GestureDetector(
-              onTap: () {
-                HapticFeedback.selectionClick();
-                setState(() => _habitsTasksTabIndex = 1);
-              },
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                padding: const EdgeInsets.symmetric(vertical: 10),
-                decoration: BoxDecoration(
-                  color: _habitsTasksTabIndex == 1
-                      ? colors.primary
-                      : Colors.transparent,
-                  borderRadius: BorderRadius.circular(10),
-                  boxShadow: _habitsTasksTabIndex == 1
-                      ? [
-                          BoxShadow(
-                            color: colors.primary.withOpacity(0.3),
-                            blurRadius: 8,
-                            offset: const Offset(0, 2),
-                          ),
-                        ]
-                      : null,
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.check_circle_outline_rounded,
-                      size: 18,
+        ),
+        // Tab Tarefas
+        Expanded(
+          child: GestureDetector(
+            onTap: () {
+              HapticFeedback.selectionClick();
+              setState(() => _habitsTasksTabIndex = 1);
+            },
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 250),
+              margin: const EdgeInsets.symmetric(horizontal: 4),
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              decoration: BoxDecoration(
+                gradient: _habitsTasksTabIndex == 1
+                    ? const LinearGradient(
+                        colors: [taskColor, Color(0xFF42A5F5)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      )
+                    : null,
+                color: _habitsTasksTabIndex == 1
+                    ? null
+                    : colors.surfaceContainerHighest.withOpacity(0.4),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.check_circle_outline_rounded,
+                    size: 18,
+                    color: _habitsTasksTabIndex == 1
+                        ? Colors.white
+                        : colors.onSurfaceVariant.withOpacity(0.6),
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Tarefas',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
                       color: _habitsTasksTabIndex == 1
-                          ? colors.onPrimary
-                          : colors.onSurfaceVariant,
+                          ? Colors.white
+                          : colors.onSurfaceVariant.withOpacity(0.6),
                     ),
-                    const SizedBox(width: 6),
-                    Text(
-                      'Tarefas',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: _habitsTasksTabIndex == 1
-                            ? colors.onPrimary
-                            : colors.onSurfaceVariant,
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -2482,14 +3128,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 ? UltravioletColors.accentGreen.withOpacity(0.2)
                 : colors.outline.withOpacity(0.1),
           ),
-          boxShadow: [
-            if (!isCompleted)
-              BoxShadow(
-                color: colors.shadow.withOpacity(0.05),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-          ],
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -2858,15 +3496,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                             color: isCompleted ? color : color.withOpacity(0.5),
                             width: 2,
                           ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: isCompleted
-                                  ? color.withOpacity(0.3)
-                                  : Colors.transparent,
-                              blurRadius: isCompleted ? 8 : 0,
-                              spreadRadius: isCompleted ? 1 : 0,
-                            ),
-                          ],
                         ),
                         child: Center(
                           child: AnimatedSwitcher(
@@ -3395,13 +4024,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           decoration: BoxDecoration(
             color: colors.surface,
             borderRadius: BorderRadius.circular(24),
-            boxShadow: [
-              BoxShadow(
-                color: colors.shadow.withOpacity(0.06),
-                blurRadius: 20,
-                offset: const Offset(0, 6),
-              ),
-            ],
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -3600,21 +4222,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           ),
           const SizedBox(height: 20),
 
-          // Premium Category Selector
-          Container(
-            height: 44,
-            decoration: BoxDecoration(
-              color: colors.surfaceContainerHighest.withOpacity(0.3),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            padding: const EdgeInsets.all(4),
-            child: Row(
-              children: [
-                _buildPremiumTab(0, 'Hábitos', Icons.check_circle_outline),
-                _buildPremiumTab(1, 'Foco', Icons.timer_outlined),
-                _buildPremiumTab(2, 'Humor', Icons.mood_outlined),
-              ],
-            ),
+          // Premium Category Selector Pills
+          Row(
+            children: [
+              _buildPremiumTab(0, 'Hábitos', Icons.check_circle_outline),
+              _buildPremiumTab(1, 'Foco', Icons.timer_outlined),
+              _buildPremiumTab(2, 'Humor', Icons.mood_outlined),
+            ],
           ),
 
           const SizedBox(height: 32),
@@ -3641,6 +4255,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     final isSelected = _selectedChartIndex == index;
     final colors = Theme.of(context).colorScheme;
 
+    // Cores por categoria
+    final categoryColors = [
+      const Color(0xFF4CAF50), // Hábitos - Verde
+      const Color(0xFF2196F3), // Foco - Azul
+      const Color(0xFFFF9800), // Humor - Laranja
+    ];
+    final color = categoryColors[index];
+
     return Expanded(
       child: GestureDetector(
         onTap: () {
@@ -3648,19 +4270,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           setState(() => _selectedChartIndex = index);
         },
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
+          duration: const Duration(milliseconds: 250),
+          margin: const EdgeInsets.symmetric(horizontal: 3),
+          padding: const EdgeInsets.symmetric(vertical: 10),
           decoration: BoxDecoration(
-            color: isSelected ? colors.surface : Colors.transparent,
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: isSelected
-                ? [
-                    BoxShadow(
-                      color: colors.shadow.withOpacity(0.08),
-                      blurRadius: 4,
-                      offset: const Offset(0, 2),
-                    ),
-                  ]
+            gradient: isSelected
+                ? LinearGradient(
+                    colors: [color, color.withOpacity(0.8)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  )
                 : null,
+            color: isSelected ? null : Colors.transparent,
+            borderRadius: BorderRadius.circular(12),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -3669,21 +4291,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 icon,
                 size: 16,
                 color: isSelected
-                    ? colors.primary
-                    : colors.onSurfaceVariant.withOpacity(0.7),
+                    ? Colors.white
+                    : colors.onSurfaceVariant.withOpacity(0.6),
               ),
-              const SizedBox(width: 8),
-              if (isSelected || MediaQuery.of(context).size.width > 360)
-                Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                    color: isSelected
-                        ? colors.primary
-                        : colors.onSurfaceVariant.withOpacity(0.7),
-                  ),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                  color: isSelected
+                      ? Colors.white
+                      : colors.onSurfaceVariant.withOpacity(0.6),
                 ),
+              ),
             ],
           ),
         ),
@@ -5212,13 +5833,6 @@ extension _HomeScreenStateDataInsights on _HomeScreenState {
                   color: colors.primary.withOpacity(0.2),
                   width: 1.5,
                 ),
-                boxShadow: [
-                  BoxShadow(
-                    color: colors.primary.withOpacity(0.1),
-                    blurRadius: 24,
-                    offset: const Offset(0, 8),
-                  ),
-                ],
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -5327,15 +5941,6 @@ extension _HomeScreenStateDataInsights on _HomeScreenState {
                                   color: colors.outline.withOpacity(0.1),
                                   width: 1,
                                 ),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: (insight['gradient'] as List<Color>)
-                                        .first
-                                        .withOpacity(0.1),
-                                    blurRadius: 8,
-                                    offset: const Offset(0, 3),
-                                  ),
-                                ],
                               ),
                               child: Row(
                                 children: [
@@ -5348,17 +5953,6 @@ extension _HomeScreenStateDataInsights on _HomeScreenState {
                                             insight['gradient'] as List<Color>,
                                       ),
                                       borderRadius: BorderRadius.circular(12),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color:
-                                              (insight['gradient']
-                                                      as List<Color>)
-                                                  .first
-                                                  .withOpacity(0.3),
-                                          blurRadius: 8,
-                                          offset: const Offset(0, 3),
-                                        ),
-                                      ],
                                     ),
                                     child: Icon(
                                       insight['icon'] as IconData,
@@ -5686,13 +6280,6 @@ extension _HomeScreenStateDataInsights on _HomeScreenState {
                     ),
                     borderRadius: BorderRadius.circular(32),
                     border: Border.all(color: colors.outline.withOpacity(0.08)),
-                    boxShadow: [
-                      BoxShadow(
-                        color: colors.shadow.withOpacity(0.05),
-                        blurRadius: 24,
-                        offset: const Offset(0, 8),
-                      ),
-                    ],
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -6240,13 +6827,6 @@ extension _HomeScreenStateDataInsights on _HomeScreenState {
             color: colors.primary.withValues(alpha: 0.1),
             width: 1.5,
           ),
-          boxShadow: [
-            BoxShadow(
-              color: colors.shadow.withValues(alpha: 0.1),
-              blurRadius: 20,
-              offset: const Offset(0, -5),
-            ),
-          ],
         ),
         child: ClipRRect(
           borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
@@ -6552,6 +7132,562 @@ extension _HomeScreenStateDataInsights on _HomeScreenState {
                 ),
               ),
             ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ==========================================
+  // MENU LATERAL MODERNO - Flutuante com efeito 3D
+  // ==========================================
+  void _showModernSideMenu(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final settings = ref.read(settingsProvider);
+    final stats = ref.read(userStatsProvider);
+    final title = UserTitles.getTitleForXP(stats.totalXP);
+    final screenWidth = MediaQuery.of(context).size.width;
+
+    showGeneralDialog(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: 'Menu',
+      barrierColor: Colors.black.withOpacity(0.3),
+      transitionDuration: const Duration(milliseconds: 350),
+      pageBuilder: (context, animation, secondaryAnimation) {
+        return const SizedBox.shrink();
+      },
+      transitionBuilder: (context, animation, secondaryAnimation, child) {
+        final slideAnimation =
+            Tween<Offset>(begin: const Offset(-1, 0), end: Offset.zero).animate(
+              CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
+            );
+
+        final scaleAnimation = Tween<double>(begin: 0.95, end: 1.0).animate(
+          CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
+        );
+
+        // Efeito 3D leve - rotação
+        final rotateAnimation = Tween<double>(begin: 0.05, end: 0.0).animate(
+          CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
+        );
+
+        return Stack(
+          children: [
+            // Menu flutuante
+            SlideTransition(
+              position: slideAnimation,
+              child: Transform(
+                alignment: Alignment.centerLeft,
+                transform: Matrix4.identity()
+                  ..setEntry(3, 2, 0.001)
+                  ..rotateY(rotateAnimation.value),
+                child: ScaleTransition(
+                  scale: scaleAnimation,
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Container(
+                      width: screenWidth * 0.78,
+                      height: double.infinity,
+                      margin: const EdgeInsets.only(
+                        left: 12,
+                        top: 50,
+                        bottom: 50,
+                      ),
+                      decoration: BoxDecoration(
+                        color: colors.surface.withOpacity(0.92),
+                        borderRadius: BorderRadius.circular(32),
+                        border: Border.all(
+                          color: colors.outline.withOpacity(0.08),
+                          width: 1,
+                        ),
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(32),
+                        child: BackdropFilter(
+                          filter: ui.ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                          child: SafeArea(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // Header do Menu
+                                Padding(
+                                  padding: const EdgeInsets.all(24),
+                                  child: Row(
+                                    children: [
+                                      // Avatar
+                                      GestureDetector(
+                                        onTap: () {
+                                          Navigator.pop(context);
+                                          ref
+                                              .read(navigationProvider.notifier)
+                                              .goToProfile();
+                                        },
+                                        child: Container(
+                                          padding: const EdgeInsets.all(3),
+                                          decoration: BoxDecoration(
+                                            shape: BoxShape.circle,
+                                            gradient: LinearGradient(
+                                              colors: [
+                                                colors.primary,
+                                                colors.tertiary,
+                                              ],
+                                            ),
+                                          ),
+                                          child: CircleAvatar(
+                                            radius: 28,
+                                            backgroundColor: colors.surface,
+                                            backgroundImage:
+                                                settings.avatarPath != null
+                                                ? FileImage(
+                                                    File(settings.avatarPath!),
+                                                  )
+                                                : null,
+                                            child: settings.avatarPath == null
+                                                ? Text(
+                                                    settings.userName.isNotEmpty
+                                                        ? settings.userName[0]
+                                                              .toUpperCase()
+                                                        : 'O',
+                                                    style: TextStyle(
+                                                      fontSize: 22,
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                      color: colors.primary,
+                                                    ),
+                                                  )
+                                                : null,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 16),
+                                      // Info
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              settings.userName.isNotEmpty
+                                                  ? settings.userName
+                                                  : 'Viajante',
+                                              style: TextStyle(
+                                                fontSize: 18,
+                                                fontWeight: FontWeight.bold,
+                                                color: colors.onSurface,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 4),
+                                            Container(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 8,
+                                                    vertical: 3,
+                                                  ),
+                                              decoration: BoxDecoration(
+                                                gradient: LinearGradient(
+                                                  colors: [
+                                                    colors.primary.withOpacity(
+                                                      0.15,
+                                                    ),
+                                                    colors.tertiary.withOpacity(
+                                                      0.15,
+                                                    ),
+                                                  ],
+                                                ),
+                                                borderRadius:
+                                                    BorderRadius.circular(12),
+                                              ),
+                                              child: Text(
+                                                '${title.emoji} ${title.name}',
+                                                style: TextStyle(
+                                                  fontSize: 11,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: colors.primary,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+
+                                // XP Badge
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 24,
+                                  ),
+                                  child: Container(
+                                    padding: const EdgeInsets.all(16),
+                                    decoration: BoxDecoration(
+                                      gradient: LinearGradient(
+                                        colors: [
+                                          colors.primaryContainer.withOpacity(
+                                            0.5,
+                                          ),
+                                          colors.secondaryContainer.withOpacity(
+                                            0.3,
+                                          ),
+                                        ],
+                                      ),
+                                      borderRadius: BorderRadius.circular(16),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                          Icons.star_rounded,
+                                          color: Colors.amber,
+                                          size: 28,
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              'Nível ${stats.level}',
+                                              style: TextStyle(
+                                                fontSize: 16,
+                                                fontWeight: FontWeight.bold,
+                                                color: colors.onSurface,
+                                              ),
+                                            ),
+                                            Text(
+                                              '${stats.totalXP} XP',
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                color: colors.onSurfaceVariant,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        const Spacer(),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 12,
+                                            vertical: 6,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: colors.primary,
+                                            borderRadius: BorderRadius.circular(
+                                              20,
+                                            ),
+                                          ),
+                                          child: Text(
+                                            '${(stats.levelProgress * 100).round()}%',
+                                            style: const TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+
+                                const SizedBox(height: 24),
+
+                                // Menu Items
+                                Expanded(
+                                  child: SingleChildScrollView(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                    ),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        _menuSectionTitle('Navegação', colors),
+                                        _modernMenuItem(
+                                          context,
+                                          Icons.home_rounded,
+                                          'Início',
+                                          colors.primary,
+                                          () {
+                                            Navigator.pop(context);
+                                          },
+                                          colors,
+                                        ),
+                                        _modernMenuItem(
+                                          context,
+                                          Icons.person_rounded,
+                                          'Meu Perfil',
+                                          colors.secondary,
+                                          () {
+                                            Navigator.pop(context);
+                                            ref
+                                                .read(
+                                                  navigationProvider.notifier,
+                                                )
+                                                .goToProfile();
+                                          },
+                                          colors,
+                                        ),
+                                        _modernMenuItem(
+                                          context,
+                                          Icons.calendar_month_rounded,
+                                          'Calendário',
+                                          WellnessColors.primary,
+                                          () {
+                                            Navigator.pop(context);
+                                            Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (_) =>
+                                                    const HabitsCalendarScreen(),
+                                              ),
+                                            );
+                                          },
+                                          colors,
+                                        ),
+                                        _modernMenuItem(
+                                          context,
+                                          Icons.library_books_rounded,
+                                          'Biblioteca',
+                                          Colors.teal,
+                                          () {
+                                            Navigator.pop(context);
+                                            Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (_) =>
+                                                    const LibraryScreen(),
+                                              ),
+                                            );
+                                          },
+                                          colors,
+                                        ),
+
+                                        const SizedBox(height: 12),
+                                        _menuSectionTitle('Progresso', colors),
+                                        _modernMenuItem(
+                                          context,
+                                          Icons.insights_rounded,
+                                          'Estatísticas',
+                                          Colors.orange,
+                                          () {
+                                            Navigator.pop(context);
+                                            ref
+                                                .read(
+                                                  navigationProvider.notifier,
+                                                )
+                                                .goToProfile(tabIndex: 0);
+                                          },
+                                          colors,
+                                        ),
+                                        _modernMenuItem(
+                                          context,
+                                          Icons.emoji_events_rounded,
+                                          'Conquistas',
+                                          Colors.amber,
+                                          () {
+                                            Navigator.pop(context);
+                                            ref
+                                                .read(
+                                                  navigationProvider.notifier,
+                                                )
+                                                .goToProfile(tabIndex: 2);
+                                          },
+                                          colors,
+                                        ),
+                                        _modernMenuItem(
+                                          context,
+                                          Icons.flag_rounded,
+                                          'Metas',
+                                          Colors.green,
+                                          () {
+                                            Navigator.pop(context);
+                                            ref
+                                                .read(
+                                                  navigationProvider.notifier,
+                                                )
+                                                .goToProfile(tabIndex: 4);
+                                          },
+                                          colors,
+                                        ),
+
+                                        const SizedBox(height: 12),
+                                        _menuSectionTitle(
+                                          'Configurações',
+                                          colors,
+                                        ),
+                                        _modernMenuItem(
+                                          context,
+                                          Icons.settings_rounded,
+                                          'Preferências',
+                                          colors.onSurfaceVariant,
+                                          () {
+                                            Navigator.pop(context);
+                                            Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (_) =>
+                                                    const SettingsScreen(),
+                                              ),
+                                            );
+                                          },
+                                          colors,
+                                        ),
+                                        _modernMenuItem(
+                                          context,
+                                          Theme.of(context).brightness ==
+                                                  Brightness.dark
+                                              ? Icons.light_mode_rounded
+                                              : Icons.dark_mode_rounded,
+                                          Theme.of(context).brightness ==
+                                                  Brightness.dark
+                                              ? 'Modo Claro'
+                                              : 'Modo Escuro',
+                                          Theme.of(context).brightness ==
+                                                  Brightness.dark
+                                              ? Colors.amber
+                                              : Colors.indigo,
+                                          () {
+                                            final isDark =
+                                                Theme.of(context).brightness ==
+                                                Brightness.dark;
+                                            ref
+                                                .read(settingsProvider.notifier)
+                                                .setThemeMode(
+                                                  isDark
+                                                      ? ThemeMode.light
+                                                      : ThemeMode.dark,
+                                                );
+                                            HapticFeedback.mediumImpact();
+                                          },
+                                          colors,
+                                        ),
+                                        _modernMenuItem(
+                                          context,
+                                          Icons.notifications_rounded,
+                                          'Notificações',
+                                          Colors.red.shade400,
+                                          () {
+                                            Navigator.pop(context);
+                                            Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (_) =>
+                                                    const ModernNotificationSettingsScreen(),
+                                              ),
+                                            );
+                                          },
+                                          colors,
+                                        ),
+                                        _modernMenuItem(
+                                          context,
+                                          Icons.favorite_rounded,
+                                          'Apoiar Odyssey',
+                                          Colors.pink,
+                                          () {
+                                            Navigator.pop(context);
+                                            Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (_) =>
+                                                    const DonationScreen(),
+                                              ),
+                                            );
+                                          },
+                                          colors,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+
+                                // Footer
+                                Padding(
+                                  padding: const EdgeInsets.all(24),
+                                  child: Text(
+                                    'Odyssey v1.0.0',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: colors.onSurfaceVariant
+                                          .withOpacity(0.5),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _menuSectionTitle(String title, ColorScheme colors) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+      child: Text(
+        title.toUpperCase(),
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+          color: colors.onSurfaceVariant.withOpacity(0.5),
+          letterSpacing: 1.2,
+        ),
+      ),
+    );
+  }
+
+  Widget _modernMenuItem(
+    BuildContext context,
+    IconData icon,
+    String label,
+    Color iconColor,
+    VoidCallback onTap,
+    ColorScheme colors,
+  ) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () {
+          HapticFeedback.lightImpact();
+          onTap();
+        },
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: iconColor.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(icon, color: iconColor, size: 20),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500,
+                    color: colors.onSurface,
+                  ),
+                ),
+              ),
+              Icon(
+                Icons.chevron_right_rounded,
+                color: colors.onSurfaceVariant.withOpacity(0.3),
+                size: 20,
+              ),
+            ],
           ),
         ),
       ),
@@ -7473,13 +8609,6 @@ extension _HomeScreenStateDataInsights on _HomeScreenState {
         color: colors.surface,
         borderRadius: BorderRadius.circular(24),
         border: Border.all(color: colors.outline.withOpacity(0.06)),
-        boxShadow: [
-          BoxShadow(
-            color: colors.shadow.withOpacity(0.04),
-            blurRadius: 16,
-            offset: const Offset(0, 4),
-          ),
-        ],
       ),
       child: Row(
         children: [
@@ -8211,36 +9340,38 @@ class _WellnessHeader extends StatelessWidget {
     required VoidCallback onTap,
     bool isPrimary = false,
   }) {
-    final color = isPrimary
-        ? WellnessColors.primary
-        : Theme.of(context).colorScheme.onSurfaceVariant;
-    final bg = isPrimary
-        ? WellnessColors.primary.withOpacity(0.1)
-        : Theme.of(context).colorScheme.surface;
+    final colors = Theme.of(context).colorScheme;
 
+    if (isPrimary) {
+      // Botão primário (+) com gradiente vibrante
+      return GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [colors.primary, colors.tertiary],
+            ),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Icon(icon, color: Colors.white, size: 22),
+        ),
+      );
+    }
+
+    // Botões secundários
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: bg,
+          color: colors.surface,
           borderRadius: BorderRadius.circular(16),
-          border: isPrimary
-              ? null
-              : Border.all(
-                  color: Theme.of(context).colorScheme.outline.withOpacity(0.1),
-                ),
-          boxShadow: isPrimary
-              ? [
-                  BoxShadow(
-                    color: WellnessColors.primary.withOpacity(0.08),
-                    blurRadius: 6,
-                    offset: const Offset(0, 2),
-                  ),
-                ]
-              : null,
+          border: Border.all(color: colors.outline.withOpacity(0.1)),
         ),
-        child: Icon(icon, color: color, size: 22),
+        child: Icon(icon, color: colors.onSurfaceVariant, size: 22),
       ),
     );
   }
@@ -8268,13 +9399,6 @@ class _DayOverviewCard extends ConsumerWidget {
       decoration: BoxDecoration(
         color: colors.surface,
         borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: colors.shadow.withOpacity(0.06),
-            blurRadius: 20,
-            offset: const Offset(0, 6),
-          ),
-        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -8662,14 +9786,6 @@ class _ActiveTimerIndicatorState extends State<_ActiveTimerIndicator>
                 decoration: BoxDecoration(
                   color: WellnessColors.success,
                   shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: WellnessColors.success.withOpacity(
-                        0.5 * _animation.value,
-                      ),
-                      blurRadius: 4,
-                    ),
-                  ],
                 ),
               ),
               const SizedBox(width: 6),

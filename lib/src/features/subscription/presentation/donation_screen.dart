@@ -166,7 +166,8 @@ class DonationScreen extends StatelessWidget {
                   // PIX
                   _buildDonationOption(
                     context: context,
-                    icon: '🇧🇷',
+                    icon:
+                        'PIX', // Alterado de emoji para texto ou vou ajustar o _buildDonationOption
                     title: 'PIX',
                     subtitle: 'Transferência instantânea',
                     color: const Color(0xFF32BCAD),
@@ -423,9 +424,7 @@ class DonationScreen extends StatelessWidget {
                 color: const Color(0xFF32BCAD).withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(20),
               ),
-              child: const Center(
-                child: Text('🇧🇷', style: TextStyle(fontSize: 40)),
-              ),
+              child: Center(child: _buildBRFlag(size: 40)),
             ),
             const SizedBox(height: 16),
             Text(
@@ -519,5 +518,39 @@ class DonationScreen extends StatelessWidget {
     if (await canLaunchUrl(url)) {
       await launchUrl(url, mode: LaunchMode.externalApplication);
     }
+  }
+
+  Widget _buildBRFlag({double size = 24}) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: const BoxDecoration(shape: BoxShape.circle),
+      clipBehavior: Clip.antiAlias,
+      child: Stack(
+        children: [
+          Container(color: const Color(0xFF009739)),
+          Center(
+            child: Transform.rotate(
+              angle: 45 * 3.14159 / 180,
+              child: Container(
+                width: size * 0.7,
+                height: size * 0.7,
+                color: const Color(0xFFFEDD00),
+              ),
+            ),
+          ),
+          Center(
+            child: Container(
+              width: size * 0.4,
+              height: size * 0.4,
+              decoration: const BoxDecoration(
+                color: Color(0xFF012169),
+                shape: BoxShape.circle,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
