@@ -84,7 +84,8 @@ class TimerState {
       pomodoroTimeLeft: pomodoroTimeLeft ?? this.pomodoroTimeLeft,
       pomodoroSessions: pomodoroSessions ?? this.pomodoroSessions,
       pomodoroDuration: pomodoroDuration ?? this.pomodoroDuration,
-      shouldOpenPomodoroScreen: shouldOpenPomodoroScreen ?? this.shouldOpenPomodoroScreen,
+      shouldOpenPomodoroScreen:
+          shouldOpenPomodoroScreen ?? this.shouldOpenPomodoroScreen,
     );
   }
 
@@ -116,7 +117,9 @@ class TimerState {
     return TimerState(
       isRunning: json['isRunning'] ?? false,
       isPaused: json['isPaused'] ?? false,
-      startTime: json['startTime'] != null ? DateTime.tryParse(json['startTime']) : null,
+      startTime: json['startTime'] != null
+          ? DateTime.tryParse(json['startTime'])
+          : null,
       elapsed: Duration(seconds: json['elapsed'] ?? 0),
       pausedElapsed: Duration(seconds: json['pausedElapsed'] ?? 0),
       taskName: json['taskName'],
@@ -159,7 +162,7 @@ class TimerNotifier extends StateNotifier<TimerState> {
 
     // Configurar callbacks de notificação
     _setupNotificationCallbacks();
-    
+
     // Verificar se há ação pendente de notificação
     await NotificationService.checkPendingAction();
   }
@@ -167,7 +170,7 @@ class TimerNotifier extends StateNotifier<TimerState> {
   /// Configura os callbacks para ações de notificação
   void _setupNotificationCallbacks() {
     debugPrint('[TimerNotifier] Setting up notification callbacks');
-    
+
     NotificationService.onStopTimer = () {
       debugPrint('[TimerNotifier] onStopTimer callback triggered');
       if (state.isPomodoroMode) {
@@ -226,7 +229,8 @@ class TimerNotifier extends StateNotifier<TimerState> {
             // Calcular tempo restante do pomodoro
             if (!wasPaused) {
               final elapsedSinceStart = DateTime.now().difference(startTime);
-              final newTimeLeft = Duration(seconds: pomodoroSecondsLeft) - elapsedSinceStart;
+              final newTimeLeft =
+                  Duration(seconds: pomodoroSecondsLeft) - elapsedSinceStart;
 
               if (newTimeLeft.inSeconds > 0) {
                 state = state.copyWith(
@@ -236,7 +240,9 @@ class TimerNotifier extends StateNotifier<TimerState> {
                   taskName: taskName,
                   isPomodoroMode: true,
                   pomodoroTimeLeft: newTimeLeft,
-                  pomodoroDuration: Duration(seconds: _prefs?.getInt('timer_pomodoro_duration') ?? 1500),
+                  pomodoroDuration: Duration(
+                    seconds: _prefs?.getInt('timer_pomodoro_duration') ?? 1500,
+                  ),
                 );
                 _startPomodoroTicker();
                 _updateNotification();
@@ -255,7 +261,9 @@ class TimerNotifier extends StateNotifier<TimerState> {
           } else {
             // Timer livre
             if (!wasPaused) {
-              final elapsed = DateTime.now().difference(startTime) + Duration(seconds: pausedSeconds);
+              final elapsed =
+                  DateTime.now().difference(startTime) +
+                  Duration(seconds: pausedSeconds);
               state = state.copyWith(
                 isRunning: true,
                 isPaused: false,
@@ -288,11 +296,20 @@ class TimerNotifier extends StateNotifier<TimerState> {
   Future<void> _persistTimerData() async {
     await _prefs?.setBool('timer_was_running', state.isRunning);
     await _prefs?.setBool('timer_was_paused', state.isPaused);
-    await _prefs?.setString('timer_start_time', state.startTime?.toIso8601String() ?? '');
+    await _prefs?.setString(
+      'timer_start_time',
+      state.startTime?.toIso8601String() ?? '',
+    );
     await _prefs?.setString('timer_task_name', state.taskName ?? '');
     await _prefs?.setBool('timer_is_pomodoro', state.isPomodoroMode);
-    await _prefs?.setInt('timer_pomodoro_left', state.pomodoroTimeLeft.inSeconds);
-    await _prefs?.setInt('timer_pomodoro_duration', state.pomodoroDuration.inSeconds);
+    await _prefs?.setInt(
+      'timer_pomodoro_left',
+      state.pomodoroTimeLeft.inSeconds,
+    );
+    await _prefs?.setInt(
+      'timer_pomodoro_duration',
+      state.pomodoroDuration.inSeconds,
+    );
     await _prefs?.setInt('timer_paused_seconds', state.pausedElapsed.inSeconds);
   }
 
@@ -343,7 +360,8 @@ class TimerNotifier extends StateNotifier<TimerState> {
     _timer?.cancel();
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (state.isRunning && !state.isPaused && state.startTime != null) {
-        final newElapsed = state.pausedElapsed + DateTime.now().difference(state.startTime!);
+        final newElapsed =
+            state.pausedElapsed + DateTime.now().difference(state.startTime!);
         state = state.copyWith(elapsed: newElapsed);
 
         // Atualizar notificação a cada segundo para tempo real
@@ -401,16 +419,17 @@ class TimerNotifier extends StateNotifier<TimerState> {
     _timer = null;
 
     final finalState = state;
-    
+
     // Cancelar notificacao persistente (Android: ForegroundService, iOS: Awesome)
     _cancelTimerNotification();
-    
+
     // Mostrar notificacao de conclusao
     if (finalState.elapsed.inSeconds > 0 || finalState.isPomodoroMode) {
-      final minutes = finalState.isPomodoroMode 
-          ? finalState.pomodoroDuration.inMinutes - finalState.pomodoroTimeLeft.inMinutes
+      final minutes = finalState.isPomodoroMode
+          ? finalState.pomodoroDuration.inMinutes -
+                finalState.pomodoroTimeLeft.inMinutes
           : finalState.elapsed.inMinutes;
-      
+
       if (finalState.isPomodoroMode) {
         NotificationService.instance.showPomodoroComplete(
           finalState.taskName ?? 'Pomodoro',
@@ -423,13 +442,10 @@ class TimerNotifier extends StateNotifier<TimerState> {
         );
       }
     }
-    
+
     _clearPersistedData();
 
-    state = state.copyWith(
-      isRunning: false,
-      isPaused: false,
-    );
+    state = state.copyWith(isRunning: false, isPaused: false);
 
     return finalState;
   }
@@ -444,11 +460,7 @@ class TimerNotifier extends StateNotifier<TimerState> {
   }
 
   /// Inicia sessão Pomodoro
-  void startPomodoro({
-    String? taskName,
-    String? category,
-    String? project,
-  }) {
+  void startPomodoro({String? taskName, String? category, String? project}) {
     _timer?.cancel();
 
     state = state.copyWith(
@@ -528,10 +540,10 @@ class TimerNotifier extends StateNotifier<TimerState> {
     } else {
       // Pausa concluída, reiniciar sessão
       HapticFeedback.mediumImpact();
-      
+
       // Notificação de pausa completa
       ModernNotificationService.instance.sendPomodoroBreakComplete();
-      
+
       startPomodoro(
         taskName: state.taskName,
         category: state.category,
@@ -549,10 +561,7 @@ class TimerNotifier extends StateNotifier<TimerState> {
     _timer?.cancel();
     NotificationService.instance.cancelPomodoroTimer();
 
-    state = state.copyWith(
-      isRunning: false,
-      isPaused: true,
-    );
+    state = state.copyWith(isRunning: false, isPaused: true);
 
     _persistTimerData();
     _updateNotification();
@@ -637,6 +646,13 @@ class TimerNotifier extends StateNotifier<TimerState> {
     _persistTimerData();
   }
 
+  /// Atualiza o nome da tarefa (para trocar tarefa com timer rodando)
+  void updateTaskName(String? taskName) {
+    state = state.copyWith(taskName: taskName);
+    _persistTimerData();
+    _updateNotification();
+  }
+
   /// Pula para próxima sessão/pausa
   void skipPomodoro() {
     _timer?.cancel();
@@ -667,8 +683,11 @@ class TimerNotifier extends StateNotifier<TimerState> {
     if (Platform.isAndroid) {
       // Android: Usar ForegroundService nativo para botões funcionais
       ForegroundService.instance.startTimer(
-        taskName: state.taskName ?? (state.isPomodoroMode ? 'Pomodoro' : 'Timer'),
-        durationSeconds: state.isPomodoroMode ? state.pomodoroDuration.inSeconds : null,
+        taskName:
+            state.taskName ?? (state.isPomodoroMode ? 'Pomodoro' : 'Timer'),
+        durationSeconds: state.isPomodoroMode
+            ? state.pomodoroDuration.inSeconds
+            : null,
         isPomodoro: state.isPomodoroMode,
       );
     } else {
@@ -697,8 +716,9 @@ class TimerNotifier extends StateNotifier<TimerState> {
       // Android: O ForegroundService nativo atualiza automaticamente
       // Apenas atualizar se necessário via MethodChannel
       ForegroundService.instance.updateNotification(
-        taskName: state.taskName ?? (state.isPomodoroMode ? 'Pomodoro' : 'Timer'),
-        elapsed: state.isPomodoroMode 
+        taskName:
+            state.taskName ?? (state.isPomodoroMode ? 'Pomodoro' : 'Timer'),
+        elapsed: state.isPomodoroMode
             ? state.pomodoroDuration - state.pomodoroTimeLeft
             : state.elapsed,
         remaining: state.isPomodoroMode ? state.pomodoroTimeLeft : null,
@@ -723,7 +743,7 @@ class TimerNotifier extends StateNotifier<TimerState> {
       }
     }
   }
-  
+
   /// Cancela a notificação do timer
   void _cancelTimerNotification() {
     if (Platform.isAndroid) {
@@ -773,7 +793,7 @@ class TimerNotifier extends StateNotifier<TimerState> {
     int? colorValue,
   }) {
     _timer?.cancel();
-    
+
     state = state.copyWith(
       isRunning: true,
       isPaused: false,
@@ -791,7 +811,7 @@ class TimerNotifier extends StateNotifier<TimerState> {
     _persistTimerData();
     _showTimerNotification();
     _startTimerTicker();
-    
+
     debugPrint('✅ Timer restaurado: ${elapsed.inMinutes}min');
   }
 
@@ -803,7 +823,7 @@ class TimerNotifier extends StateNotifier<TimerState> {
     String? taskName,
   }) {
     _timer?.cancel();
-    
+
     state = state.copyWith(
       isRunning: true,
       isPaused: false,
@@ -818,7 +838,7 @@ class TimerNotifier extends StateNotifier<TimerState> {
     _persistTimerData();
     _showTimerNotification();
     _startPomodoroTicker();
-    
+
     debugPrint('✅ Pomodoro restaurado: ${timeLeft.inMinutes}min restantes');
   }
 

@@ -642,6 +642,128 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
     );
   }
 
+  /// Mostra diálogo de confirmação para trocar tarefa com Pomodoro rodando
+  Future<bool?> _showSwitchTaskConfirmation(String newTaskName) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final currentTask = _customTaskName ?? _taskNameController.text;
+
+    return showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: colorScheme.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFF6B6B).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(
+                Icons.swap_horiz_rounded,
+                color: Color(0xFFFF6B6B),
+                size: 24,
+              ),
+            ),
+            const SizedBox(width: 12),
+            const Text('Trocar Tarefa?'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'O Pomodoro está em andamento.',
+              style: TextStyle(color: colorScheme.onSurfaceVariant),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: colorScheme.surfaceContainerHighest.withOpacity(0.5),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.arrow_back_rounded,
+                        size: 16,
+                        color: colorScheme.error,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          currentTask.isNotEmpty ? currentTask : 'Sem tarefa',
+                          style: TextStyle(
+                            color: colorScheme.onSurfaceVariant,
+                            decoration: TextDecoration.lineThrough,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.arrow_forward_rounded,
+                        size: 16,
+                        color: const Color(0xFF27AE60),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          newTaskName,
+                          style: TextStyle(
+                            color: colorScheme.onSurface,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'O tempo continuará contando normalmente.',
+              style: TextStyle(
+                color: colorScheme.onSurfaceVariant.withOpacity(0.7),
+                fontSize: 12,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(
+              'Cancelar',
+              style: TextStyle(color: colorScheme.onSurfaceVariant),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFFF6B6B),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            child: const Text('Trocar'),
+          ),
+        ],
+      ),
+    );
+  }
+
   String _formatDuration(Duration duration) {
     String twoDigits(int n) => n.toString().padLeft(2, '0');
     String hours = twoDigits(duration.inHours.remainder(24));
@@ -5234,14 +5356,36 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                     _customTaskName == name || _taskNameController.text == name;
 
                 return GestureDetector(
-                  onTap: () {
+                  onTap: () async {
+                    // Se é a mesma tarefa, não faz nada
+                    if (isSelected) return;
+
                     HapticFeedback.lightImpact();
+
+                    // Se o Pomodoro está rodando, pedir confirmação
+                    if (_isPomodoroRunning && !_isPomodoroBreak) {
+                      final shouldSwitch = await _showSwitchTaskConfirmation(
+                        name,
+                      );
+                      if (shouldSwitch != true) return;
+                    }
+
+                    // Trocar a tarefa
                     setState(() {
                       _taskNameController.text = name;
                       _customTaskName = name;
                       _selectedCategory = activity['category'] as String?;
                       _selectedProject = activity['project'] as String?;
                     });
+
+                    // Atualizar o provider global com a nova tarefa
+                    if (_isPomodoroRunning) {
+                      ref.read(timerProvider.notifier).updateTaskName(name);
+                      FeedbackService.showInfo(
+                        context,
+                        '🔄 Tarefa alterada para "$name"',
+                      );
+                    }
                   },
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 200),
