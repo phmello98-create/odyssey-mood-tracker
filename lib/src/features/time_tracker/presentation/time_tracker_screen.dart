@@ -2375,26 +2375,39 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
+      isDismissible: true, // Fecha ao clicar fora
+      enableDrag: true,
       builder: (context) => DraggableScrollableSheet(
-        initialChildSize: 0.45,
-        minChildSize: 0.3,
+        initialChildSize: 0.5,
+        minChildSize: 0.35,
         maxChildSize: 0.95,
+        expand: false,
+        snap: true,
+        snapSizes: const [0.5, 0.75, 0.95],
         builder: (context, scrollController) => Container(
           decoration: BoxDecoration(
             color: Theme.of(context).colorScheme.surface,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 20,
+                offset: const Offset(0, -5),
+              ),
+            ],
           ),
-          child: Column(
-            children: [
-              // Handle draggável
-              GestureDetector(
-                behavior: HitTestBehavior.opaque,
+          // Usar CustomScrollView para permitir arraste em qualquer lugar
+          child: CustomScrollView(
+            controller: scrollController,
+            slivers: [
+              // Handle para arrastar
+              SliverToBoxAdapter(
                 child: Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
                   child: Center(
                     child: Container(
-                      width: 40,
+                      width: 48,
                       height: 5,
                       decoration: BoxDecoration(
                         color: Theme.of(context).colorScheme.outlineVariant,
@@ -2404,82 +2417,84 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                   ),
                 ),
               ),
-              // Header fixo
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.history_rounded,
-                          size: 24,
-                          color: Theme.of(context).colorScheme.primary,
-                        ),
-                        const SizedBox(width: 10),
-                        Text(
-                          'Histórico',
-                          style: Theme.of(context).textTheme.titleLarge
-                              ?.copyWith(fontWeight: FontWeight.w700),
-                        ),
-                      ],
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 4,
+              // Header
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.history_rounded,
+                            size: 24,
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
+                          const SizedBox(width: 10),
+                          Text(
+                            'Histórico',
+                            style: Theme.of(context).textTheme.titleLarge
+                                ?.copyWith(fontWeight: FontWeight.w700),
+                          ),
+                        ],
                       ),
-                      decoration: BoxDecoration(
-                        color: Theme.of(
-                          context,
-                        ).colorScheme.primary.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        '${allRecords.length} registros',
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.primary,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.primary.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          '${allRecords.length} registros',
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.primary,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
-              const Divider(height: 1),
-              // Lista scrollável
-              Expanded(
-                child: allRecords.isEmpty
-                    ? _buildEmptyHistoryState()
-                    : ListView.builder(
-                        controller: scrollController,
-                        padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
-                        itemCount: allRecords.length,
-                        itemBuilder: (context, index) {
-                          final record = allRecords[index];
-                          final showDateHeader =
-                              index == 0 ||
-                              !_isSameDay(
-                                record.startTime,
-                                allRecords[index - 1].startTime,
-                              );
-
-                          return Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              if (showDateHeader) ...[
-                                if (index > 0) const SizedBox(height: 16),
-                                _buildDateHeader(record.startTime),
-                                const SizedBox(height: 10),
-                              ],
-                              _buildHistoryRecordCard(record),
-                            ],
+              // Divider
+              const SliverToBoxAdapter(child: Divider(height: 1)),
+              // Lista de registros
+              if (allRecords.isEmpty)
+                SliverFillRemaining(child: _buildEmptyHistoryState())
+              else
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+                  sliver: SliverList(
+                    delegate: SliverChildBuilderDelegate((context, index) {
+                      final record = allRecords[index];
+                      final showDateHeader =
+                          index == 0 ||
+                          !_isSameDay(
+                            record.startTime,
+                            allRecords[index - 1].startTime,
                           );
-                        },
-                      ),
-              ),
+
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (showDateHeader) ...[
+                            if (index > 0) const SizedBox(height: 16),
+                            _buildDateHeader(record.startTime),
+                            const SizedBox(height: 10),
+                          ],
+                          _buildHistoryRecordCard(record),
+                        ],
+                      );
+                    }, childCount: allRecords.length),
+                  ),
+                ),
             ],
           ),
         ),
