@@ -764,6 +764,269 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
     );
   }
 
+  /// Mostra diálogo para editar uma tarefa existente
+  void _showEditTaskDialog(Map<String, dynamic> activity, int index) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final nameController = TextEditingController(
+      text: activity['name'] as String,
+    );
+    final categoryController = TextEditingController(
+      text: activity['category'] as String? ?? '',
+    );
+    final projectController = TextEditingController(
+      text: activity['project'] as String? ?? '',
+    );
+    final currentColor = activity['color'] as Color;
+    final currentIcon = activity['icon'] as IconData;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => Container(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom,
+        ),
+        decoration: BoxDecoration(
+          color: colorScheme.surface,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Handle
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: colorScheme.outlineVariant,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              // Header
+              Row(
+                children: [
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: currentColor.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Icon(currentIcon, color: currentColor, size: 24),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Editar Tarefa',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                            color: colorScheme.onSurface,
+                          ),
+                        ),
+                        Text(
+                          'Segure para editar ou deletar',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  // Botão deletar
+                  IconButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      _confirmDeleteTask(activity, index);
+                    },
+                    icon: Icon(Icons.delete_outline, color: colorScheme.error),
+                    tooltip: 'Deletar',
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+
+              // Campo nome
+              TextField(
+                controller: nameController,
+                decoration: InputDecoration(
+                  labelText: 'Nome da Tarefa',
+                  prefixIcon: Icon(Icons.edit_outlined, color: currentColor),
+                  filled: true,
+                  fillColor: colorScheme.surfaceContainerHighest.withOpacity(
+                    0.5,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: BorderSide.none,
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: BorderSide(color: currentColor, width: 2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Campos categoria e projeto lado a lado
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: categoryController,
+                      decoration: InputDecoration(
+                        labelText: 'Categoria',
+                        prefixIcon: Icon(
+                          Icons.category_outlined,
+                          size: 20,
+                          color: colorScheme.onSurfaceVariant,
+                        ),
+                        filled: true,
+                        fillColor: colorScheme.surfaceContainerHighest
+                            .withOpacity(0.5),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: BorderSide.none,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: TextField(
+                      controller: projectController,
+                      decoration: InputDecoration(
+                        labelText: 'Projeto',
+                        prefixIcon: Icon(
+                          Icons.folder_outlined,
+                          size: 20,
+                          color: colorScheme.onSurfaceVariant,
+                        ),
+                        filled: true,
+                        fillColor: colorScheme.surfaceContainerHighest
+                            .withOpacity(0.5),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: BorderSide.none,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+
+              // Botões
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(context),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        side: BorderSide(color: colorScheme.outlineVariant),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text('Cancelar'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () {
+                        if (nameController.text.isNotEmpty) {
+                          setState(() {
+                            _activities[index] = {
+                              ..._activities[index],
+                              'name': nameController.text,
+                              'category': categoryController.text.isNotEmpty
+                                  ? categoryController.text
+                                  : null,
+                              'project': projectController.text.isNotEmpty
+                                  ? projectController.text
+                                  : null,
+                            };
+                          });
+                          Navigator.pop(context);
+                          FeedbackService.showSuccess(
+                            context,
+                            '✅ Tarefa atualizada',
+                          );
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: currentColor,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text('Salvar'),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Confirma exclusão de tarefa
+  void _confirmDeleteTask(Map<String, dynamic> activity, int index) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final name = activity['name'] as String;
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: colorScheme.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Icon(Icons.delete_outline, color: colorScheme.error),
+            const SizedBox(width: 12),
+            const Text('Deletar Tarefa?'),
+          ],
+        ),
+        content: Text('Tem certeza que deseja deletar "$name"?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              setState(() {
+                _activities.removeAt(index);
+              });
+              Navigator.pop(context);
+              FeedbackService.showInfo(context, '🗑️ Tarefa deletada');
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: colorScheme.error,
+              foregroundColor: colorScheme.onError,
+            ),
+            child: const Text('Deletar'),
+          ),
+        ],
+      ),
+    );
+  }
+
   String _formatDuration(Duration duration) {
     String twoDigits(int n) => n.toString().padLeft(2, '0');
     String hours = twoDigits(duration.inHours.remainder(24));
@@ -1107,39 +1370,60 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
   }) {
     final colorScheme = Theme.of(context).colorScheme;
 
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          color: isPrimary
-              ? colorScheme.primary
-              : colorScheme.surfaceContainerHighest,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              icon,
-              size: 18,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () {
+          HapticFeedback.lightImpact();
+          onTap();
+        },
+        borderRadius: BorderRadius.circular(14),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(
+            gradient: isPrimary
+                ? LinearGradient(
+                    colors: [
+                      colorScheme.primary,
+                      colorScheme.primary.withOpacity(0.8),
+                    ],
+                  )
+                : null,
+            color: isPrimary
+                ? null
+                : colorScheme.surfaceContainerHighest.withOpacity(0.6),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
               color: isPrimary
-                  ? colorScheme.onPrimary
-                  : colorScheme.onSurfaceVariant,
+                  ? Colors.transparent
+                  : colorScheme.outlineVariant.withOpacity(0.3),
+              width: 1,
             ),
-            const SizedBox(width: 8),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                icon,
+                size: isPrimary ? 20 : 18,
                 color: isPrimary
                     ? colorScheme.onPrimary
                     : colorScheme.onSurfaceVariant,
               ),
-            ),
-          ],
+              const SizedBox(width: 8),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: isPrimary
+                      ? colorScheme.onPrimary
+                      : colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -5341,9 +5625,9 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
 
           const SizedBox(height: 12),
 
-          // Lista horizontal de tarefas rápidas
+          // Lista horizontal de tarefas rápidas - Design Premium
           SizedBox(
-            height: 44,
+            height: 52,
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
               itemCount: _activities.length,
@@ -5381,50 +5665,100 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                     // Atualizar o provider global com a nova tarefa
                     if (_isPomodoroRunning) {
                       ref.read(timerProvider.notifier).updateTaskName(name);
-                      FeedbackService.showInfo(
-                        context,
-                        '🔄 Tarefa alterada para "$name"',
-                      );
+                      FeedbackService.showInfo(context, '🔄 Tarefa: $name');
                     }
                   },
+                  onLongPress: () {
+                    HapticFeedback.mediumImpact();
+                    _showEditTaskDialog(activity, index);
+                  },
                   child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
+                    duration: const Duration(milliseconds: 250),
+                    curve: Curves.easeOutCubic,
                     margin: const EdgeInsets.only(right: 10),
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 10,
+                      horizontal: 16,
+                      vertical: 12,
                     ),
                     decoration: BoxDecoration(
-                      color: isSelected
-                          ? color.withOpacity(0.25)
-                          : Colors.white.withOpacity(0.08),
-                      borderRadius: BorderRadius.circular(22),
+                      gradient: isSelected
+                          ? LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [
+                                color.withOpacity(0.35),
+                                color.withOpacity(0.15),
+                              ],
+                            )
+                          : null,
+                      color: isSelected ? null : Colors.white.withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(16),
                       border: Border.all(
-                        color: isSelected ? color : Colors.transparent,
-                        width: 1.5,
+                        color: isSelected
+                            ? color.withOpacity(0.6)
+                            : Colors.white.withOpacity(0.1),
+                        width: isSelected ? 2 : 1,
                       ),
+                      boxShadow: isSelected
+                          ? [
+                              BoxShadow(
+                                color: color.withOpacity(0.2),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ]
+                          : null,
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(
-                          icon,
-                          color: isSelected ? color : Colors.white60,
-                          size: 18,
+                        // Ícone com background
+                        Container(
+                          width: 28,
+                          height: 28,
+                          decoration: BoxDecoration(
+                            color: isSelected
+                                ? color.withOpacity(0.3)
+                                : Colors.white.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Icon(
+                            icon,
+                            color: isSelected ? color : Colors.white60,
+                            size: 16,
+                          ),
                         ),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: 10),
+                        // Nome
                         Text(
-                          name.length > 15
-                              ? '${name.substring(0, 15)}...'
+                          name.length > 12
+                              ? '${name.substring(0, 12)}...'
                               : name,
                           style: TextStyle(
-                            color: isSelected ? color : Colors.white70,
+                            color: isSelected ? Colors.white : Colors.white70,
                             fontSize: 13,
                             fontWeight: isSelected
                                 ? FontWeight.w600
-                                : FontWeight.w400,
+                                : FontWeight.w500,
                           ),
                         ),
+                        // Check se selecionado
+                        if (isSelected) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            width: 18,
+                            height: 18,
+                            decoration: BoxDecoration(
+                              color: color,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.check,
+                              color: Colors.white,
+                              size: 12,
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   ),
