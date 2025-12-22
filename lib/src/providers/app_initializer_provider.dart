@@ -22,6 +22,7 @@ import 'package:odyssey/src/features/suggestions/domain/suggestion.dart';
 import 'package:odyssey/src/features/suggestions/domain/suggestion_enums.dart';
 import 'package:odyssey/src/features/suggestions/domain/suggestion_analytics.dart';
 import 'package:odyssey/src/features/diary/data/models/diary_entry.dart';
+import 'package:odyssey/src/features/water_tracker/domain/water_record.dart';
 import 'package:odyssey/src/utils/services/notification_manager.dart';
 import 'package:odyssey/src/utils/services/notification_scheduler.dart';
 import 'package:odyssey/src/utils/services/modern_notification_service.dart';
@@ -218,6 +219,10 @@ class AppInitializer extends StateNotifier<AppInitState> {
     // Diary adapter
     if (!Hive.isAdapterRegistered(DiaryEntryAdapter().typeId)) {
       Hive.registerAdapter(DiaryEntryAdapter());
+    }
+    // Water Tracker adapter
+    if (!Hive.isAdapterRegistered(WaterRecordAdapter().typeId)) {
+      Hive.registerAdapter(WaterRecordAdapter());
     }
   }
 

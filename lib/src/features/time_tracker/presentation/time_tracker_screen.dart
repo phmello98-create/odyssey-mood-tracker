@@ -3269,49 +3269,322 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
               ),
             ),
 
-            // Right side: Play button (only if not completed)
-            if (!isCompleted) ...[
-              const SizedBox(width: 8),
-              GestureDetector(
-                onTap: () {
-                  HapticFeedback.lightImpact();
-                  // Se já está rodando essa tarefa, para
-                  if (_isRunning && _customTaskName == activityName) {
-                    _stopTimer();
-                  } else {
-                    // Para qualquer timer atual e inicia essa tarefa
-                    if (_isRunning) {
-                      _stopTimer();
-                    }
-                    setState(() {
-                      _taskNameController.text = activityName;
-                      _selectedCategory = category;
-                      _selectedProject = project;
-                    });
-                    _startTimer(customTask: activityName);
-                  }
-                },
-                child: Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    color: (_isRunning && _customTaskName == activityName)
-                        ? colorScheme.error.withOpacity(0.1)
-                        : color.withOpacity(0.1),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    (_isRunning && _customTaskName == activityName)
-                        ? Icons.stop_rounded
-                        : Icons.play_arrow_rounded,
-                    color: (_isRunning && _customTaskName == activityName)
-                        ? colorScheme.error
-                        : color,
+            // Right side: Options and Play button
+            Column(
+              children: [
+                // Menu de opções (3 pontinhos)
+                PopupMenuButton<String>(
+                  icon: Icon(
+                    Icons.more_vert_rounded,
                     size: 20,
+                    color: colorScheme.onSurfaceVariant.withOpacity(0.6),
                   ),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(
+                    minWidth: 32,
+                    minHeight: 32,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  position: PopupMenuPosition.under,
+                  onSelected: (value) async {
+                    switch (value) {
+                      case 'complete':
+                        // Marcar como concluída
+                        HapticFeedback.mediumImpact();
+                        final repo = ref.read(timeTrackingRepositoryProvider);
+                        for (final record in records) {
+                          await repo.updateTimeTrackingRecord(
+                            record.id,
+                            record.copyWith(isCompleted: !isCompleted),
+                          );
+                        }
+                        if (!isCompleted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                '✅ "$activityName" marcado como concluído',
+                              ),
+                              behavior: SnackBarBehavior.floating,
+                              duration: const Duration(seconds: 2),
+                            ),
+                          );
+                        }
+                        break;
+                      case 'delete':
+                        // Confirmar e excluir
+                        final confirm = await showDialog<bool>(
+                          context: context,
+                          builder: (ctx) => AlertDialog(
+                            title: const Text('Excluir registros?'),
+                            content: Text(
+                              'Remover ${records.length} ${records.length > 1 ? "sessões" : "sessão"} de "$activityName"?',
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(ctx, false),
+                                child: const Text('Cancelar'),
+                              ),
+                              TextButton(
+                                onPressed: () => Navigator.pop(ctx, true),
+                                style: TextButton.styleFrom(
+                                  foregroundColor: colorScheme.error,
+                                ),
+                                child: const Text('Excluir'),
+                              ),
+                            ],
+                          ),
+                        );
+                        if (confirm == true) {
+                          HapticFeedback.mediumImpact();
+                          final repo = ref.read(timeTrackingRepositoryProvider);
+                          for (final record in records) {
+                            await repo.deleteTimeTrackingRecord(record.id);
+                          }
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('🗑️ "$activityName" removido'),
+                              behavior: SnackBarBehavior.floating,
+                              duration: const Duration(seconds: 2),
+                            ),
+                          );
+                        }
+                        break;
+                      case 'details':
+                        // Mostrar detalhes das sessões
+                        _showRecordDetailsDialog(activityName, records);
+                        break;
+                    }
+                  },
+                  itemBuilder: (context) => [
+                    PopupMenuItem(
+                      value: 'complete',
+                      child: Row(
+                        children: [
+                          Icon(
+                            isCompleted
+                                ? Icons.check_box_rounded
+                                : Icons.check_box_outline_blank_rounded,
+                            size: 20,
+                            color: isCompleted
+                                ? Colors.green
+                                : colorScheme.onSurfaceVariant,
+                          ),
+                          const SizedBox(width: 12),
+                          Text(isCompleted ? 'Desmarcar' : 'Concluir'),
+                        ],
+                      ),
+                    ),
+                    PopupMenuItem(
+                      value: 'details',
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.info_outline_rounded,
+                            size: 20,
+                            color: colorScheme.onSurfaceVariant,
+                          ),
+                          const SizedBox(width: 12),
+                          const Text('Ver detalhes'),
+                        ],
+                      ),
+                    ),
+                    const PopupMenuDivider(),
+                    PopupMenuItem(
+                      value: 'delete',
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.delete_outline_rounded,
+                            size: 20,
+                            color: colorScheme.error,
+                          ),
+                          const SizedBox(width: 12),
+                          Text(
+                            'Excluir',
+                            style: TextStyle(color: colorScheme.error),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
+
+                // Play button (only if not completed)
+                if (!isCompleted) ...[
+                  const SizedBox(height: 4),
+                  GestureDetector(
+                    onTap: () {
+                      HapticFeedback.lightImpact();
+                      // Se já está rodando essa tarefa, para
+                      if (_isRunning && _customTaskName == activityName) {
+                        _stopTimer();
+                      } else {
+                        // Para qualquer timer atual e inicia essa tarefa
+                        if (_isRunning) {
+                          _stopTimer();
+                        }
+                        setState(() {
+                          _taskNameController.text = activityName;
+                          _selectedCategory = category;
+                          _selectedProject = project;
+                        });
+                        _startTimer(customTask: activityName);
+                      }
+                    },
+                    child: Container(
+                      width: 32,
+                      height: 32,
+                      decoration: BoxDecoration(
+                        color: (_isRunning && _customTaskName == activityName)
+                            ? colorScheme.error.withOpacity(0.1)
+                            : color.withOpacity(0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        (_isRunning && _customTaskName == activityName)
+                            ? Icons.stop_rounded
+                            : Icons.play_arrow_rounded,
+                        color: (_isRunning && _customTaskName == activityName)
+                            ? colorScheme.error
+                            : color,
+                        size: 18,
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showRecordDetailsDialog(
+    String activityName,
+    List<TimeTrackingRecord> records,
+  ) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final totalDuration = records.fold<Duration>(
+      Duration.zero,
+      (sum, record) => sum + record.duration,
+    );
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.7,
+        ),
+        decoration: BoxDecoration(
+          color: colorScheme.surface,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 12),
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: colorScheme.onSurfaceVariant.withOpacity(0.3),
+                borderRadius: BorderRadius.circular(2),
               ),
-            ],
+            ),
+            Padding(
+              padding: const EdgeInsets.all(20),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      activityName,
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: colorScheme.onSurface,
+                      ),
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: colorScheme.primaryContainer,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      _formatDuration(totalDuration),
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        color: colorScheme.onPrimaryContainer,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Divider(color: colorScheme.outlineVariant.withOpacity(0.3)),
+            Flexible(
+              child: ListView.builder(
+                shrinkWrap: true,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 8,
+                ),
+                itemCount: records.length,
+                itemBuilder: (context, index) {
+                  final record = records[index];
+                  final startStr = DateFormat('HH:mm').format(record.startTime);
+                  final endStr = DateFormat('HH:mm').format(record.endTime);
+
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: colorScheme.surfaceContainerHighest.withOpacity(
+                        0.5,
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      children: [
+                        Text(
+                          '${index + 1}.',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            color: colorScheme.primary,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            '$startStr - $endStr',
+                            style: TextStyle(
+                              color: colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ),
+                        Text(
+                          _formatDurationShort(record.duration),
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            color: colorScheme.onSurface,
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: 20),
           ],
         ),
       ),

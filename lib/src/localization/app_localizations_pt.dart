@@ -3124,4 +3124,41 @@ class AppLocalizationsPt extends AppLocalizations {
   String moreProductiveDuringPeriod(Object percent, Object period) {
     return 'Você é $percent% mais produtivo durante a $period';
   }
+
+  @override
+  String get waterTrackerTitle => '💧 Hidratação';
+
+  @override
+  String get waterGlasses => 'copos';
+
+  @override
+  String get waterAddGlass => 'Beber água';
+
+  @override
+  String get waterGoalReached => 'Meta atingida!';
+
+  @override
+  String waterRemaining(int glasses, int ml) {
+    return 'Faltam $glasses copos (${ml}ml)';
+  }
+
+  @override
+  String get waterSettings => 'Configurações de Hidratação';
+
+  @override
+  String get waterGoalLabel => 'Meta diária (copos)';
+
+  @override
+  String get waterGlassSizeLabel => 'Tamanho do copo';
+
+  @override
+  String waterTotalGoal(int ml) {
+    return 'Meta total: ${ml}ml';
+  }
+
+  @override
+  String get waterReset => 'Resetar';
+
+  @override
+  String get waterWidgetDescription => 'Acompanhe seu consumo de água';
 }

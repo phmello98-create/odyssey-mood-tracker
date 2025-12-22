@@ -104,20 +104,32 @@ class _XPFeedbackOverlayState extends State<XPFeedbackOverlay>
                   child: ScaleTransition(
                     scale: _scaleAnimation,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 12,
+                      ),
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
                           colors: widget.leveledUp
-                              ? [const Color(0xFFFFD700), const Color(0xFFFFA500)]
-                              : [UltravioletColors.primary, UltravioletColors.secondary],
+                              ? [
+                                  const Color(0xFFFFD700),
+                                  const Color(0xFFFFA500),
+                                ]
+                              : [
+                                  UltravioletColors.primary,
+                                  UltravioletColors.secondary,
+                                ],
                         ),
                         borderRadius: BorderRadius.circular(20),
                         boxShadow: [
                           BoxShadow(
-                            color: (widget.leveledUp ? const Color(0xFFFFD700) : UltravioletColors.primary)
-                                .withValues(alpha: 0.5),
-                            blurRadius: 20,
-                            spreadRadius: 5,
+                            color:
+                                (widget.leveledUp
+                                        ? const Color(0xFFFFD700)
+                                        : UltravioletColors.primary)
+                                    .withValues(alpha: 0.2),
+                            blurRadius: 16,
+                            spreadRadius: 2,
                           ),
                         ],
                       ),
@@ -159,7 +171,10 @@ class _XPFeedbackOverlayState extends State<XPFeedbackOverlay>
                       runSpacing: 8,
                       children: widget.skillUpdates.map((update) {
                         return Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 6,
+                          ),
                           decoration: BoxDecoration(
                             color: update.leveledUp
                                 ? const Color(0xFFFFD700).withValues(alpha: 0.9)
@@ -170,7 +185,11 @@ class _XPFeedbackOverlayState extends State<XPFeedbackOverlay>
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               if (update.leveledUp)
-                                const Icon(Icons.arrow_upward, size: 14, color: Colors.black87),
+                                const Icon(
+                                  Icons.arrow_upward,
+                                  size: 14,
+                                  color: Colors.black87,
+                                ),
                               Text(
                                 '${update.skillName} +${update.xpGained}',
                                 style: const TextStyle(
@@ -201,7 +220,8 @@ class GamificationFeedbackService {
   static void showXPGained(
     BuildContext context, {
     required int xpAmount,
-    List<({String skillName, int xpGained, bool leveledUp})> skillUpdates = const [],
+    List<({String skillName, int xpGained, bool leveledUp})> skillUpdates =
+        const [],
     bool leveledUp = false,
     int? newLevel,
   }) {
@@ -224,17 +244,24 @@ class GamificationFeedbackService {
   }
 
   /// Mostra feedback completo a partir de um GamificationResult
-  static void showFromResult(BuildContext context, GamificationResult result, int xpGained) {
+  static void showFromResult(
+    BuildContext context,
+    GamificationResult result,
+    int xpGained,
+  ) {
     final skillUpdates = result.skillUpdates
-        .map((u) => (skillName: u.skillName, xpGained: u.xpGained, leveledUp: u.leveledUp))
+        .map(
+          (u) => (
+            skillName: u.skillName,
+            xpGained: u.xpGained,
+            leveledUp: u.leveledUp,
+          ),
+        )
         .toList();
 
     // Se houve level up, mostra celebração completa
     if (result.leveledUp) {
-      showLevelUpCelebration(
-        context,
-        newLevel: result.stats.level,
-      );
+      showLevelUpCelebration(context, newLevel: result.stats.level);
     } else {
       showXPGained(
         context,
@@ -370,16 +397,18 @@ class _LevelUpCelebrationState extends State<LevelUpCelebration>
     ];
 
     for (int i = 0; i < 100; i++) {
-      _confetti.add(_ConfettiPiece(
-        x: _random.nextDouble(),
-        y: -_random.nextDouble() * 0.3,
-        size: 6 + _random.nextDouble() * 8,
-        color: colors[_random.nextInt(colors.length)],
-        speed: 0.3 + _random.nextDouble() * 0.7,
-        angle: _random.nextDouble() * math.pi * 2,
-        rotationSpeed: (_random.nextDouble() - 0.5) * 10,
-        isCircle: _random.nextBool(),
-      ));
+      _confetti.add(
+        _ConfettiPiece(
+          x: _random.nextDouble(),
+          y: -_random.nextDouble() * 0.3,
+          size: 6 + _random.nextDouble() * 8,
+          color: colors[_random.nextInt(colors.length)],
+          speed: 0.3 + _random.nextDouble() * 0.7,
+          angle: _random.nextDouble() * math.pi * 2,
+          rotationSpeed: (_random.nextDouble() - 0.5) * 10,
+          isCircle: _random.nextBool(),
+        ),
+      );
     }
   }
 
@@ -398,14 +427,20 @@ class _LevelUpCelebrationState extends State<LevelUpCelebration>
     return Material(
       color: Colors.transparent,
       child: AnimatedBuilder(
-        animation: Listenable.merge([_mainController, _confettiController, _shineController]),
+        animation: Listenable.merge([
+          _mainController,
+          _confettiController,
+          _shineController,
+        ]),
         builder: (context, child) {
           return Stack(
             children: [
               // Fundo escurecido
               Positioned.fill(
                 child: Container(
-                  color: Colors.black.withValues(alpha: 0.7 * _fadeAnimation.value),
+                  color: Colors.black.withValues(
+                    alpha: 0.7 * _fadeAnimation.value,
+                  ),
                 ),
               ),
 
@@ -418,7 +453,9 @@ class _LevelUpCelebrationState extends State<LevelUpCelebration>
                 if (y > 1.2) return const SizedBox.shrink();
 
                 return Positioned(
-                  left: piece.x * size.width + math.sin(progress * 3 + piece.angle) * 30,
+                  left:
+                      piece.x * size.width +
+                      math.sin(progress * 3 + piece.angle) * 30,
                   top: y * size.height,
                   child: Transform.rotate(
                     angle: rotation,
@@ -463,8 +500,12 @@ class _LevelUpCelebrationState extends State<LevelUpCelebration>
                                     shape: BoxShape.circle,
                                     gradient: RadialGradient(
                                       colors: [
-                                        const Color(0xFFFFD700).withValues(alpha: 0.4 * _shineController.value),
-                                        const Color(0xFFFFD700).withValues(alpha: 0.0),
+                                        const Color(0xFFFFD700).withValues(
+                                          alpha: 0.4 * _shineController.value,
+                                        ),
+                                        const Color(
+                                          0xFFFFD700,
+                                        ).withValues(alpha: 0.0),
                                       ],
                                     ),
                                   ),
@@ -475,16 +516,21 @@ class _LevelUpCelebrationState extends State<LevelUpCelebration>
                                   height: 140,
                                   decoration: BoxDecoration(
                                     gradient: const LinearGradient(
-                                      colors: [Color(0xFFFFD700), Color(0xFFFFA500)],
+                                      colors: [
+                                        Color(0xFFFFD700),
+                                        Color(0xFFFFA500),
+                                      ],
                                       begin: Alignment.topLeft,
                                       end: Alignment.bottomRight,
                                     ),
                                     shape: BoxShape.circle,
                                     boxShadow: [
                                       BoxShadow(
-                                        color: const Color(0xFFFFD700).withValues(alpha: 0.5),
-                                        blurRadius: 30,
-                                        spreadRadius: 10,
+                                        color: const Color(
+                                          0xFFFFD700,
+                                        ).withValues(alpha: 0.2),
+                                        blurRadius: 24,
+                                        spreadRadius: 4,
                                       ),
                                     ],
                                   ),
@@ -516,7 +562,11 @@ class _LevelUpCelebrationState extends State<LevelUpCelebration>
                             // Texto LEVEL UP
                             ShaderMask(
                               shaderCallback: (bounds) => const LinearGradient(
-                                colors: [Color(0xFFFFD700), Color(0xFFFFA500), Color(0xFFFFD700)],
+                                colors: [
+                                  Color(0xFFFFD700),
+                                  Color(0xFFFFA500),
+                                  Color(0xFFFFD700),
+                                ],
                               ).createShader(bounds),
                               child: const Text(
                                 'LEVEL UP!',
@@ -541,12 +591,17 @@ class _LevelUpCelebrationState extends State<LevelUpCelebration>
                             if (widget.unlockedTitle != null) ...[
                               const SizedBox(height: 20),
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 20,
+                                  vertical: 10,
+                                ),
                                 decoration: BoxDecoration(
                                   color: Colors.white.withValues(alpha: 0.15),
                                   borderRadius: BorderRadius.circular(16),
                                   border: Border.all(
-                                    color: const Color(0xFFFFD700).withValues(alpha: 0.5),
+                                    color: const Color(
+                                      0xFFFFD700,
+                                    ).withValues(alpha: 0.5),
                                   ),
                                 ),
                                 child: Row(
@@ -559,12 +614,15 @@ class _LevelUpCelebrationState extends State<LevelUpCelebration>
                                     ),
                                     const SizedBox(width: 10),
                                     Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         Text(
                                           'Novo título desbloqueado!',
                                           style: TextStyle(
-                                            color: Colors.white.withValues(alpha: 0.7),
+                                            color: Colors.white.withValues(
+                                              alpha: 0.7,
+                                            ),
                                             fontSize: 11,
                                           ),
                                         ),
@@ -654,9 +712,10 @@ class _FloatingXPIndicatorState extends State<FloatingXPIndicator>
       TweenSequenceItem(tween: Tween(begin: 1.0, end: 0.0), weight: 30),
     ]).animate(_controller);
 
-    _slideAnimation = Tween<double>(begin: 0, end: -50).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeOut),
-    );
+    _slideAnimation = Tween<double>(
+      begin: 0,
+      end: -50,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
 
     _controller.forward();
   }

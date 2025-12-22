@@ -3117,4 +3117,41 @@ class AppLocalizationsEn extends AppLocalizations {
   String moreProductiveDuringPeriod(Object percent, Object period) {
     return 'You are $percent% more productive during the $period';
   }
+
+  @override
+  String get waterTrackerTitle => '💧 Hydration';
+
+  @override
+  String get waterGlasses => 'glasses';
+
+  @override
+  String get waterAddGlass => 'Drink water';
+
+  @override
+  String get waterGoalReached => 'Goal reached!';
+
+  @override
+  String waterRemaining(int glasses, int ml) {
+    return '$glasses glasses remaining (${ml}ml)';
+  }
+
+  @override
+  String get waterSettings => 'Hydration Settings';
+
+  @override
+  String get waterGoalLabel => 'Daily goal (glasses)';
+
+  @override
+  String get waterGlassSizeLabel => 'Glass size';
+
+  @override
+  String waterTotalGoal(int ml) {
+    return 'Total goal: ${ml}ml';
+  }
+
+  @override
+  String get waterReset => 'Reset';
+
+  @override
+  String get waterWidgetDescription => 'Track your water intake';
 }

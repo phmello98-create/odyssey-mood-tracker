@@ -991,5 +991,27 @@
   "periodNight": "Madrugada",
   "mostActive": "Mais ativo",
   "moreProductiveDuringPeriod": "Você é {percent}% mais produtivo durante a {period}",
+  "waterTrackerTitle": "💧 Hidratação",
+  "waterGlasses": "copos",
+  "waterAddGlass": "Beber água",
+  "waterGoalReached": "Meta atingida!",
+  "waterRemaining": "Faltam {glasses} copos ({ml}ml)",
+  "@waterRemaining": {
+    "placeholders": {
+      "glasses": {"type": "int"},
+      "ml": {"type": "int"}
+    }
+  },
+  "waterSettings": "Configurações de Hidratação",
+  "waterGoalLabel": "Meta diária (copos)",
+  "waterGlassSizeLabel": "Tamanho do copo",
+  "waterTotalGoal": "Meta total: {ml}ml",
+  "@waterTotalGoal": {
+    "placeholders": {
+      "ml": {"type": "int"}
+    }
+  },
+  "waterReset": "Resetar",
+  "waterWidgetDescription": "Acompanhe seu consumo de água",
   "@@locale": "pt"
 }

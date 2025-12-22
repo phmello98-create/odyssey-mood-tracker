@@ -9,7 +9,8 @@ class FloatingTimerWidget extends ConsumerStatefulWidget {
   const FloatingTimerWidget({super.key});
 
   @override
-  ConsumerState<FloatingTimerWidget> createState() => _FloatingTimerWidgetState();
+  ConsumerState<FloatingTimerWidget> createState() =>
+      _FloatingTimerWidgetState();
 }
 
 class _FloatingTimerWidgetState extends ConsumerState<FloatingTimerWidget>
@@ -55,7 +56,8 @@ class _FloatingTimerWidgetState extends ConsumerState<FloatingTimerWidget>
     final currentNav = ref.watch(navigationProvider);
 
     // Só mostra se timer ativo E não está na tela do timer (index 3)
-    final shouldShow = (timerState.isRunning || timerState.isPaused) && currentNav != 3;
+    final shouldShow =
+        (timerState.isRunning || timerState.isPaused) && currentNav != 3;
 
     if (!shouldShow) {
       return const SizedBox.shrink();
@@ -66,7 +68,9 @@ class _FloatingTimerWidgetState extends ConsumerState<FloatingTimerWidget>
     final isBreak = timerState.isPomodoroBreak;
 
     // Cores
-    final pomodoroColor = isBreak ? const Color(0xFF667EEA) : const Color(0xFFFF6B6B);
+    final pomodoroColor = isBreak
+        ? const Color(0xFF667EEA)
+        : const Color(0xFFFF6B6B);
     const freeTimerColor = Color(0xFF07E092);
     final mainColor = isPomodoro ? pomodoroColor : freeTimerColor;
 
@@ -110,7 +114,9 @@ class _FloatingTimerWidgetState extends ConsumerState<FloatingTimerWidget>
           animation: _bounceAnimation,
           builder: (context, child) {
             return Transform.scale(
-              scale: _isDragging ? 1.1 : (isPaused ? 1.0 : _bounceAnimation.value),
+              scale: _isDragging
+                  ? 1.1
+                  : (isPaused ? 1.0 : _bounceAnimation.value),
               child: child,
             );
           },
@@ -118,28 +124,23 @@ class _FloatingTimerWidgetState extends ConsumerState<FloatingTimerWidget>
             color: Colors.transparent,
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
-              constraints: BoxConstraints(
-                maxWidth: _isExpanded ? 200 : 150,
-              ),
+              constraints: BoxConstraints(maxWidth: _isExpanded ? 200 : 150),
               padding: EdgeInsets.symmetric(
                 horizontal: _isExpanded ? 14 : 10,
                 vertical: _isExpanded ? 10 : 6,
               ),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [
-                    mainColor,
-                    mainColor.withValues(alpha: 0.85),
-                  ],
+                  colors: [mainColor, mainColor.withValues(alpha: 0.85)],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
                 borderRadius: BorderRadius.circular(_isExpanded ? 16 : 24),
                 boxShadow: [
                   BoxShadow(
-                    color: mainColor.withValues(alpha: 0.4),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
+                    color: mainColor.withValues(alpha: 0.12),
+                    blurRadius: 10,
+                    offset: const Offset(0, 3),
                   ),
                 ],
               ),
@@ -151,7 +152,12 @@ class _FloatingTimerWidgetState extends ConsumerState<FloatingTimerWidget>
                       isPaused,
                       isBreak,
                     )
-                  : _buildCollapsedContent(timeDisplay, isPomodoro, isPaused, isBreak),
+                  : _buildCollapsedContent(
+                      timeDisplay,
+                      isPomodoro,
+                      isPaused,
+                      isBreak,
+                    ),
             ),
           ),
         ),
@@ -268,7 +274,9 @@ class _FloatingTimerWidgetState extends ConsumerState<FloatingTimerWidget>
                 HapticFeedback.lightImpact();
                 final notifier = ref.read(timerProvider.notifier);
                 if (isPaused) {
-                  isPomodoro ? notifier.resumePomodoro() : notifier.resumeTimer();
+                  isPomodoro
+                      ? notifier.resumePomodoro()
+                      : notifier.resumeTimer();
                 } else {
                   isPomodoro ? notifier.pausePomodoro() : notifier.pauseTimer();
                 }

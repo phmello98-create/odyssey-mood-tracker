@@ -10,6 +10,7 @@ import 'package:odyssey/src/features/home/presentation/widgets/streak_widget.dar
 import 'package:odyssey/src/features/home/presentation/widgets/today_tasks_widget.dart';
 import 'package:odyssey/src/features/home/presentation/widgets/current_reading_widget.dart';
 import 'package:odyssey/src/features/home/presentation/widgets/quick_mood_widget.dart';
+import 'package:odyssey/src/features/home/presentation/widgets/water_tracker_widget.dart';
 
 /// Renderiza os widgets da home baseado nas configurações do usuário
 class HomeWidgetRenderer extends ConsumerWidget {
@@ -61,6 +62,8 @@ class HomeWidgetRenderer extends ConsumerWidget {
         return const _WeekCalendarWidget();
       case HomeWidgetType.monthlyOverview:
         return const _MonthlyOverviewWidget();
+      case HomeWidgetType.waterTracker:
+        return const WaterTrackerWidget();
     }
   }
 }
@@ -73,7 +76,7 @@ class _DailyQuoteWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     final l10n = AppLocalizations.of(context)!;
-    
+
     // Lista de citações
     final quotes = [
       l10n.quotesMaslow1,
@@ -82,24 +85,33 @@ class _DailyQuoteWidget extends StatelessWidget {
       l10n.quotesSocrates,
       l10n.quotesMaslow2,
     ];
-    
+
     final todayQuote = quotes[DateTime.now().day % quotes.length];
 
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [const Color(0xFF7E57C2).withValues(alpha: 0.1), const Color(0xFF7E57C2).withValues(alpha: 0.04)],
+          colors: [
+            const Color(0xFF7E57C2).withValues(alpha: 0.1),
+            const Color(0xFF7E57C2).withValues(alpha: 0.04),
+          ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFF7E57C2).withValues(alpha: 0.2)),
+        border: Border.all(
+          color: const Color(0xFF7E57C2).withValues(alpha: 0.2),
+        ),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.format_quote_rounded, color: Color(0xFF7E57C2), size: 20),
+          const Icon(
+            Icons.format_quote_rounded,
+            color: Color(0xFF7E57C2),
+            size: 20,
+          ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -107,10 +119,21 @@ class _DailyQuoteWidget extends StatelessWidget {
               children: [
                 Text(
                   todayQuote,
-                  style: TextStyle(fontSize: 14, fontStyle: FontStyle.italic, color: colors.onSurface, height: 1.4),
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontStyle: FontStyle.italic,
+                    color: colors.onSurface,
+                    height: 1.4,
+                  ),
                 ),
                 const SizedBox(height: 6),
-                Text(AppLocalizations.of(context)!.citacaoDoDia, style: TextStyle(fontSize: 10, color: colors.onSurfaceVariant)),
+                Text(
+                  AppLocalizations.of(context)!.citacaoDoDia,
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: colors.onSurfaceVariant,
+                  ),
+                ),
               ],
             ),
           ),
@@ -136,7 +159,13 @@ class _WeeklyChartWidget extends StatelessWidget {
         color: colors.surface,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: colors.outline.withValues(alpha: 0.1)),
-        boxShadow: [BoxShadow(color: colors.shadow.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 2))],
+        boxShadow: [
+          BoxShadow(
+            color: colors.shadow.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -149,10 +178,21 @@ class _WeeklyChartWidget extends StatelessWidget {
                   color: const Color(0xFF26A69A).withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(Icons.show_chart_rounded, color: Color(0xFF26A69A), size: 18),
+                child: const Icon(
+                  Icons.show_chart_rounded,
+                  color: Color(0xFF26A69A),
+                  size: 18,
+                ),
               ),
               const SizedBox(width: 10),
-              Text(AppLocalizations.of(context)!.atividadeSemanal, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: colors.onSurface)),
+              Text(
+                AppLocalizations.of(context)!.atividadeSemanal,
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: colors.onSurface,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 16),
@@ -163,8 +203,9 @@ class _WeeklyChartWidget extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: List.generate(7, (index) {
                 final isToday = index == todayIndex;
-                final height = 15.0 + (index * 5) + (isToday ? 15 : 0); // Demo heights
-                
+                final height =
+                    15.0 + (index * 5) + (isToday ? 15 : 0); // Demo heights
+
                 return Column(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
@@ -174,8 +215,20 @@ class _WeeklyChartWidget extends StatelessWidget {
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
                           colors: isToday
-                              ? [const Color(0xFF26A69A), const Color(0xFF26A69A).withValues(alpha: 0.7)]
-                              : [const Color(0xFF26A69A).withValues(alpha: 0.4), const Color(0xFF26A69A).withValues(alpha: 0.2)],
+                              ? [
+                                  const Color(0xFF26A69A),
+                                  const Color(
+                                    0xFF26A69A,
+                                  ).withValues(alpha: 0.7),
+                                ]
+                              : [
+                                  const Color(
+                                    0xFF26A69A,
+                                  ).withValues(alpha: 0.4),
+                                  const Color(
+                                    0xFF26A69A,
+                                  ).withValues(alpha: 0.2),
+                                ],
                           begin: Alignment.bottomCenter,
                           end: Alignment.topCenter,
                         ),
@@ -188,7 +241,9 @@ class _WeeklyChartWidget extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 10,
                         fontWeight: isToday ? FontWeight.w700 : FontWeight.w500,
-                        color: isToday ? const Color(0xFF26A69A) : colors.onSurfaceVariant.withValues(alpha: 0.7),
+                        color: isToday
+                            ? const Color(0xFF26A69A)
+                            : colors.onSurfaceVariant.withValues(alpha: 0.7),
                       ),
                     ),
                   ],
@@ -216,7 +271,13 @@ class _HabitsWidget extends StatelessWidget {
         color: colors.surface,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: colors.outline.withValues(alpha: 0.1)),
-        boxShadow: [BoxShadow(color: colors.shadow.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 2))],
+        boxShadow: [
+          BoxShadow(
+            color: colors.shadow.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -229,10 +290,21 @@ class _HabitsWidget extends StatelessWidget {
                   color: const Color(0xFF5C6BC0).withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(Icons.repeat_rounded, color: Color(0xFF5C6BC0), size: 18),
+                child: const Icon(
+                  Icons.repeat_rounded,
+                  color: Color(0xFF5C6BC0),
+                  size: 18,
+                ),
               ),
               const SizedBox(width: 10),
-              Text(AppLocalizations.of(context)!.habitosDoDia, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: colors.onSurface)),
+              Text(
+                AppLocalizations.of(context)!.habitosDoDia,
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: colors.onSurface,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 12),
@@ -244,9 +316,19 @@ class _HabitsWidget extends StatelessWidget {
             ),
             child: Row(
               children: [
-                Icon(Icons.calendar_today_outlined, color: colors.onSurfaceVariant, size: 20),
+                Icon(
+                  Icons.calendar_today_outlined,
+                  color: colors.onSurfaceVariant,
+                  size: 20,
+                ),
                 const SizedBox(width: 10),
-                Text(AppLocalizations.of(context)!.vejaSeusHabitosNoCalendario, style: TextStyle(fontSize: 13, color: colors.onSurfaceVariant)),
+                Text(
+                  AppLocalizations.of(context)!.vejaSeusHabitosNoCalendario,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: colors.onSurfaceVariant,
+                  ),
+                ),
               ],
             ),
           ),
@@ -274,7 +356,13 @@ class _WeekCalendarWidget extends StatelessWidget {
         color: colors.surface,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: colors.outline.withValues(alpha: 0.1)),
-        boxShadow: [BoxShadow(color: colors.shadow.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 2))],
+        boxShadow: [
+          BoxShadow(
+            color: colors.shadow.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -287,17 +375,29 @@ class _WeekCalendarWidget extends StatelessWidget {
                   color: const Color(0xFF42A5F5).withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(Icons.calendar_view_week_rounded, color: Color(0xFF42A5F5), size: 18),
+                child: const Icon(
+                  Icons.calendar_view_week_rounded,
+                  color: Color(0xFF42A5F5),
+                  size: 18,
+                ),
               ),
               const SizedBox(width: 10),
-              Text('Esta Semana', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: colors.onSurface)),
+              Text(
+                'Esta Semana',
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: colors.onSurface,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 16),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: List.generate(7, (i) {
-              final isToday = days[i].day == now.day && days[i].month == now.month;
+              final isToday =
+                  days[i].day == now.day && days[i].month == now.month;
               return Column(
                 children: [
                   Text(
@@ -305,7 +405,9 @@ class _WeekCalendarWidget extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.w500,
-                      color: isToday ? const Color(0xFF42A5F5) : colors.onSurfaceVariant,
+                      color: isToday
+                          ? const Color(0xFF42A5F5)
+                          : colors.onSurfaceVariant,
                     ),
                   ),
                   const SizedBox(height: 6),
@@ -313,16 +415,24 @@ class _WeekCalendarWidget extends StatelessWidget {
                     width: 32,
                     height: 32,
                     decoration: BoxDecoration(
-                      color: isToday ? const Color(0xFF42A5F5) : Colors.transparent,
+                      color: isToday
+                          ? const Color(0xFF42A5F5)
+                          : Colors.transparent,
                       borderRadius: BorderRadius.circular(8),
-                      border: isToday ? null : Border.all(color: colors.outline.withValues(alpha: 0.2)),
+                      border: isToday
+                          ? null
+                          : Border.all(
+                              color: colors.outline.withValues(alpha: 0.2),
+                            ),
                     ),
                     child: Center(
                       child: Text(
                         '${days[i].day}',
                         style: TextStyle(
                           fontSize: 13,
-                          fontWeight: isToday ? FontWeight.w700 : FontWeight.w500,
+                          fontWeight: isToday
+                              ? FontWeight.w700
+                              : FontWeight.w500,
                           color: isToday ? Colors.white : colors.onSurface,
                         ),
                       ),
@@ -346,7 +456,20 @@ class _MonthlyOverviewWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     final now = DateTime.now();
-    final monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+    final monthNames = [
+      'Jan',
+      'Fev',
+      'Mar',
+      'Abr',
+      'Mai',
+      'Jun',
+      'Jul',
+      'Ago',
+      'Set',
+      'Out',
+      'Nov',
+      'Dez',
+    ];
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -354,7 +477,13 @@ class _MonthlyOverviewWidget extends StatelessWidget {
         color: colors.surface,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: colors.outline.withValues(alpha: 0.1)),
-        boxShadow: [BoxShadow(color: colors.shadow.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 2))],
+        boxShadow: [
+          BoxShadow(
+            color: colors.shadow.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -367,21 +496,42 @@ class _MonthlyOverviewWidget extends StatelessWidget {
                   color: const Color(0xFF7E57C2).withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(Icons.calendar_month_rounded, color: Color(0xFF7E57C2), size: 18),
+                child: const Icon(
+                  Icons.calendar_month_rounded,
+                  color: Color(0xFF7E57C2),
+                  size: 18,
+                ),
               ),
               const SizedBox(width: 10),
-              Text('${monthNames[now.month - 1]} ${now.year}', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: colors.onSurface)),
+              Text(
+                '${monthNames[now.month - 1]} ${now.year}',
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: colors.onSurface,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 16),
           Row(
             children: [
               Expanded(
-                child: _buildStat(context, 'Dias ativos', '${now.day}', const Color(0xFF4CAF50)),
+                child: _buildStat(
+                  context,
+                  'Dias ativos',
+                  '${now.day}',
+                  const Color(0xFF4CAF50),
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: _buildStat(context, 'Progresso', '${((now.day / 30) * 100).round()}%', const Color(0xFF7E57C2)),
+                child: _buildStat(
+                  context,
+                  'Progresso',
+                  '${((now.day / 30) * 100).round()}%',
+                  const Color(0xFF7E57C2),
+                ),
               ),
             ],
           ),
@@ -390,7 +540,12 @@ class _MonthlyOverviewWidget extends StatelessWidget {
     );
   }
 
-  Widget _buildStat(BuildContext context, String label, String value, Color color) {
+  Widget _buildStat(
+    BuildContext context,
+    String label,
+    String value,
+    Color color,
+  ) {
     final colors = Theme.of(context).colorScheme;
     return Container(
       padding: const EdgeInsets.all(12),
@@ -401,9 +556,19 @@ class _MonthlyOverviewWidget extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: TextStyle(fontSize: 11, color: colors.onSurfaceVariant)),
+          Text(
+            label,
+            style: TextStyle(fontSize: 11, color: colors.onSurfaceVariant),
+          ),
           const SizedBox(height: 4),
-          Text(value, style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: color)),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: color,
+            ),
+          ),
         ],
       ),
     );

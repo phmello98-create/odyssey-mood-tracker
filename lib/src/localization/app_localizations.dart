@@ -6031,6 +6031,72 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'You are {percent}% more productive during the {period}'**
   String moreProductiveDuringPeriod(Object percent, Object period);
+
+  /// No description provided for @waterTrackerTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'💧 Hydration'**
+  String get waterTrackerTitle;
+
+  /// No description provided for @waterGlasses.
+  ///
+  /// In en, this message translates to:
+  /// **'glasses'**
+  String get waterGlasses;
+
+  /// No description provided for @waterAddGlass.
+  ///
+  /// In en, this message translates to:
+  /// **'Drink water'**
+  String get waterAddGlass;
+
+  /// No description provided for @waterGoalReached.
+  ///
+  /// In en, this message translates to:
+  /// **'Goal reached!'**
+  String get waterGoalReached;
+
+  /// No description provided for @waterRemaining.
+  ///
+  /// In en, this message translates to:
+  /// **'{glasses} glasses remaining ({ml}ml)'**
+  String waterRemaining(int glasses, int ml);
+
+  /// No description provided for @waterSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Hydration Settings'**
+  String get waterSettings;
+
+  /// No description provided for @waterGoalLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Daily goal (glasses)'**
+  String get waterGoalLabel;
+
+  /// No description provided for @waterGlassSizeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Glass size'**
+  String get waterGlassSizeLabel;
+
+  /// No description provided for @waterTotalGoal.
+  ///
+  /// In en, this message translates to:
+  /// **'Total goal: {ml}ml'**
+  String waterTotalGoal(int ml);
+
+  /// No description provided for @waterReset.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset'**
+  String get waterReset;
+
+  /// No description provided for @waterWidgetDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Track your water intake'**
+  String get waterWidgetDescription;
 }
 
 class _AppLocalizationsDelegate

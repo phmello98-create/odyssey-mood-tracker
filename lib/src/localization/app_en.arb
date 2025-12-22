@@ -991,5 +991,27 @@
   "periodNight": "Night",
   "mostActive": "Most active",
   "moreProductiveDuringPeriod": "You are {percent}% more productive during the {period}",
+  "waterTrackerTitle": "💧 Hydration",
+  "waterGlasses": "glasses",
+  "waterAddGlass": "Drink water",
+  "waterGoalReached": "Goal reached!",
+  "waterRemaining": "{glasses} glasses remaining ({ml}ml)",
+  "@waterRemaining": {
+    "placeholders": {
+      "glasses": {"type": "int"},
+      "ml": {"type": "int"}
+    }
+  },
+  "waterSettings": "Hydration Settings",
+  "waterGoalLabel": "Daily goal (glasses)",
+  "waterGlassSizeLabel": "Glass size",
+  "waterTotalGoal": "Total goal: {ml}ml",
+  "@waterTotalGoal": {
+    "placeholders": {
+      "ml": {"type": "int"}
+    }
+  },
+  "waterReset": "Reset",
+  "waterWidgetDescription": "Track your water intake",
   "@@locale": "en"
 }

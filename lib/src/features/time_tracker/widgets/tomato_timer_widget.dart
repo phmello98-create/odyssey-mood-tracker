@@ -327,9 +327,9 @@ class _TomatoTimerWidgetState extends State<TomatoTimerWidget>
           shape: BoxShape.circle,
           boxShadow: [
             BoxShadow(
-              color: currentColor.withValues(alpha: 0.4),
-              blurRadius: 20,
-              offset: const Offset(0, 8),
+              color: currentColor.withValues(alpha: 0.12),
+              blurRadius: 16,
+              offset: const Offset(0, 6),
             ),
           ],
         ),
@@ -673,7 +673,7 @@ class _RandomTextReveal extends StatelessWidget {
               color: color,
               shape: BoxShape.circle,
               boxShadow: [
-                BoxShadow(color: color.withValues(alpha: 0.5), blurRadius: 4),
+                BoxShadow(color: color.withValues(alpha: 0.15), blurRadius: 3),
               ],
             ),
           ),

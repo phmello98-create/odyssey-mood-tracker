@@ -51,6 +51,7 @@ import 'package:odyssey/src/features/home/presentation/widgets/current_reading_w
 import 'package:odyssey/src/features/home/presentation/widgets/daily_goals_widget.dart';
 import 'package:odyssey/src/features/home/presentation/widgets/activity_grid_widget.dart';
 import 'package:odyssey/src/features/home/presentation/widgets/quick_mood_widget.dart';
+import 'package:odyssey/src/features/home/presentation/widgets/water_tracker_widget.dart';
 import 'package:odyssey/src/features/home/presentation/widgets/task_checkbox.dart';
 import 'package:odyssey/src/features/home/presentation/widgets/header_arrow_button.dart';
 import 'package:odyssey/src/features/onboarding/services/showcase_service.dart'
@@ -1000,6 +1001,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         return _buildWeekCalendar(context);
       case HomeWidgetType.monthlyOverview:
         return _buildMonthlyOverview(context);
+      case HomeWidgetType.waterTracker:
+        return const WaterTrackerWidget();
     }
   }
 
@@ -1025,9 +1028,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           borderRadius: BorderRadius.circular(32),
           boxShadow: [
             BoxShadow(
-              color: WellnessColors.primary.withOpacity(0.3),
-              blurRadius: 20,
-              offset: const Offset(0, 10),
+              color: WellnessColors.primary.withOpacity(0.1),
+              blurRadius: 14,
+              offset: const Offset(0, 6),
             ),
           ],
         ),
@@ -8230,9 +8233,9 @@ class _WellnessHeader extends StatelessWidget {
           boxShadow: isPrimary
               ? [
                   BoxShadow(
-                    color: WellnessColors.primary.withOpacity(0.2),
-                    blurRadius: 8,
-                    offset: const Offset(0, 4),
+                    color: WellnessColors.primary.withOpacity(0.08),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
                   ),
                 ]
               : null,

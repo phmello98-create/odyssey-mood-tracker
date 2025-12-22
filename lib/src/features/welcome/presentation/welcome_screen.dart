@@ -31,10 +31,7 @@ class WelcomePage {
 class WelcomeScreen extends ConsumerStatefulWidget {
   final String userName;
 
-  const WelcomeScreen({
-    super.key,
-    required this.userName,
-  });
+  const WelcomeScreen({super.key, required this.userName});
 
   @override
   ConsumerState<WelcomeScreen> createState() => _WelcomeScreenState();
@@ -51,48 +48,60 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen>
     WelcomePage(
       titlePt: 'Bem-vindo ao Odyssey! 👋',
       titleEn: 'Welcome to Odyssey! 👋',
-      subtitlePt: 'Seu companheiro de produtividade e bem-estar.\nVamos começar essa jornada juntos!',
-      subtitleEn: 'Your productivity and wellness companion.\nLet\'s start this journey together!',
+      subtitlePt:
+          'Seu companheiro de produtividade e bem-estar.\nVamos começar essa jornada juntos!',
+      subtitleEn:
+          'Your productivity and wellness companion.\nLet\'s start this journey together!',
       icon: Icons.rocket_launch_rounded,
       gradientColors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
     ),
     WelcomePage(
       titlePt: 'Registre seu Humor 🌈',
       titleEn: 'Track Your Mood 🌈',
-      subtitlePt: 'Entenda seus padrões emocionais.\nRegistre como você se sente e descubra insights sobre você.',
-      subtitleEn: 'Understand your emotional patterns.\nRecord how you feel and discover insights about yourself.',
+      subtitlePt:
+          'Entenda seus padrões emocionais.\nRegistre como você se sente e descubra insights sobre você.',
+      subtitleEn:
+          'Understand your emotional patterns.\nRecord how you feel and discover insights about yourself.',
       icon: Icons.mood_rounded,
       gradientColors: [Color(0xFFEC4899), Color(0xFFF43F5E)],
     ),
     WelcomePage(
       titlePt: 'Foco com Pomodoro 🍅',
       titleEn: 'Focus with Pomodoro 🍅',
-      subtitlePt: 'Aumente sua produtividade.\nUse o timer Pomodoro para manter o foco e fazer pausas estratégicas.',
-      subtitleEn: 'Boost your productivity.\nUse the Pomodoro timer to stay focused and take strategic breaks.',
+      subtitlePt:
+          'Aumente sua produtividade.\nUse o timer Pomodoro para manter o foco e fazer pausas estratégicas.',
+      subtitleEn:
+          'Boost your productivity.\nUse the Pomodoro timer to stay focused and take strategic breaks.',
       icon: Icons.timer_rounded,
       gradientColors: [Color(0xFFFF6B6B), Color(0xFFFF8E53)],
     ),
     WelcomePage(
       titlePt: 'Crie Hábitos 💪',
       titleEn: 'Build Habits 💪',
-      subtitlePt: 'Pequenas ações, grandes mudanças.\nAcompanhe seus hábitos diários e construa uma rotina saudável.',
-      subtitleEn: 'Small actions, big changes.\nTrack your daily habits and build a healthy routine.',
+      subtitlePt:
+          'Pequenas ações, grandes mudanças.\nAcompanhe seus hábitos diários e construa uma rotina saudável.',
+      subtitleEn:
+          'Small actions, big changes.\nTrack your daily habits and build a healthy routine.',
       icon: Icons.trending_up_rounded,
       gradientColors: [Color(0xFF10B981), Color(0xFF34D399)],
     ),
     WelcomePage(
       titlePt: 'Organize Tarefas ✅',
       titleEn: 'Organize Tasks ✅',
-      subtitlePt: 'Nunca esqueça o importante.\nGerencie suas tarefas e conquiste seus objetivos.',
-      subtitleEn: 'Never forget what matters.\nManage your tasks and achieve your goals.',
+      subtitlePt:
+          'Nunca esqueça o importante.\nGerencie suas tarefas e conquiste seus objetivos.',
+      subtitleEn:
+          'Never forget what matters.\nManage your tasks and achieve your goals.',
       icon: Icons.check_circle_rounded,
       gradientColors: [Color(0xFF3B82F6), Color(0xFF60A5FA)],
     ),
     WelcomePage(
       titlePt: 'Ganhe Recompensas 🏆',
       titleEn: 'Earn Rewards 🏆',
-      subtitlePt: 'Cada ação conta!\nGanhe XP, suba de nível e desbloqueie conquistas enquanto melhora sua vida.',
-      subtitleEn: 'Every action counts!\nEarn XP, level up and unlock achievements while improving your life.',
+      subtitlePt:
+          'Cada ação conta!\nGanhe XP, suba de nível e desbloqueie conquistas enquanto melhora sua vida.',
+      subtitleEn:
+          'Every action counts!\nEarn XP, level up and unlock achievements while improving your life.',
       icon: Icons.emoji_events_rounded,
       gradientColors: [Color(0xFFF59E0B), Color(0xFFFBBF24)],
     ),
@@ -145,27 +154,25 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen>
   Future<void> _finishOnboarding() async {
     final service = ref.read(welcomeServiceProvider);
     await service.completeFirstTime();
-    
+
     if (!mounted) return;
-    
+
     // Verificar se precisa de consentimento LGPD
     final hasConsent = await HealthDataConsentScreen.hasConsent();
-    
+
     if (!hasConsent && mounted) {
       // Mostrar tela de consentimento antes de ir para home
       final accepted = await Navigator.push<bool>(
         context,
-        MaterialPageRoute(
-          builder: (_) => const HealthDataConsentScreen(),
-        ),
+        MaterialPageRoute(builder: (_) => const HealthDataConsentScreen()),
       );
-      
+
       // Se não aceitou, mostra aviso mas continua (dados ficam apenas locais)
       if (accepted != true && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              _isPortuguese 
+              _isPortuguese
                   ? 'Você pode dar seu consentimento depois nas configurações.'
                   : 'You can give your consent later in settings.',
             ),
@@ -174,7 +181,7 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen>
         );
       }
     }
-    
+
     if (mounted) {
       Navigator.of(context).pushReplacement(
         PageRouteBuilder(
@@ -304,11 +311,16 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen>
             GestureDetector(
               onTap: _skipOnboarding,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.white.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.1),
+                  ),
                 ),
                 child: Text(
                   _isPortuguese ? 'Pular' : 'Skip',
@@ -359,17 +371,15 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen>
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: page.gradientColors[0].withValues(alpha: 0.3 + _pulseController.value * 0.2),
-                        blurRadius: 40 + _pulseController.value * 20,
-                        spreadRadius: 5,
+                        color: page.gradientColors[0].withValues(
+                          alpha: 0.12 + _pulseController.value * 0.08,
+                        ),
+                        blurRadius: 30 + _pulseController.value * 10,
+                        spreadRadius: 2,
                       ),
                     ],
                   ),
-                  child: Icon(
-                    page.icon,
-                    size: 64,
-                    color: Colors.white,
-                  ),
+                  child: Icon(page.icon, size: 64, color: Colors.white),
                 );
               },
             ),
@@ -450,9 +460,11 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen>
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: [
                   BoxShadow(
-                    color: _pages[_currentPage].gradientColors[0].withValues(alpha: 0.4),
-                    blurRadius: 20,
-                    offset: const Offset(0, 8),
+                    color: _pages[_currentPage].gradientColors[0].withValues(
+                      alpha: 0.12,
+                    ),
+                    blurRadius: 16,
+                    offset: const Offset(0, 6),
                   ),
                 ],
               ),
@@ -472,7 +484,9 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen>
                     ),
                     const SizedBox(width: 8),
                     Icon(
-                      isLastPage ? Icons.rocket_launch_rounded : Icons.arrow_forward_rounded,
+                      isLastPage
+                          ? Icons.rocket_launch_rounded
+                          : Icons.arrow_forward_rounded,
                       color: Colors.white,
                       size: 22,
                     ),

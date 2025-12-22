@@ -5,19 +5,20 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// Tipos de widgets disponíveis para a Home
 /// Expandido para incluir todos os widgets úteis e reorganizáveis
 enum HomeWidgetType {
-  quickNotes,      // Notas rápidas
-  quickPomodoro,   // Timer rápido
-  dailyGoals,      // Sua semana
-  activityGrid,    // Grid de atividade estilo GitHub
-  streak,          // Widget de streak/sequência
-  todayTasks,      // Tarefas de hoje
-  dailyQuote,      // Citação do dia
-  weeklyChart,     // Gráfico semanal
-  currentReading,  // Leitura atual
-  habits,          // Widget de hábitos compacto
-  quickMood,       // Humor rápido
-  weekCalendar,    // Calendário semanal
+  quickNotes, // Notas rápidas
+  quickPomodoro, // Timer rápido
+  dailyGoals, // Sua semana
+  activityGrid, // Grid de atividade estilo GitHub
+  streak, // Widget de streak/sequência
+  todayTasks, // Tarefas de hoje
+  dailyQuote, // Citação do dia
+  weeklyChart, // Gráfico semanal
+  currentReading, // Leitura atual
+  habits, // Widget de hábitos compacto
+  quickMood, // Humor rápido
+  weekCalendar, // Calendário semanal
   monthlyOverview, // Visão mensal
+  waterTracker, // Rastreador de água
 }
 
 /// Configuração de um widget
@@ -42,10 +43,7 @@ class HomeWidgetConfig {
     this.order = 0,
   });
 
-  HomeWidgetConfig copyWith({
-    bool? isEnabled,
-    int? order,
-  }) {
+  HomeWidgetConfig copyWith({bool? isEnabled, int? order}) {
     return HomeWidgetConfig(
       type: type,
       id: id,
@@ -193,6 +191,16 @@ class DefaultHomeWidgets {
         isEnabled: false,
         order: 12,
       ),
+      const HomeWidgetConfig(
+        type: HomeWidgetType.waterTracker,
+        id: 'water_tracker',
+        name: 'Hidratação',
+        description: 'Acompanhe seu consumo de água',
+        icon: Icons.water_drop_rounded,
+        color: Color(0xFF42A5F5),
+        isEnabled: true,
+        order: 13,
+      ),
     ];
   }
 }
@@ -216,7 +224,8 @@ class HomeWidgetsState {
 
 /// Notifier para gerenciar widgets da home
 class HomeWidgetsNotifier extends StateNotifier<HomeWidgetsState> {
-  HomeWidgetsNotifier() : super(HomeWidgetsState(widgets: DefaultHomeWidgets.getDefaults())) {
+  HomeWidgetsNotifier()
+    : super(HomeWidgetsState(widgets: DefaultHomeWidgets.getDefaults())) {
     _loadWidgets();
   }
 
@@ -237,12 +246,16 @@ class HomeWidgetsNotifier extends StateNotifier<HomeWidgetsState> {
           (s) => s.startsWith('${defaultWidget.id}:'),
           orElse: () => '${defaultWidget.id}:${defaultWidget.isEnabled}:$i',
         );
-        
+
         final parts = savedData.split(':');
-        final isEnabled = parts.length > 1 ? parts[1] == 'true' : defaultWidget.isEnabled;
+        final isEnabled = parts.length > 1
+            ? parts[1] == 'true'
+            : defaultWidget.isEnabled;
         final order = parts.length > 2 ? int.tryParse(parts[2]) ?? i : i;
 
-        loadedWidgets.add(defaultWidget.copyWith(isEnabled: isEnabled, order: order));
+        loadedWidgets.add(
+          defaultWidget.copyWith(isEnabled: isEnabled, order: order),
+        );
       }
 
       state = HomeWidgetsState(widgets: loadedWidgets);
@@ -251,7 +264,9 @@ class HomeWidgetsNotifier extends StateNotifier<HomeWidgetsState> {
 
   Future<void> _saveWidgets() async {
     final prefs = await SharedPreferences.getInstance();
-    final configStrings = state.widgets.map((w) => '${w.id}:${w.isEnabled}:${w.order}').toList();
+    final configStrings = state.widgets
+        .map((w) => '${w.id}:${w.isEnabled}:${w.order}')
+        .toList();
     await prefs.setStringList(_widgetsKey, configStrings);
   }
 
@@ -271,11 +286,11 @@ class HomeWidgetsNotifier extends StateNotifier<HomeWidgetsState> {
   /// Reordenar widgets
   Future<void> reorderWidgets(int oldIndex, int newIndex) async {
     final enabledWidgets = state.enabledWidgets;
-    
+
     if (oldIndex < newIndex) {
       newIndex -= 1;
     }
-    
+
     final widget = enabledWidgets.removeAt(oldIndex);
     enabledWidgets.insert(newIndex, widget);
 
@@ -300,9 +315,10 @@ class HomeWidgetsNotifier extends StateNotifier<HomeWidgetsState> {
 }
 
 /// Providers
-final homeWidgetsProvider = StateNotifierProvider<HomeWidgetsNotifier, HomeWidgetsState>((ref) {
-  return HomeWidgetsNotifier();
-});
+final homeWidgetsProvider =
+    StateNotifierProvider<HomeWidgetsNotifier, HomeWidgetsState>((ref) {
+      return HomeWidgetsNotifier();
+    });
 
 final enabledHomeWidgetsProvider = Provider<List<HomeWidgetConfig>>((ref) {
   return ref.watch(homeWidgetsProvider).enabledWidgets;

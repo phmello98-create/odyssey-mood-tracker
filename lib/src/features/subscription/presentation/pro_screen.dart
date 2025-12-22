@@ -23,7 +23,12 @@ class ProScreen extends ConsumerWidget {
               // Header
               SliverToBoxAdapter(
                 child: Container(
-                  padding: EdgeInsets.fromLTRB(20, MediaQuery.of(context).padding.top + 16, 20, 32),
+                  padding: EdgeInsets.fromLTRB(
+                    20,
+                    MediaQuery.of(context).padding.top + 16,
+                    20,
+                    32,
+                  ),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: [
@@ -43,26 +48,50 @@ class ProScreen extends ConsumerWidget {
                             child: Container(
                               padding: const EdgeInsets.all(10),
                               decoration: BoxDecoration(
-                                color: colors.surfaceContainerHighest.withValues(alpha: 0.5),
+                                color: colors.surfaceContainerHighest
+                                    .withValues(alpha: 0.5),
                                 borderRadius: BorderRadius.circular(12),
                               ),
-                              child: Icon(Icons.arrow_back_ios_new, size: 18, color: colors.onSurface),
+                              child: Icon(
+                                Icons.arrow_back_ios_new,
+                                size: 18,
+                                color: colors.onSurface,
+                              ),
                             ),
                           ),
                           const Spacer(),
                           if (subscription.isProValid)
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 6,
+                              ),
                               decoration: BoxDecoration(
-                                gradient: const LinearGradient(colors: [Color(0xFFFFD700), Color(0xFFFFA500)]),
+                                gradient: const LinearGradient(
+                                  colors: [
+                                    Color(0xFFFFD700),
+                                    Color(0xFFFFA500),
+                                  ],
+                                ),
                                 borderRadius: BorderRadius.circular(20),
                               ),
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  const Icon(Icons.workspace_premium, color: Colors.black87, size: 16),
+                                  const Icon(
+                                    Icons.workspace_premium,
+                                    color: Colors.black87,
+                                    size: 16,
+                                  ),
                                   const SizedBox(width: 4),
-                                  Text(AppLocalizations.of(context)!.proAtivo, style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.w700, fontSize: 12)),
+                                  Text(
+                                    AppLocalizations.of(context)!.proAtivo,
+                                    style: const TextStyle(
+                                      color: Colors.black87,
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 12,
+                                    ),
+                                  ),
                                 ],
                               ),
                             ),
@@ -82,13 +111,19 @@ class ProScreen extends ConsumerWidget {
                           borderRadius: BorderRadius.circular(28),
                           boxShadow: [
                             BoxShadow(
-                              color: const Color(0xFFFFD700).withValues(alpha: 0.4),
-                              blurRadius: 24,
-                              offset: const Offset(0, 8),
+                              color: const Color(
+                                0xFFFFD700,
+                              ).withValues(alpha: 0.12),
+                              blurRadius: 18,
+                              offset: const Offset(0, 6),
                             ),
                           ],
                         ),
-                        child: const Icon(Icons.workspace_premium, size: 56, color: Colors.black87),
+                        child: const Icon(
+                          Icons.workspace_premium,
+                          size: 56,
+                          color: Colors.black87,
+                        ),
                       ),
                       const SizedBox(height: 20),
                       ShaderMask(
@@ -97,7 +132,11 @@ class ProScreen extends ConsumerWidget {
                         ).createShader(bounds),
                         child: const Text(
                           'Odyssey PRO',
-                          style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800, color: Colors.white),
+                          style: TextStyle(
+                            fontSize: 28,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.white,
+                          ),
                         ),
                       ),
                       const SizedBox(height: 8),
@@ -105,7 +144,10 @@ class ProScreen extends ConsumerWidget {
                         subscription.isProValid
                             ? 'Você já é PRO! Aproveite todos os benefícios.'
                             : 'Desbloqueie todo o potencial do app',
-                        style: TextStyle(fontSize: 14, color: colors.onSurfaceVariant),
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: colors.onSurfaceVariant,
+                        ),
                         textAlign: TextAlign.center,
                       ),
                     ],
@@ -130,7 +172,9 @@ class ProScreen extends ConsumerWidget {
                         ),
                       ),
                       const SizedBox(height: 16),
-                      ...ProBenefits.benefits.map((benefit) => _buildBenefitCard(benefit, colors)),
+                      ...ProBenefits.benefits.map(
+                        (benefit) => _buildBenefitCard(benefit, colors),
+                      ),
                     ],
                   ),
                 ),
@@ -198,17 +242,30 @@ class ProScreen extends ConsumerWidget {
                       ),
                       child: Row(
                         children: [
-                          Icon(Icons.error_outline, color: colors.error, size: 20),
+                          Icon(
+                            Icons.error_outline,
+                            color: colors.error,
+                            size: 20,
+                          ),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
                               subscription.errorMessage!,
-                              style: TextStyle(color: colors.onErrorContainer, fontSize: 13),
+                              style: TextStyle(
+                                color: colors.onErrorContainer,
+                                fontSize: 13,
+                              ),
                             ),
                           ),
                           IconButton(
-                            icon: Icon(Icons.close, size: 18, color: colors.onErrorContainer),
-                            onPressed: () => ref.read(subscriptionProvider.notifier).clearError(),
+                            icon: Icon(
+                              Icons.close,
+                              size: 18,
+                              color: colors.onErrorContainer,
+                            ),
+                            onPressed: () => ref
+                                .read(subscriptionProvider.notifier)
+                                .clearError(),
                           ),
                         ],
                       ),
@@ -221,10 +278,15 @@ class ProScreen extends ConsumerWidget {
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   child: TextButton(
-                    onPressed: subscription.isLoading ? null : () => _restorePurchase(context, ref),
+                    onPressed: subscription.isLoading
+                        ? null
+                        : () => _restorePurchase(context, ref),
                     child: Text(
                       'Restaurar compra anterior',
-                      style: TextStyle(color: colors.primary, fontWeight: FontWeight.w500),
+                      style: TextStyle(
+                        color: colors.primary,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   ),
                 ),
@@ -233,14 +295,12 @@ class ProScreen extends ConsumerWidget {
               const SliverToBoxAdapter(child: SizedBox(height: 40)),
             ],
           ),
-          
+
           // Loading overlay
           if (subscription.isLoading)
             Container(
               color: Colors.black45,
-              child: const Center(
-                child: CircularProgressIndicator(),
-              ),
+              child: const Center(child: CircularProgressIndicator()),
             ),
         ],
       ),
@@ -263,8 +323,21 @@ class ProScreen extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(benefit.title, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: colors.onSurface)),
-                Text(benefit.description, style: TextStyle(fontSize: 12, color: colors.onSurfaceVariant)),
+                Text(
+                  benefit.title,
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: colors.onSurface,
+                  ),
+                ),
+                Text(
+                  benefit.description,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: colors.onSurfaceVariant,
+                  ),
+                ),
               ],
             ),
           ),
@@ -288,10 +361,12 @@ class ProScreen extends ConsumerWidget {
     String? badge,
   }) {
     return GestureDetector(
-      onTap: isLoading ? null : () {
-        HapticFeedback.mediumImpact();
-        onTap();
-      },
+      onTap: isLoading
+          ? null
+          : () {
+              HapticFeedback.mediumImpact();
+              onTap();
+            },
       child: Opacity(
         opacity: isLoading ? 0.6 : 1.0,
         child: Container(
@@ -299,13 +374,20 @@ class ProScreen extends ConsumerWidget {
           decoration: BoxDecoration(
             gradient: isPopular
                 ? LinearGradient(
-                    colors: [const Color(0xFFFFD700).withValues(alpha: 0.15), const Color(0xFFFFA500).withValues(alpha: 0.08)],
+                    colors: [
+                      const Color(0xFFFFD700).withValues(alpha: 0.15),
+                      const Color(0xFFFFA500).withValues(alpha: 0.08),
+                    ],
                   )
                 : null,
-            color: isPopular ? null : colors.surfaceContainerHighest.withValues(alpha: 0.5),
+            color: isPopular
+                ? null
+                : colors.surfaceContainerHighest.withValues(alpha: 0.5),
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
-              color: isPopular ? const Color(0xFFFFD700) : colors.outline.withValues(alpha: 0.2),
+              color: isPopular
+                  ? const Color(0xFFFFD700)
+                  : colors.outline.withValues(alpha: 0.2),
               width: isPopular ? 2 : 1,
             ),
           ),
@@ -319,41 +401,94 @@ class ProScreen extends ConsumerWidget {
                       children: [
                         Row(
                           children: [
-                            Text(title, style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: colors.onSurface)),
+                            Text(
+                              title,
+                              style: TextStyle(
+                                fontSize: 17,
+                                fontWeight: FontWeight.w600,
+                                color: colors.onSurface,
+                              ),
+                            ),
                             if (isPopular) ...[
                               const SizedBox(width: 8),
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 3,
+                                ),
                                 decoration: BoxDecoration(
-                                  gradient: const LinearGradient(colors: [Color(0xFFFFD700), Color(0xFFFFA500)]),
+                                  gradient: const LinearGradient(
+                                    colors: [
+                                      Color(0xFFFFD700),
+                                      Color(0xFFFFA500),
+                                    ],
+                                  ),
                                   borderRadius: BorderRadius.circular(8),
                                 ),
-                                child: Text(AppLocalizations.of(context)!.popular, style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: Colors.black87)),
+                                child: Text(
+                                  AppLocalizations.of(context)!.popular,
+                                  style: const TextStyle(
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.w700,
+                                    color: Colors.black87,
+                                  ),
+                                ),
                               ),
                             ],
                             if (badge != null && !isPopular) ...[
                               const SizedBox(width: 8),
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 3,
+                                ),
                                 decoration: BoxDecoration(
                                   color: Colors.green.withValues(alpha: 0.2),
                                   borderRadius: BorderRadius.circular(8),
                                 ),
-                                child: Text(badge, style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: Colors.green)),
+                                child: Text(
+                                  badge,
+                                  style: const TextStyle(
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.w700,
+                                    color: Colors.green,
+                                  ),
+                                ),
                               ),
                             ],
                           ],
                         ),
                         const SizedBox(height: 2),
-                        Text(subtitle, style: TextStyle(fontSize: 12, color: colors.onSurfaceVariant)),
+                        Text(
+                          subtitle,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: colors.onSurfaceVariant,
+                          ),
+                        ),
                       ],
                     ),
                   ),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      Text(price, style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: isPopular ? const Color(0xFFFFD700) : colors.primary)),
-                      Text(priceInfo, style: TextStyle(fontSize: 11, color: colors.onSurfaceVariant)),
+                      Text(
+                        price,
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w700,
+                          color: isPopular
+                              ? const Color(0xFFFFD700)
+                              : colors.primary,
+                        ),
+                      ),
+                      Text(
+                        priceInfo,
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: colors.onSurfaceVariant,
+                        ),
+                      ),
                     ],
                   ),
                 ],
@@ -364,10 +499,16 @@ class ProScreen extends ConsumerWidget {
                 child: ElevatedButton(
                   onPressed: isLoading ? null : onTap,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: isPopular ? const Color(0xFFFFD700) : colors.primary,
-                    foregroundColor: isPopular ? Colors.black87 : colors.onPrimary,
+                    backgroundColor: isPopular
+                        ? const Color(0xFFFFD700)
+                        : colors.primary,
+                    foregroundColor: isPopular
+                        ? Colors.black87
+                        : colors.onPrimary,
                     padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                     elevation: 0,
                   ),
                   child: Text(
@@ -384,8 +525,10 @@ class ProScreen extends ConsumerWidget {
   }
 
   Future<void> _purchaseMonthly(BuildContext context, WidgetRef ref) async {
-    final success = await ref.read(subscriptionProvider.notifier).purchaseMonthly();
-    
+    final success = await ref
+        .read(subscriptionProvider.notifier)
+        .purchaseMonthly();
+
     if (success && context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -397,8 +540,10 @@ class ProScreen extends ConsumerWidget {
   }
 
   Future<void> _purchaseYearly(BuildContext context, WidgetRef ref) async {
-    final success = await ref.read(subscriptionProvider.notifier).purchaseYearly();
-    
+    final success = await ref
+        .read(subscriptionProvider.notifier)
+        .purchaseYearly();
+
     if (success && context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -411,13 +556,11 @@ class ProScreen extends ConsumerWidget {
 
   Future<void> _restorePurchase(BuildContext context, WidgetRef ref) async {
     await ref.read(subscriptionProvider.notifier).restorePurchase();
-    
+
     // O resultado virá via stream/state
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Verificando compras anteriores...'),
-        ),
+        const SnackBar(content: Text('Verificando compras anteriores...')),
       );
     }
   }
