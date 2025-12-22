@@ -2147,10 +2147,29 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
         final todayRecords = allRecords
             .where((r) => _isSameDay(r.startTime, now))
             .toList();
-        final todayPending = todayRecords.where((r) => !r.isCompleted).toList();
-        final todayCompleted = todayRecords
+
+        // AGRUPAR registros por nome de atividade para evitar poluição de cards
+        Map<String, List<TimeTrackingRecord>> groupByActivity(
+          List<TimeTrackingRecord> records,
+        ) {
+          final map = <String, List<TimeTrackingRecord>>{};
+          for (final record in records) {
+            final key = record.activityName;
+            map.putIfAbsent(key, () => []).add(record);
+          }
+          return map;
+        }
+
+        final pendingRecords = todayRecords
+            .where((r) => !r.isCompleted)
+            .toList();
+        final completedRecords = todayRecords
             .where((r) => r.isCompleted)
             .toList();
+
+        // Agrupar por atividade
+        final groupedPending = groupByActivity(pendingRecords);
+        final groupedCompleted = groupByActivity(completedRecords);
 
         return Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -2180,7 +2199,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
-                          '${todayRecords.length}',
+                          '${groupedPending.length + groupedCompleted.length}',
                           style: TextStyle(
                             color: colorScheme.primary,
                             fontSize: 12,
@@ -2207,20 +2226,26 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                 child: ListView(
                   padding: EdgeInsets.zero,
                   children: [
-                    // Pending tasks section
-                    if (todayPending.isNotEmpty) ...[
+                    // Pending tasks section (AGRUPADOS)
+                    if (groupedPending.isNotEmpty) ...[
                       _buildSectionHeader(
                         icon: Icons.timer_outlined,
                         title: 'Em andamento',
-                        count: todayPending.length,
+                        count: groupedPending.length,
                         color: colorScheme.primary,
                       ),
                       const SizedBox(height: 8),
-                      ...todayPending.map((r) => _buildRecordCard(r)),
+                      ...groupedPending.entries.map(
+                        (entry) => _buildGroupedRecordCard(
+                          entry.key,
+                          entry.value,
+                          isCompleted: false,
+                        ),
+                      ),
                     ],
 
                     // Suggestions if no pending
-                    if (todayPending.isEmpty) ...[
+                    if (groupedPending.isEmpty) ...[
                       _buildSectionHeader(
                         icon: Icons.lightbulb_outline_rounded,
                         title: 'Comece uma tarefa',
@@ -2233,17 +2258,23 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                           .map((a) => _buildTaskCard(a, isPreset: true))),
                     ],
 
-                    // Completed tasks section
-                    if (todayCompleted.isNotEmpty) ...[
+                    // Completed tasks section (AGRUPADOS)
+                    if (groupedCompleted.isNotEmpty) ...[
                       const SizedBox(height: 20),
                       _buildSectionHeader(
                         icon: Icons.check_circle_outline_rounded,
                         title: 'Concluídos',
-                        count: todayCompleted.length,
+                        count: groupedCompleted.length,
                         color: const Color(0xFF27AE60),
                       ),
                       const SizedBox(height: 8),
-                      ...todayCompleted.map((r) => _buildRecordCard(r)),
+                      ...groupedCompleted.entries.map(
+                        (entry) => _buildGroupedRecordCard(
+                          entry.key,
+                          entry.value,
+                          isCompleted: true,
+                        ),
+                      ),
                     ],
 
                     const SizedBox(height: 100), // Padding for bottom nav
@@ -2917,6 +2948,251 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                             (_customTaskName == record.activityName ||
                                 _selectedActivity?.activityName ==
                                     record.activityName))
+                        ? colorScheme.error
+                        : color,
+                    size: 20,
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Card agrupado que mostra tempo total de múltiplas sessões da mesma atividade
+  Widget _buildGroupedRecordCard(
+    String activityName,
+    List<TimeTrackingRecord> records, {
+    required bool isCompleted,
+  }) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    // Usar dados do primeiro registro como referência
+    final firstRecord = records.first;
+    final color = firstRecord.colorValue != null
+        ? Color(firstRecord.colorValue!)
+        : _getActivityColor(activityName);
+
+    // Somar todas as durações
+    final totalDuration = records.fold<Duration>(
+      Duration.zero,
+      (sum, record) => sum + record.duration,
+    );
+
+    final hours = totalDuration.inHours;
+    final minutes = totalDuration.inMinutes.remainder(60);
+    final seconds = totalDuration.inSeconds.remainder(60);
+    final timeStr = hours > 0
+        ? '${hours}h ${minutes}m'
+        : minutes > 0
+        ? '${minutes}m ${seconds}s'
+        : '${seconds}s';
+
+    final category = firstRecord.category ?? 'Pessoal';
+    final project = firstRecord.project;
+    final sessionCount = records.length;
+
+    // Pegar horário da primeira e última sessão
+    final sortedRecords = List<TimeTrackingRecord>.from(records)
+      ..sort((a, b) => a.startTime.compareTo(b.startTime));
+    final firstStart = DateFormat(
+      'HH:mm',
+    ).format(sortedRecords.first.startTime);
+    final lastEnd = DateFormat('HH:mm').format(sortedRecords.last.endTime);
+
+    return GestureDetector(
+      onTap: () {
+        // Poderia abrir um modal com detalhes de todas as sessões
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: isCompleted
+              ? colorScheme.surfaceContainerHighest.withOpacity(0.4)
+              : colorScheme.surfaceContainerHighest.withOpacity(0.6),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: isCompleted
+                ? const Color(0xFF27AE60).withOpacity(0.3)
+                : colorScheme.outlineVariant.withOpacity(0.2),
+            width: 1,
+          ),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Left side: Icon with gradient background
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    color.withOpacity(isCompleted ? 0.15 : 0.25),
+                    color.withOpacity(isCompleted ? 0.08 : 0.1),
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(
+                IconData(firstRecord.iconCode, fontFamily: 'MaterialIcons'),
+                color: isCompleted ? color.withOpacity(0.5) : color,
+                size: 22,
+              ),
+            ),
+            const SizedBox(width: 12),
+
+            // Middle: Task info
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Task name row
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          activityName,
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 15,
+                            color: isCompleted
+                                ? colorScheme.onSurfaceVariant
+                                : colorScheme.onSurface,
+                            decoration: isCompleted
+                                ? TextDecoration.lineThrough
+                                : null,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      // Badge de sessões (se mais de 1)
+                      if (sessionCount > 1)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
+                          margin: const EdgeInsets.only(left: 8),
+                          decoration: BoxDecoration(
+                            color: color.withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            '$sessionCount sessões',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                              color: color,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+
+                  // Time info row
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.schedule_rounded,
+                        size: 14,
+                        color: colorScheme.onSurfaceVariant.withOpacity(0.6),
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        '$firstStart - $lastEnd',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: colorScheme.onSurfaceVariant.withOpacity(0.7),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
+                          color: color.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          timeStr,
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: isCompleted ? color.withOpacity(0.6) : color,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  // Tags row
+                  if (category.isNotEmpty || project != null) ...[
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        _buildTag(
+                          category,
+                          colorScheme.surfaceContainerHigh,
+                          colorScheme.onSurfaceVariant,
+                        ),
+                        if (project != null) ...[
+                          const SizedBox(width: 6),
+                          _buildTag(project, color.withOpacity(0.15), color),
+                        ],
+                      ],
+                    ),
+                  ],
+                ],
+              ),
+            ),
+
+            // Right side: Play button (only if not completed)
+            if (!isCompleted) ...[
+              const SizedBox(width: 8),
+              GestureDetector(
+                onTap: () {
+                  HapticFeedback.lightImpact();
+                  // Se já está rodando essa tarefa, para
+                  if (_isRunning && _customTaskName == activityName) {
+                    _stopTimer();
+                  } else {
+                    // Para qualquer timer atual e inicia essa tarefa
+                    if (_isRunning) {
+                      _stopTimer();
+                    }
+                    setState(() {
+                      _taskNameController.text = activityName;
+                      _selectedCategory = category;
+                      _selectedProject = project;
+                    });
+                    _startTimer(customTask: activityName);
+                  }
+                },
+                child: Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: (_isRunning && _customTaskName == activityName)
+                        ? colorScheme.error.withOpacity(0.1)
+                        : color.withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    (_isRunning && _customTaskName == activityName)
+                        ? Icons.stop_rounded
+                        : Icons.play_arrow_rounded,
+                    color: (_isRunning && _customTaskName == activityName)
                         ? colorScheme.error
                         : color,
                     size: 20,
@@ -3807,106 +4083,212 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                 const SizedBox(height: 16),
 
                 // Categoria
-                Text(
-                  'Categoria',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w500,
-                    color: colorScheme.onSurfaceVariant,
-                  ),
+                Row(
+                  children: [
+                    Icon(
+                      Icons.category_outlined,
+                      size: 18,
+                      color: colorScheme.primary,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Categoria',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        color: colorScheme.onSurface,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: _categories.map((cat) {
-                    final isSelected = selectedCategory == cat;
-                    return GestureDetector(
-                      onTap: () => setModalState(() => selectedCategory = cat),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 8,
-                        ),
-                        decoration: BoxDecoration(
-                          color: isSelected
-                              ? colorScheme.primary.withOpacity(0.2)
-                              : colorScheme.surfaceContainerHighest.withOpacity(
-                                  0.5,
-                                ),
-                          borderRadius: BorderRadius.circular(20),
-                          border: isSelected
-                              ? Border.all(color: colorScheme.primary)
-                              : null,
-                        ),
-                        child: Text(
-                          cat,
-                          style: TextStyle(
+                const SizedBox(height: 10),
+                SizedBox(
+                  height: 40,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: _categories.length,
+                    separatorBuilder: (_, __) => const SizedBox(width: 8),
+                    itemBuilder: (context, index) {
+                      final cat = _categories[index];
+                      final isSelected = selectedCategory == cat;
+                      return GestureDetector(
+                        onTap: () =>
+                            setModalState(() => selectedCategory = cat),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 8,
+                          ),
+                          decoration: BoxDecoration(
+                            gradient: isSelected
+                                ? LinearGradient(
+                                    colors: [
+                                      colorScheme.primary.withOpacity(0.2),
+                                      colorScheme.primary.withOpacity(0.1),
+                                    ],
+                                  )
+                                : null,
                             color: isSelected
-                                ? colorScheme.primary
-                                : colorScheme.onSurfaceVariant,
-                            fontWeight: isSelected
-                                ? FontWeight.w600
-                                : FontWeight.w400,
+                                ? null
+                                : colorScheme.surfaceContainerHighest
+                                      .withOpacity(0.5),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                              color: isSelected
+                                  ? colorScheme.primary
+                                  : colorScheme.outlineVariant.withOpacity(0.3),
+                              width: isSelected ? 1.5 : 1,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (isSelected)
+                                Padding(
+                                  padding: const EdgeInsets.only(right: 6),
+                                  child: Icon(
+                                    Icons.check_circle,
+                                    size: 16,
+                                    color: colorScheme.primary,
+                                  ),
+                                ),
+                              Text(
+                                cat,
+                                style: TextStyle(
+                                  color: isSelected
+                                      ? colorScheme.primary
+                                      : colorScheme.onSurfaceVariant,
+                                  fontWeight: isSelected
+                                      ? FontWeight.w600
+                                      : FontWeight.w500,
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                      ),
-                    );
-                  }).toList(),
+                      );
+                    },
+                  ),
                 ),
                 const SizedBox(height: 16),
 
                 // Projeto
-                Text(
-                  'Projeto (opcional)',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w500,
-                    color: colorScheme.onSurfaceVariant,
-                  ),
+                Row(
+                  children: [
+                    Icon(
+                      Icons.folder_outlined,
+                      size: 18,
+                      color: colorScheme.secondary,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Projeto',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        color: colorScheme.onSurface,
+                        fontSize: 14,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: colorScheme.surfaceContainerHighest,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        'opcional',
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 10),
                 // Projetos existentes
                 if (existingProjects.isNotEmpty) ...[
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      ...existingProjects.map((proj) {
+                  SizedBox(
+                    height: 36,
+                    child: ListView.separated(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: existingProjects.length,
+                      separatorBuilder: (_, __) => const SizedBox(width: 8),
+                      itemBuilder: (context, index) {
+                        final proj = existingProjects[index];
                         final isSelected = selectedProject == proj;
                         return GestureDetector(
                           onTap: () => setModalState(() {
                             selectedProject = isSelected ? null : proj;
                             projectController.text = isSelected ? '' : proj;
                           }),
-                          child: Container(
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
                             padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
+                              horizontal: 14,
                               vertical: 6,
                             ),
                             decoration: BoxDecoration(
+                              gradient: isSelected
+                                  ? LinearGradient(
+                                      colors: [
+                                        colorScheme.secondary.withOpacity(0.2),
+                                        colorScheme.secondary.withOpacity(0.1),
+                                      ],
+                                    )
+                                  : null,
                               color: isSelected
-                                  ? colorScheme.secondary.withOpacity(0.2)
+                                  ? null
                                   : colorScheme.surfaceContainerHighest
                                         .withOpacity(0.5),
                               borderRadius: BorderRadius.circular(16),
-                              border: isSelected
-                                  ? Border.all(color: colorScheme.secondary)
-                                  : null,
-                            ),
-                            child: Text(
-                              proj,
-                              style: TextStyle(
+                              border: Border.all(
                                 color: isSelected
                                     ? colorScheme.secondary
-                                    : colorScheme.onSurfaceVariant,
-                                fontSize: 13,
+                                    : colorScheme.outlineVariant.withOpacity(
+                                        0.3,
+                                      ),
+                                width: isSelected ? 1.5 : 1,
                               ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                if (isSelected)
+                                  Padding(
+                                    padding: const EdgeInsets.only(right: 6),
+                                    child: Icon(
+                                      Icons.check_circle,
+                                      size: 14,
+                                      color: colorScheme.secondary,
+                                    ),
+                                  ),
+                                Text(
+                                  proj,
+                                  style: TextStyle(
+                                    color: isSelected
+                                        ? colorScheme.secondary
+                                        : colorScheme.onSurfaceVariant,
+                                    fontSize: 12,
+                                    fontWeight: isSelected
+                                        ? FontWeight.w600
+                                        : FontWeight.w500,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         );
-                      }),
-                    ],
+                      },
+                    ),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 12),
                 ],
                 // Campo para novo projeto
                 TextField(
