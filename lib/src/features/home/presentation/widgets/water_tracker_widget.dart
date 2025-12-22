@@ -273,37 +273,39 @@ class _AnimatedWaterDropState extends State<_AnimatedWaterDrop>
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (context, child) {
-        return Transform.scale(
-          scale: widget.isComplete ? _pulseAnimation.value : 1.0,
-          child: Container(
-            width: 56,
-            height: 56,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: widget.isComplete
-                    ? [const Color(0xFF4CAF50), const Color(0xFF81C784)]
-                    : [
-                        WaterTrackerWidget._waterColor,
-                        WaterTrackerWidget._waterColorDark,
-                      ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
+    return RepaintBoundary(
+      child: AnimatedBuilder(
+        animation: _controller,
+        builder: (context, child) {
+          return Transform.scale(
+            scale: widget.isComplete ? _pulseAnimation.value : 1.0,
+            child: Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: widget.isComplete
+                      ? [const Color(0xFF4CAF50), const Color(0xFF81C784)]
+                      : [
+                          WaterTrackerWidget._waterColor,
+                          WaterTrackerWidget._waterColorDark,
+                        ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(16),
               ),
-              borderRadius: BorderRadius.circular(16),
+              child: Icon(
+                widget.isComplete
+                    ? Icons.check_circle_rounded
+                    : Icons.water_drop_rounded,
+                color: Colors.white,
+                size: 28,
+              ),
             ),
-            child: Icon(
-              widget.isComplete
-                  ? Icons.check_circle_rounded
-                  : Icons.water_drop_rounded,
-              color: Colors.white,
-              size: 28,
-            ),
-          ),
-        );
-      },
+          );
+        },
+      ),
     );
   }
 }
@@ -476,40 +478,46 @@ class _AddWaterButtonState extends State<_AddWaterButton>
         widget.onTap();
       },
       onTapCancel: () => _controller.reverse(),
-      child: AnimatedBuilder(
-        animation: _controller,
-        builder: (context, child) {
-          return Transform.scale(
-            scale: _scaleAnimation.value,
-            child: Container(
-              height: 48,
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [
-                    WaterTrackerWidget._waterColor,
-                    WaterTrackerWidget._waterColorDark,
+      child: RepaintBoundary(
+        child: AnimatedBuilder(
+          animation: _controller,
+          builder: (context, child) {
+            return Transform.scale(
+              scale: _scaleAnimation.value,
+              child: Container(
+                height: 48,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [
+                      WaterTrackerWidget._waterColor,
+                      WaterTrackerWidget._waterColorDark,
+                    ],
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(
+                      Icons.add_rounded,
+                      color: Colors.white,
+                      size: 22,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      '${l10n.waterAddGlass} (${widget.glassSizeMl}ml)',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
+                    ),
                   ],
                 ),
-                borderRadius: BorderRadius.circular(12),
               ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.add_rounded, color: Colors.white, size: 22),
-                  const SizedBox(width: 8),
-                  Text(
-                    '${l10n.waterAddGlass} (${widget.glassSizeMl}ml)',
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
+            );
+          },
+        ),
       ),
     );
   }

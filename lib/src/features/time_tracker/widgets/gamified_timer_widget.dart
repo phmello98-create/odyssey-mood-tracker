@@ -177,9 +177,7 @@ class _GamifiedTimerWidgetState extends State<GamifiedTimerWidget>
 
   Widget _buildSessionStatus(bool isDark, ColorScheme colorScheme) {
     // Determine colors based on state
-    const breakColor = Color(
-      0xFF4ECDC4,
-    ); // Keep generic nice teal for break
+    const breakColor = Color(0xFF4ECDC4); // Keep generic nice teal for break
     final activeColor = widget.accentColor;
 
     return AnimatedSwitcher(
@@ -234,172 +232,181 @@ class _GamifiedTimerWidgetState extends State<GamifiedTimerWidget>
     bool isDark,
     ColorScheme colorScheme,
   ) {
-    return AnimatedBuilder(
-      animation: Listenable.merge([
-        _pulseAnimation,
-        _glowAnimation,
-        _particleController,
-      ]),
-      builder: (context, child) {
-        final pulse = widget.isRunning ? _pulseAnimation.value : 1.0;
-        final glow = _glowAnimation.value;
+    // Performance: RepaintBoundary isola a área de repaint das animações
+    return RepaintBoundary(
+      child: AnimatedBuilder(
+        animation: Listenable.merge([
+          _pulseAnimation,
+          _glowAnimation,
+          _particleController,
+        ]),
+        builder: (context, child) {
+          final pulse = widget.isRunning ? _pulseAnimation.value : 1.0;
+          final glow = _glowAnimation.value;
 
-        return Transform.scale(
-          scale: pulse,
-          child: SizedBox(
-            width: 300,
-            height: 300,
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                // Partículas orbitando (quando rodando)
-                if (widget.isRunning) ..._buildParticles(),
+          return Transform.scale(
+            scale: pulse,
+            child: SizedBox(
+              width: 300,
+              height: 300,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  // Partículas orbitando (quando rodando)
+                  if (widget.isRunning) ..._buildParticles(),
 
-                // Glow externo animado
-                Container(
-                  width: 290,
-                  height: 290,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: widget.accentColor.withValues(alpha: glow * 0.5),
-                        blurRadius: 40,
-                        spreadRadius: 5,
-                      ),
-                    ],
-                  ),
-                ),
-
-                // Anel externo neumorphic
-                Container(
-                  width: 280,
-                  height: 280,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: baseColor,
-                    boxShadow: [
-                      // Sombra externa (profundidade)
-                      BoxShadow(
-                        color: shadowDark,
-                        offset: const Offset(8, 8),
-                        blurRadius: 20,
-                      ),
-                      // Luz interna (elevação)
-                      BoxShadow(
-                        color: shadowLight,
-                        offset: const Offset(-8, -8),
-                        blurRadius: 20,
-                      ),
-                    ],
-                  ),
-                ),
-
-                // Anel de progresso
-                SizedBox(
-                  width: 260,
-                  height: 260,
-                  child: CustomPaint(
-                    painter: _NeumorphicProgressPainter(
-                      progress: progress,
-                      color: widget.isBreak
-                          ? const Color(0xFF4ECDC4)
-                          : widget.accentColor,
-                      backgroundColor: isDark
-                          ? Colors.white10
-                          : Colors.black.withValues(alpha: 0.05),
-                      strokeWidth: 12,
-                      glowIntensity: glow,
-                    ),
-                  ),
-                ),
-
-                // Centro com tempo (estilo 3D inset)
-                Container(
-                  width: 200,
-                  height: 200,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: baseColor,
-                    boxShadow: [
-                      // Sombra interna (pressed effect)
-                      BoxShadow(
-                        color: shadowDark,
-                        offset: const Offset(-4, -4),
-                        blurRadius: 10,
-                      ),
-                      BoxShadow(
-                        color: shadowLight,
-                        offset: const Offset(4, 4),
-                        blurRadius: 10,
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      // Emoji animado
-                      TweenAnimationBuilder<double>(
-                        tween: Tween(begin: 0.9, end: 1.0),
-                        duration: const Duration(milliseconds: 800),
-                        curve: Curves.elasticOut,
-                        builder: (context, scale, child) {
-                          return Transform.scale(
-                            scale: scale,
-                            child: Text(
-                              widget.isBreak
-                                  ? '☕'
-                                  : (widget.isRunning ? '🔥' : '🍅'),
-                              style: const TextStyle(fontSize: 36),
-                            ),
-                          );
-                        },
-                      ),
-                      const SizedBox(height: 4),
-                      // Tempo
-                      ShaderMask(
-                        shaderCallback: (bounds) => LinearGradient(
-                          colors: [
-                            widget.accentColor,
-                            widget.accentColor.withValues(alpha: 0.7),
-                          ],
-                        ).createShader(bounds),
-                        child: Text(
-                          timeString,
-                          style: const TextStyle(
-                            fontSize: 44,
-                            fontWeight: FontWeight.w200,
-                            color: Colors.white,
-                            fontFeatures: [FontFeature.tabularFigures()],
+                  // Glow externo animado
+                  Container(
+                    width: 290,
+                    height: 290,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: widget.accentColor.withValues(
+                            alpha: glow * 0.5,
                           ),
-                        ),
-                      ),
-                      // Task name
-                      if (widget.taskName != null) ...[
-                        const SizedBox(height: 4),
-                        Text(
-                          widget.taskName!,
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: isDark ? Colors.white54 : Colors.black45,
-                            fontWeight: FontWeight.w500,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                          blurRadius: 40,
+                          spreadRadius: 5,
                         ),
                       ],
-                    ],
+                    ),
                   ),
-                ),
 
-                // Combo indicator (se tiver múltiplas sessões)
-                if (widget.completedSessions > 0)
-                  Positioned(top: 20, right: 20, child: _buildComboIndicator()),
-              ],
+                  // Anel externo neumorphic
+                  Container(
+                    width: 280,
+                    height: 280,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: baseColor,
+                      boxShadow: [
+                        // Sombra externa (profundidade)
+                        BoxShadow(
+                          color: shadowDark,
+                          offset: const Offset(8, 8),
+                          blurRadius: 20,
+                        ),
+                        // Luz interna (elevação)
+                        BoxShadow(
+                          color: shadowLight,
+                          offset: const Offset(-8, -8),
+                          blurRadius: 20,
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // Anel de progresso
+                  SizedBox(
+                    width: 260,
+                    height: 260,
+                    child: CustomPaint(
+                      painter: _NeumorphicProgressPainter(
+                        progress: progress,
+                        color: widget.isBreak
+                            ? const Color(0xFF4ECDC4)
+                            : widget.accentColor,
+                        backgroundColor: isDark
+                            ? Colors.white10
+                            : Colors.black.withValues(alpha: 0.05),
+                        strokeWidth: 12,
+                        glowIntensity: glow,
+                      ),
+                    ),
+                  ),
+
+                  // Centro com tempo (estilo 3D inset)
+                  Container(
+                    width: 200,
+                    height: 200,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: baseColor,
+                      boxShadow: [
+                        // Sombra interna (pressed effect)
+                        BoxShadow(
+                          color: shadowDark,
+                          offset: const Offset(-4, -4),
+                          blurRadius: 10,
+                        ),
+                        BoxShadow(
+                          color: shadowLight,
+                          offset: const Offset(4, 4),
+                          blurRadius: 10,
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        // Emoji animado
+                        TweenAnimationBuilder<double>(
+                          tween: Tween(begin: 0.9, end: 1.0),
+                          duration: const Duration(milliseconds: 800),
+                          curve: Curves.elasticOut,
+                          builder: (context, scale, child) {
+                            return Transform.scale(
+                              scale: scale,
+                              child: Text(
+                                widget.isBreak
+                                    ? '☕'
+                                    : (widget.isRunning ? '🔥' : '🍅'),
+                                style: const TextStyle(fontSize: 36),
+                              ),
+                            );
+                          },
+                        ),
+                        const SizedBox(height: 4),
+                        // Tempo
+                        ShaderMask(
+                          shaderCallback: (bounds) => LinearGradient(
+                            colors: [
+                              widget.accentColor,
+                              widget.accentColor.withValues(alpha: 0.7),
+                            ],
+                          ).createShader(bounds),
+                          child: Text(
+                            timeString,
+                            style: const TextStyle(
+                              fontSize: 44,
+                              fontWeight: FontWeight.w200,
+                              color: Colors.white,
+                              fontFeatures: [FontFeature.tabularFigures()],
+                            ),
+                          ),
+                        ),
+                        // Task name
+                        if (widget.taskName != null) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            widget.taskName!,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: isDark ? Colors.white54 : Colors.black45,
+                              fontWeight: FontWeight.w500,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+
+                  // Combo indicator (se tiver múltiplas sessões)
+                  if (widget.completedSessions > 0)
+                    Positioned(
+                      top: 20,
+                      right: 20,
+                      child: _buildComboIndicator(),
+                    ),
+                ],
+              ),
             ),
-          ),
-        );
-      },
+          );
+        },
+      ),
     );
   }
 

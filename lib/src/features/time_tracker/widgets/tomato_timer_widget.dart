@@ -151,49 +151,54 @@ class _TomatoTimerWidgetState extends State<TomatoTimerWidget>
             } else {
               widget.onStart();
             }
-          },
-          child: AnimatedBuilder(
-            animation: Listenable.merge([_pulseAnimation, _bounceAnimation]),
-            builder: (context, child) {
-              return Transform.scale(
-                scale: _pulseAnimation.value * _bounceAnimation.value,
-                child: child,
-              );
-            },
-            child: SizedBox(
-              width: 280,
-              height: 320,
-              child: CustomPaint(
-                painter: _TomatoPainter(
-                  progress: progress,
-                  isBreak: widget.isBreak,
-                  isRunning: widget.isRunning,
-                ),
-                child: Center(
-                  child: Padding(
-                    padding: const EdgeInsets.only(top: 30),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        // Tempo
-                        Text(
-                          timeString,
-                          style: TextStyle(
-                            fontSize: 52,
-                            fontWeight: FontWeight.w700,
-                            color: colors.onSurface,
-                            fontFeatures: const [FontFeature.tabularFigures()],
+          }, // Added comma
+          // Performance: RepaintBoundary isola a animação do timer
+          child: RepaintBoundary(
+            child: AnimatedBuilder(
+              animation: Listenable.merge([_pulseAnimation, _bounceAnimation]),
+              builder: (context, child) {
+                return Transform.scale(
+                  scale: _pulseAnimation.value * _bounceAnimation.value,
+                  child: child,
+                );
+              },
+              child: SizedBox(
+                width: 280,
+                height: 320,
+                child: CustomPaint(
+                  painter: _TomatoPainter(
+                    progress: progress,
+                    isBreak: widget.isBreak,
+                    isRunning: widget.isRunning,
+                  ),
+                  child: Center(
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: 30),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // Tempo
+                          Text(
+                            timeString,
+                            style: TextStyle(
+                              fontSize: 52,
+                              fontWeight: FontWeight.w700,
+                              color: colors.onSurface,
+                              fontFeatures: const [
+                                FontFeature.tabularFigures(),
+                              ],
+                            ),
                           ),
-                        ),
-                        Text(
-                          AppLocalizations.of(context)!.min,
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
-                            color: colors.onSurfaceVariant,
+                          Text(
+                            AppLocalizations.of(context)!.min,
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
+                              color: colors.onSurfaceVariant,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -201,7 +206,6 @@ class _TomatoTimerWidgetState extends State<TomatoTimerWidget>
             ),
           ),
         ),
-
         const SizedBox(height: 24),
 
         // Session indicators

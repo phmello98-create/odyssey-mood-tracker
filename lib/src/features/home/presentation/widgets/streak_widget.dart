@@ -110,22 +110,24 @@ class _StreakWidgetState extends ConsumerState<StreakWidget>
                       crossAxisAlignment: CrossAxisAlignment.baseline,
                       textBaseline: TextBaseline.alphabetic,
                       children: [
-                        AnimatedBuilder(
-                          animation: _countController,
-                          builder: (context, child) {
-                            final progress = Curves.easeOut.transform(
-                              _countController.value.clamp(0.0, 1.0),
-                            );
-                            return Text(
-                              '${(_currentStreak * progress).round()}',
-                              style: const TextStyle(
-                                fontSize: 28,
-                                fontWeight: FontWeight.bold,
-                                color: fireColor,
-                                height: 1,
-                              ),
-                            );
-                          },
+                        RepaintBoundary(
+                          child: AnimatedBuilder(
+                            animation: _countController,
+                            builder: (context, child) {
+                              final progress = Curves.easeOut.transform(
+                                _countController.value.clamp(0.0, 1.0),
+                              );
+                              return Text(
+                                '${(_currentStreak * progress).round()}',
+                                style: const TextStyle(
+                                  fontSize: 28,
+                                  fontWeight: FontWeight.bold,
+                                  color: fireColor,
+                                  height: 1,
+                                ),
+                              );
+                            },
+                          ),
                         ),
                         const SizedBox(width: 4),
                         Text(
