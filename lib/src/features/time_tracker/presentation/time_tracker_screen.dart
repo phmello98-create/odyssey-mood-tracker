@@ -615,6 +615,33 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
     _pulseController.repeat(reverse: true);
   }
 
+  /// Salva um registro de sessão Pomodoro no repositório
+  void _savePomodoroRecord(TimerState timerState) {
+    final repo = ref.read(timeTrackingRepositoryProvider);
+    final now = DateTime.now();
+    final duration = timerState.pomodoroDuration;
+    final startTime = now.subtract(duration);
+
+    final record = TimeTrackingRecord(
+      id: 'pomodoro_${DateTime.now().millisecondsSinceEpoch}',
+      activityName: timerState.taskName ?? 'Pomodoro',
+      iconCode: Icons.timer_rounded.codePoint,
+      startTime: startTime,
+      endTime: now,
+      duration: duration,
+      category: 'Pomodoro',
+      project: timerState.project,
+      isCompleted: true,
+      colorValue: const Color(0xFFE74C3C).value, // Vermelho tomate
+    );
+
+    repo.addTimeTrackingRecord(record);
+
+    debugPrint(
+      '[Pomodoro] Sessão salva: ${record.activityName} - ${duration.inMinutes}min',
+    );
+  }
+
   String _formatDuration(Duration duration) {
     String twoDigits(int n) => n.toString().padLeft(2, '0');
     String hours = twoDigits(duration.inHours.remainder(24));
@@ -721,6 +748,18 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
     if (timerState.isPomodoroMode) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
+          // Detectar conclusão de sessão de foco (NÃO pausa)
+          // Quando sessions aumenta e não está em break, uma sessão foi concluída
+          final sessionCompleted =
+              timerState.pomodoroSessions > _pomodoroSessions &&
+              !timerState.isPomodoroBreak &&
+              _pomodoroSessions > 0;
+
+          // Salvar registro de Pomodoro quando sessão completa
+          if (sessionCompleted && !_isPomodoroBreak) {
+            _savePomodoroRecord(timerState);
+          }
+
           final needsUpdate =
               _isPomodoroRunning != timerState.isRunning ||
               _isPomodoroBreak != timerState.isPomodoroBreak ||
@@ -2334,130 +2373,306 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
   ) {
     showModalBottomSheet(
       context: context,
-      backgroundColor: Theme.of(context).colorScheme.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (context) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.45,
+        minChildSize: 0.3,
+        maxChildSize: 0.95,
+        builder: (context, scrollController) => Container(
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          ),
           child: Column(
-            mainAxisSize: MainAxisSize.min,
             children: [
-              // Handle
-              Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.outlineVariant,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              const SizedBox(height: 12),
-              // Header
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Histórico',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Theme.of(
-                        context,
-                      ).colorScheme.surfaceContainerHighest,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      '${allRecords.length} registros',
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        fontSize: 12,
+              // Handle draggável
+              GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  child: Center(
+                    child: Container(
+                      width: 40,
+                      height: 5,
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.outlineVariant,
+                        borderRadius: BorderRadius.circular(2.5),
                       ),
                     ),
                   ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              // Lista
-              Flexible(
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(
-                    maxHeight: MediaQuery.of(context).size.height * 0.35,
-                  ),
-                  child: allRecords.isEmpty
-                      ? Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 40),
-                          child: Column(
-                            children: [
-                              Icon(
-                                Icons.history,
-                                size: 48,
-                                color: Theme.of(
-                                  context,
-                                ).colorScheme.onSurfaceVariant.withOpacity(0.3),
-                              ),
-                              const SizedBox(height: 12),
-                              Text(
-                                'Nenhum registro ainda',
-                                style: TextStyle(
-                                  color: Theme.of(
-                                    context,
-                                  ).colorScheme.onSurfaceVariant,
-                                ),
-                              ),
-                            ],
-                          ),
-                        )
-                      : ListView.builder(
-                          shrinkWrap: true,
-                          itemCount: allRecords.length > 15
-                              ? 15
-                              : allRecords
-                                    .length, // Limita para abrir mais rápido
-                          itemBuilder: (context, index) {
-                            final record = allRecords[index];
-                            final showDateHeader =
-                                index == 0 ||
-                                !_isSameDay(
-                                  record.startTime,
-                                  allRecords[index - 1].startTime,
-                                );
-
-                            return Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                if (showDateHeader) ...[
-                                  if (index > 0) const SizedBox(height: 12),
-                                  Text(
-                                    _formatDateHeader(record.startTime),
-                                    style: TextStyle(
-                                      color: Theme.of(
-                                        context,
-                                      ).colorScheme.primary,
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 11,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 6),
-                                ],
-                                _buildRecordCard(record),
-                              ],
-                            );
-                          },
-                        ),
                 ),
+              ),
+              // Header fixo
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.history_rounded,
+                          size: 24,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                        const SizedBox(width: 10),
+                        Text(
+                          'Histórico',
+                          style: Theme.of(context).textTheme.titleLarge
+                              ?.copyWith(fontWeight: FontWeight.w700),
+                        ),
+                      ],
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.primary.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        '${allRecords.length} registros',
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.primary,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(height: 1),
+              // Lista scrollável
+              Expanded(
+                child: allRecords.isEmpty
+                    ? _buildEmptyHistoryState()
+                    : ListView.builder(
+                        controller: scrollController,
+                        padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+                        itemCount: allRecords.length,
+                        itemBuilder: (context, index) {
+                          final record = allRecords[index];
+                          final showDateHeader =
+                              index == 0 ||
+                              !_isSameDay(
+                                record.startTime,
+                                allRecords[index - 1].startTime,
+                              );
+
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              if (showDateHeader) ...[
+                                if (index > 0) const SizedBox(height: 16),
+                                _buildDateHeader(record.startTime),
+                                const SizedBox(height: 10),
+                              ],
+                              _buildHistoryRecordCard(record),
+                            ],
+                          );
+                        },
+                      ),
               ),
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyHistoryState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 60),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 80,
+              height: 80,
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.history_rounded,
+                size: 40,
+                color: Theme.of(
+                  context,
+                ).colorScheme.onSurfaceVariant.withOpacity(0.4),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Nenhum registro ainda',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Comece a rastrear seu tempo!',
+              style: TextStyle(
+                fontSize: 13,
+                color: Theme.of(
+                  context,
+                ).colorScheme.onSurfaceVariant.withOpacity(0.7),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDateHeader(DateTime date) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: colorScheme.primary.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        _formatDateHeader(date),
+        style: TextStyle(
+          color: colorScheme.primary,
+          fontWeight: FontWeight.w600,
+          fontSize: 12,
+        ),
+      ),
+    );
+  }
+
+  /// Card específico para o histórico com visual mais compacto
+  Widget _buildHistoryRecordCard(TimeTrackingRecord record) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final color = record.colorValue != null
+        ? Color(record.colorValue!)
+        : _getActivityColor(record.activityName);
+
+    final hours = record.duration.inHours;
+    final minutes = record.duration.inMinutes.remainder(60);
+    final timeStr = hours > 0 ? '${hours}h ${minutes}m' : '${minutes}m';
+
+    final startTime = DateFormat('HH:mm').format(record.startTime);
+    final endTime = DateFormat('HH:mm').format(record.endTime);
+
+    // Detectar se é registro de Pomodoro
+    final isPomodoro =
+        record.activityName.toLowerCase().contains('pomodoro') ||
+        record.category?.toLowerCase().contains('pomodoro') == true;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerHighest.withOpacity(0.5),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: colorScheme.outlineVariant.withOpacity(0.2)),
+      ),
+      child: Row(
+        children: [
+          // Ícone
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [color.withOpacity(0.2), color.withOpacity(0.1)],
+              ),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(
+              isPomodoro
+                  ? Icons.timer_rounded
+                  : IconData(record.iconCode, fontFamily: 'MaterialIcons'),
+              color: color,
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 12),
+          // Info
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        record.activityName,
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                          color: colorScheme.onSurface,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    if (isPomodoro)
+                      Container(
+                        margin: const EdgeInsets.only(left: 8),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE74C3C).withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: const Text('🍅', style: TextStyle(fontSize: 10)),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    Icon(
+                      Icons.schedule_rounded,
+                      size: 12,
+                      color: colorScheme.onSurfaceVariant.withOpacity(0.6),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      '$startTime - $endTime',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: colorScheme.onSurfaceVariant.withOpacity(0.7),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          // Duração
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              timeStr,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: color,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
