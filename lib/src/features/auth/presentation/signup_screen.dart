@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'providers/auth_providers.dart';
 import 'package:odyssey/src/localization/app_localizations.dart';
+import 'package:odyssey/src/providers/locale_provider.dart';
 
 /// Tela de cadastro com email e senha
 class SignupScreen extends ConsumerStatefulWidget {
@@ -325,6 +326,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen>
 
   Widget _buildTermsCheckbox(ColorScheme colors) {
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Checkbox(
           value: _acceptedTerms,
@@ -333,26 +335,42 @@ class _SignupScreenState extends ConsumerState<SignupScreen>
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
         ),
         Expanded(
-          child: GestureDetector(
-            onTap: () => setState(() => _acceptedTerms = !_acceptedTerms),
-            child: RichText(
-              text: TextSpan(
+          child: Padding(
+            padding: const EdgeInsets.only(top: 12),
+            child: Text.rich(
+              TextSpan(
                 style: TextStyle(fontSize: 13, color: colors.onSurfaceVariant),
                 children: [
-                  const TextSpan(text: 'Li e concordo com os '),
                   TextSpan(
-                    text: 'Termos de Uso',
-                    style: TextStyle(
-                      color: colors.primary,
-                      fontWeight: FontWeight.w600,
+                    text: AppLocalizations.of(context)!.liEConcordoComOs,
+                  ),
+                  WidgetSpan(
+                    child: GestureDetector(
+                      onTap: _showTermsOfUse,
+                      child: Text(
+                        AppLocalizations.of(context)!.termosDeUso,
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: colors.primary,
+                          fontWeight: FontWeight.w600,
+                          decoration: TextDecoration.underline,
+                        ),
+                      ),
                     ),
                   ),
                   const TextSpan(text: ' e '),
-                  TextSpan(
-                    text: 'Política de Privacidade',
-                    style: TextStyle(
-                      color: colors.primary,
-                      fontWeight: FontWeight.w600,
+                  WidgetSpan(
+                    child: GestureDetector(
+                      onTap: _showPrivacyPolicy,
+                      child: Text(
+                        AppLocalizations.of(context)!.politicaDePrivacidade,
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: colors.primary,
+                          fontWeight: FontWeight.w600,
+                          decoration: TextDecoration.underline,
+                        ),
+                      ),
                     ),
                   ),
                 ],
@@ -363,6 +381,202 @@ class _SignupScreenState extends ConsumerState<SignupScreen>
       ],
     );
   }
+
+  void _showTermsOfUse() {
+    HapticFeedback.selectionClick();
+    final isPortuguese =
+        ref.read(localeStateProvider).currentLocale.languageCode == 'pt';
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => _LegalDocumentSheet(
+        title: isPortuguese ? 'Termos de Uso' : 'Terms of Use',
+        content: isPortuguese ? _termsOfUsePt : _termsOfUseEn,
+      ),
+    );
+  }
+
+  void _showPrivacyPolicy() {
+    HapticFeedback.selectionClick();
+    final isPortuguese =
+        ref.read(localeStateProvider).currentLocale.languageCode == 'pt';
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => _LegalDocumentSheet(
+        title: isPortuguese ? 'Política de Privacidade' : 'Privacy Policy',
+        content: isPortuguese ? _privacyPolicyPt : _privacyPolicyEn,
+      ),
+    );
+  }
+
+  static const _termsOfUsePt = '''
+TERMOS DE USO - ODYSSEY
+
+Última atualização: Dezembro 2025
+
+Bem-vindo ao Odyssey! Ao usar nosso aplicativo, você concorda com estes termos.
+
+1. ACEITAÇÃO DOS TERMOS
+Ao acessar e usar o Odyssey, você aceita e concorda em cumprir estes Termos de Uso.
+
+2. DESCRIÇÃO DO SERVIÇO
+O Odyssey é um aplicativo de produtividade pessoal e bem-estar que oferece:
+• Rastreamento de humor e emoções
+• Gerenciamento de hábitos e tarefas
+• Timer Pomodoro para foco
+• Diário pessoal
+• Biblioteca de leitura
+• Gamificação para motivação
+
+3. CONTA DO USUÁRIO
+• Você pode usar o app como visitante (dados locais) ou criar uma conta
+• Você é responsável por manter a segurança de sua conta
+
+4. USO ACEITÁVEL
+Você concorda em usar o app apenas para fins pessoais e legais.
+
+5. PROPRIEDADE INTELECTUAL
+O Odyssey e todo seu conteúdo são protegidos por direitos autorais.
+
+6. DADOS E BACKUP
+• Seus dados são armazenados localmente no dispositivo
+• Usuários com conta podem sincronizar na nuvem (Firebase)
+
+7. ISENÇÃO DE GARANTIAS
+O app é fornecido "como está", sem garantias.
+
+8. LEI APLICÁVEL
+Estes termos são regidos pelas leis do Brasil (LGPD aplicável).
+
+Ao usar o Odyssey, você confirma que leu e concorda com estes Termos de Uso.
+''';
+
+  static const _termsOfUseEn = '''
+TERMS OF USE - ODYSSEY
+
+Last updated: December 2025
+
+Welcome to Odyssey! By using our app, you agree to these terms.
+
+1. ACCEPTANCE OF TERMS
+By accessing and using Odyssey, you accept and agree to comply with these Terms of Use.
+
+2. DESCRIPTION OF SERVICE
+Odyssey is a personal productivity and wellness app that offers:
+• Mood and emotion tracking
+• Habit and task management
+• Pomodoro timer for focus
+• Personal diary
+• Reading library
+• Gamification for motivation
+
+3. USER ACCOUNT
+• You can use the app as a guest (local data) or create an account
+• You are responsible for maintaining the security of your account
+
+4. ACCEPTABLE USE
+You agree to use the app only for personal and legal purposes.
+
+5. INTELLECTUAL PROPERTY
+Odyssey and all its content are protected by copyright.
+
+6. DATA AND BACKUP
+• Your data is stored locally on the device
+• Users with an account can sync to the cloud (Firebase)
+
+7. DISCLAIMER OF WARRANTIES
+The app is provided "as is", without warranty.
+
+8. APPLICABLE LAW
+These terms are governed by the laws of Brazil (LGPD applicable).
+
+By using Odyssey, you confirm that you have read and agree to these Terms of Use.
+''';
+
+  static const _privacyPolicyPt = '''
+POLÍTICA DE PRIVACIDADE - ODYSSEY
+
+Última atualização: Dezembro 2025
+
+Sua privacidade é importante para nós.
+
+1. DADOS COLETADOS
+• Informações de perfil (nome, email)
+• Dados de uso do app (humor, hábitos, tarefas)
+• Dados de sincronização (se usar conta)
+
+2. USO DOS DADOS
+Seus dados são usados para:
+• Fornecer funcionalidades do app
+• Sincronização entre dispositivos
+• Melhorar a experiência do usuário
+
+3. ARMAZENAMENTO
+• Dados locais: armazenados criptografados no dispositivo
+• Dados na nuvem: Firebase (Google Cloud)
+
+4. COMPARTILHAMENTO
+Não vendemos nem compartilhamos seus dados pessoais com terceiros.
+
+5. SEUS DIREITOS (LGPD)
+Você tem direito a:
+• Acessar seus dados
+• Corrigir informações
+• Excluir sua conta e dados
+• Exportar seus dados
+
+6. SEGURANÇA
+Usamos criptografia e práticas de segurança para proteger seus dados.
+
+7. CONTATO
+suporte@odysseyapp.com.br
+
+Esta política pode ser atualizada periodicamente.
+''';
+
+  static const _privacyPolicyEn = '''
+PRIVACY POLICY - ODYSSEY
+
+Last updated: December 2025
+
+Your privacy is important to us.
+
+1. DATA COLLECTED
+• Profile information (name, email)
+• App usage data (mood, habits, tasks)
+• Sync data (if using account)
+
+2. USE OF DATA
+Your data is used to:
+• Provide app functionality
+• Sync between devices
+• Improve user experience
+
+3. STORAGE
+• Local data: encrypted storage on device
+• Cloud data: Firebase (Google Cloud)
+
+4. SHARING
+We do not sell or share your personal data with third parties.
+
+5. YOUR RIGHTS (LGPD)
+You have the right to:
+• Access your data
+• Correct information
+• Delete your account and data
+• Export your data
+
+6. SECURITY
+We use encryption and security practices to protect your data.
+
+7. CONTACT
+suporte@odysseyapp.com.br
+
+This policy may be updated periodically.
+''';
 
   Widget _buildErrorMessage(ColorScheme colors) {
     return Container(
@@ -552,6 +766,145 @@ class _SignupScreenState extends ConsumerState<SignupScreen>
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Widget para exibir documentos legais (Termos/Privacidade)
+class _LegalDocumentSheet extends StatelessWidget {
+  final String title;
+  final String content;
+
+  const _LegalDocumentSheet({required this.title, required this.content});
+
+  @override
+  Widget build(BuildContext context) {
+    return DraggableScrollableSheet(
+      initialChildSize: 0.85,
+      minChildSize: 0.5,
+      maxChildSize: 0.95,
+      builder: (context, scrollController) {
+        return Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFF1A1A2E), Color(0xFF16213E)],
+            ),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+          ),
+          child: Column(
+            children: [
+              // Handle
+              Container(
+                margin: const EdgeInsets.only(top: 12),
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+
+              // Header
+              Padding(
+                padding: const EdgeInsets.all(20),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF667EEA), Color(0xFF764BA2)],
+                        ),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: const Icon(
+                        Icons.description_rounded,
+                        color: Colors.white,
+                        size: 24,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Text(
+                        title,
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () => Navigator.pop(context),
+                      icon: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(
+                          Icons.close_rounded,
+                          color: Colors.white70,
+                          size: 20,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Divider
+              Divider(color: Colors.white.withOpacity(0.1), height: 1),
+
+              // Content
+              Expanded(
+                child: SingleChildScrollView(
+                  controller: scrollController,
+                  padding: const EdgeInsets.all(24),
+                  child: Text(
+                    content,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.white.withOpacity(0.8),
+                      height: 1.7,
+                    ),
+                  ),
+                ),
+              ),
+
+              // Footer
+              SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.pop(context),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF667EEA),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                      child: const Text(
+                        'Entendi',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

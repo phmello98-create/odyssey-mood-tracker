@@ -8,6 +8,7 @@ import 'package:odyssey/src/constants/app_themes.dart';
 import 'package:odyssey/src/features/auth/presentation/widgets/sign_in_dialog.dart';
 import 'package:odyssey/src/features/auth/presentation/signup_screen.dart';
 import 'package:odyssey/src/localization/app_localizations.dart';
+import 'package:odyssey/src/providers/locale_provider.dart';
 
 class LandingScreen extends ConsumerStatefulWidget {
   const LandingScreen({Key? key}) : super(key: key);
@@ -103,6 +104,12 @@ class _LandingScreenState extends ConsumerState<LandingScreen>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // Language Toggle Button (top-right)
+                    Align(
+                      alignment: Alignment.topRight,
+                      child: _buildLanguageToggle(theme, colors),
+                    ),
+                    const SizedBox(height: 8),
                     Expanded(
                       child: SingleChildScrollView(
                         child: Column(
@@ -124,7 +131,13 @@ class _LandingScreenState extends ConsumerState<LandingScreen>
                               width: 300,
                               padding: const EdgeInsets.only(bottom: 16),
                               child: Text(
-                                "Sua Jornada de\nHumor & Hábitos",
+                                ref
+                                            .watch(localeStateProvider)
+                                            .currentLocale
+                                            .languageCode ==
+                                        'pt'
+                                    ? "Sua Jornada de\nHumor & Hábitos"
+                                    : "Your Journey of\nMood & Habits",
                                 style: theme.textTheme.displaySmall?.copyWith(
                                   fontFamily: "Poppins",
                                   fontWeight: FontWeight.bold,
@@ -134,7 +147,13 @@ class _LandingScreenState extends ConsumerState<LandingScreen>
                               ),
                             ),
                             Text(
-                              "Não apenas registre, evolua. Gamifique sua rotina, controle seu humor e construa hábitos duradouros.",
+                              ref
+                                          .watch(localeStateProvider)
+                                          .currentLocale
+                                          .languageCode ==
+                                      'pt'
+                                  ? "Não apenas registre, evolua. Gamifique sua rotina, controle seu humor e construa hábitos duradouros."
+                                  : "Don't just record, evolve. Gamify your routine, control your mood and build lasting habits.",
                               style: theme.textTheme.bodyLarge?.copyWith(
                                 color: theme.colorScheme.onSurface.withOpacity(
                                   0.7,
@@ -316,6 +335,49 @@ class _LandingScreenState extends ConsumerState<LandingScreen>
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildLanguageToggle(ThemeData theme, OdysseyColorsExtension colors) {
+    final localeNotifier = ref.read(localeStateProvider.notifier);
+    final isPortuguese =
+        ref.watch(localeStateProvider).currentLocale.languageCode == 'pt';
+
+    return GestureDetector(
+      onTap: () {
+        HapticFeedback.lightImpact();
+        localeNotifier.toggleLocale();
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surface.withOpacity(0.3),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: theme.colorScheme.onSurface.withOpacity(0.15),
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.language_rounded,
+              size: 18,
+              color: theme.colorScheme.onSurface.withOpacity(0.8),
+            ),
+            const SizedBox(width: 6),
+            Text(
+              isPortuguese ? 'PT' : 'EN',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+                color: theme.colorScheme.onSurface.withOpacity(0.9),
+              ),
+            ),
+            const SizedBox(width: 4),
+            Icon(Icons.swap_horiz_rounded, size: 16, color: colors.accentPink),
+          ],
+        ),
       ),
     );
   }
