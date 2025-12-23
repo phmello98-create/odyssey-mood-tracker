@@ -33,7 +33,6 @@ import 'package:odyssey/src/features/home/presentation/widgets/rive_bottom_bar.d
 
 import 'dart:math' as math;
 import 'dart:io';
-import 'dart:ui';
 
 class OdysseyHome extends ConsumerStatefulWidget {
   const OdysseyHome({Key? key}) : super(key: key);

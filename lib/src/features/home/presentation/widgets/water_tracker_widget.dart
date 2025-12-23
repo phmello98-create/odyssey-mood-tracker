@@ -21,9 +21,9 @@ class WaterTrackerWidget extends ConsumerWidget {
     final colors = Theme.of(context).colorScheme;
 
     if (state.isLoading && state.record == null) {
-      return ModernHomeCard(
+      return const ModernHomeCard(
         accentColor: _waterColor,
-        child: const Center(
+        child: Center(
           child: SizedBox(
             height: 50,
             child: CircularProgressIndicator(strokeWidth: 2),
@@ -603,7 +603,7 @@ class _WaterSettingsButton extends ConsumerWidget {
           color: WaterTrackerWidget._waterColor.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(8),
         ),
-        child: Icon(
+        child: const Icon(
           Icons.tune_rounded,
           color: WaterTrackerWidget._waterColor,
           size: 18,
@@ -636,7 +636,7 @@ class _WaterSettingsButton extends ConsumerWidget {
                 children: [
                   Row(
                     children: [
-                      Icon(
+                      const Icon(
                         Icons.settings_rounded,
                         color: WaterTrackerWidget._waterColor,
                       ),

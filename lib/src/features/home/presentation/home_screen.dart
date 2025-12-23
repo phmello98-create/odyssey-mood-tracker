@@ -4,9 +4,8 @@ import 'dart:io';
 import 'dart:math';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
-import 'package:odyssey/src/providers/timer_provider.dart';
 import 'package:flutter/services.dart';
-import 'package:fl_chart/fl_chart.dart';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:hive_flutter/hive_flutter.dart';
@@ -17,15 +16,16 @@ import 'package:odyssey/src/utils/widgets/odyssey_card.dart';
 import 'package:odyssey/src/utils/navigation_provider.dart';
 import 'package:odyssey/src/features/mood_records/presentation/add_mood_record/add_mood_record_form.dart';
 import 'package:odyssey/src/features/mood_records/data/mood_log/mood_record_repository.dart';
-import 'package:odyssey/src/features/mood_records/domain/mood_log/mood_record.dart';
 import 'package:odyssey/src/features/habits/data/habit_repository.dart';
+import 'package:odyssey/src/features/home/presentation/widgets/home_daily_quote.dart';
+import 'package:odyssey/src/features/home/presentation/widgets/home_weekly_chart.dart';
+import 'package:odyssey/src/features/home/presentation/widgets/home_day_overview.dart';
+import 'package:odyssey/src/features/home/presentation/widgets/home_stats_section.dart';
 import 'package:odyssey/src/features/habits/domain/habit.dart';
 import 'package:odyssey/src/features/gamification/data/gamification_repository.dart';
 
 import 'package:odyssey/src/features/notes/data/notes_repository.dart';
 import 'package:odyssey/src/features/time_tracker/data/time_tracking_repository.dart';
-import 'package:odyssey/src/features/time_tracker/domain/time_tracking_record.dart';
-import 'package:odyssey/src/features/gamification/domain/user_stats.dart';
 
 import 'package:odyssey/src/utils/widgets/feedback_widgets.dart';
 import 'package:odyssey/src/utils/services/sound_service.dart';
@@ -68,7 +68,6 @@ import 'package:odyssey/src/features/community/presentation/providers/community_
 import 'package:odyssey/src/features/community/domain/post.dart';
 import 'package:odyssey/src/features/community/domain/topic.dart';
 import 'package:odyssey/src/features/community/presentation/widgets/user_avatar.dart';
-import 'package:odyssey/src/features/settings/presentation/settings_screen.dart';
 
 // Frases e insights profundos: Nietzsche, Spinoza, Maslow, Psicologia e Ciência
 const List<String> _dailyInsights = [
@@ -141,7 +140,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   bool _taskRepoInitialized = false;
   String? _expandedHabitId;
   String _currentInsight = '';
-  String _previousInsight = '';
+
   Timer? _insightTimer;
 
   // Tabs de Hábitos/Tarefas
@@ -151,14 +150,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   bool _isCalendarExpanded = false;
 
   // New variables for chart interactivity
-  int _focusTouchedIndex = -1; // For Focus Pie Chart interaction
-  final int _moodTouchedIndex = -1; // For Mood Pie Chart interaction
-
-  // NOTE: _selectedDate and _habitRepoInitialized are at lines 153-154
-  int _selectedChartIndex = 0; // 0: Habits, 1: Focus, 2: Mood
-  int _chartViewMode = 0; // 0: Trend, 1: Analysis
-  final bool _isQuoteVisible =
-      true; // Restoring this as it was flagged as unused but removal caused more errors? Or maybe not, but chart view logic depends on _selectedChartIndex.
 
   // Show/Hide completed items
   bool _showCompletedHabits = false;
@@ -169,9 +160,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   // Floating header scroll detection
   final ScrollController _scrollController = ScrollController();
-  bool _showFloatingHeader = false;
+  final bool _showFloatingHeader = false;
   Timer? _floatingHeaderTimer;
-  bool _isScrolling = false;
+  final bool _isScrolling = false;
 
   @override
   void initState() {
@@ -246,15 +237,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   void _setRandomInsight({bool animate = false}) {
     final newInsight = _dailyInsights[Random().nextInt(_dailyInsights.length)];
-
-    if (animate && mounted) {
-      _previousInsight = _currentInsight;
-      _insightController.forward(from: 0.0).then((_) {
-        setState(() => _currentInsight = newInsight);
-      });
-    } else {
-      setState(() => _currentInsight = newInsight);
-    }
+    setState(() => _currentInsight = newInsight);
   }
 
   @override
@@ -290,25 +273,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     showcase.ShowcaseService.startIfNeeded(showcase.ShowcaseTour.home, keys);
   }
 
-  void _startTour() {
-    final keys = [
-      _showcaseMood,
-      _showcaseHabits,
-      _showcaseStats,
-      _showcaseCalendar,
-      _showcaseTasks,
-      _showcaseInsights,
-      _showcaseAdd,
-    ];
-    showcase.ShowcaseService.start(showcase.ShowcaseTour.home, keys);
-  }
-
   bool _isSameDay(DateTime a, DateTime b) {
     return a.year == b.year && a.month == b.month && a.day == b.day;
-  }
-
-  bool _isToday(DateTime date) {
-    return _isSameDay(date, DateTime.now());
   }
 
   String _getGreeting() {
@@ -419,7 +385,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                               backgroundColor: Theme.of(context)
                                   .colorScheme
                                   .surfaceContainerHighest
-                                  .withOpacity(0.5),
+                                  .withValues(alpha: 0.5),
                             ),
                           ),
                           const SizedBox(width: 8),
@@ -476,7 +442,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   SliverToBoxAdapter(
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-                      child: _buildDailyQuoteWidget(),
+                      child: HomeDailyQuote(quote: _currentInsight),
                     ),
                   ),
 
@@ -486,7 +452,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   SliverToBoxAdapter(
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-                      child: _buildMoodSection(context),
+                      child: _buildMoodSection(context, avatarPath),
                     ),
                   ),
 
@@ -525,7 +491,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                           color: Theme.of(context)
                               .colorScheme
                               .surfaceContainerHighest
-                              .withOpacity(0.5),
+                              .withValues(alpha: 0.5),
                           borderRadius: BorderRadius.circular(16),
                         ),
                         child: Row(
@@ -652,7 +618,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   SliverToBoxAdapter(
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-                      child: _buildWeeklyChart(context),
+                      child: HomeStatsSection(
+                        habitRepoInitialized: _habitRepoInitialized,
+                      ),
                     ),
                   ),
 
@@ -725,9 +693,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
           decoration: BoxDecoration(
-            color: colors.surface.withOpacity(0.85),
+            color: colors.surface.withValues(alpha: 0.85),
             border: Border(
-              bottom: BorderSide(color: colors.outline.withOpacity(0.1)),
+              bottom: BorderSide(color: colors.outline.withValues(alpha: 0.1)),
             ),
           ),
           child: Row(
@@ -791,7 +759,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 child: Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: colors.surfaceContainerHighest.withOpacity(0.5),
+                    color: colors.surfaceContainerHighest.withValues(
+                      alpha: 0.5,
+                    ),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(
@@ -879,7 +849,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     Container(
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
-                        color: colors.primary.withOpacity(0.15),
+                        color: colors.primary.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Icon(
@@ -968,7 +938,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                             style: OutlinedButton.styleFrom(
                               padding: const EdgeInsets.symmetric(vertical: 12),
                               side: BorderSide(
-                                color: colors.primary.withOpacity(0.3),
+                                color: colors.primary.withValues(alpha: 0.3),
                               ),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12),
@@ -1006,7 +976,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           Icon(
             Icons.groups_rounded,
             size: 48,
-            color: colors.onSurfaceVariant.withOpacity(0.3),
+            color: colors.onSurfaceVariant.withValues(alpha: 0.3),
           ),
           const SizedBox(height: 12),
           Text(
@@ -1068,7 +1038,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         decoration: BoxDecoration(
           border: Border(
             bottom: BorderSide(
-              color: colors.outlineVariant.withOpacity(0.2),
+              color: colors.outlineVariant.withValues(alpha: 0.2),
               width: 1,
             ),
           ),
@@ -1116,7 +1086,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     style: TextStyle(
                       fontSize: 13,
                       height: 1.4,
-                      color: colors.onSurface.withOpacity(0.8),
+                      color: colors.onSurface.withValues(alpha: 0.8),
                     ),
                   ),
                   if (post.totalReactions > 0 || post.commentCount > 0)
@@ -1128,7 +1098,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                             Icon(
                               Icons.favorite_rounded,
                               size: 14,
-                              color: Colors.red.withOpacity(0.7),
+                              color: Colors.red.withValues(alpha: 0.7),
                             ),
                             const SizedBox(width: 4),
                             Text(
@@ -1144,7 +1114,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                             Icon(
                               Icons.chat_bubble_outline_rounded,
                               size: 14,
-                              color: colors.onSurfaceVariant.withOpacity(0.7),
+                              color: colors.onSurfaceVariant.withValues(
+                                alpha: 0.7,
+                              ),
                             ),
                             const SizedBox(width: 4),
                             Text(
@@ -1195,9 +1167,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       case HomeWidgetType.quickPomodoro:
         return const QuickPomodoroWidget();
       case HomeWidgetType.dailyQuote:
-        return _buildDailyQuoteWidget();
+        return HomeDailyQuote(quote: _currentInsight);
       case HomeWidgetType.weeklyChart:
-        return _buildWeeklyChartWidget();
+        return const HomeWeeklyChart();
       case HomeWidgetType.currentReading:
         return const CurrentReadingWidget();
       case HomeWidgetType.dailyGoals:
@@ -1217,198 +1189,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     }
   }
 
-  Widget _buildDailyQuoteWidget() {
-    return GestureDetector(
-      onTap: () {
-        HapticFeedback.mediumImpact();
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => const LibraryScreen(initialType: 2),
-          ),
-        );
-      },
-      child: Container(
-        padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: WellnessColors.purpleGradient,
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.circular(32),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Icon(
-                    Icons.format_quote_rounded,
-                    color: Colors.white,
-                    size: 20,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                const Text(
-                  'Inspiração do Dia',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Text(
-              _currentInsight,
-              style: const TextStyle(
-                fontSize: 16,
-                height: 1.5,
-                color: Colors.white,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            const SizedBox(height: 20),
-            Row(
-              children: [
-                Expanded(
-                  child: Container(
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.3),
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                    child: FractionallySizedBox(
-                      alignment: Alignment.centerLeft,
-                      widthFactor: 0.7, // Mock progress
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(2),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Text(
-                  'Dia ${DateTime.now().day}/30',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.white.withOpacity(0.8),
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildWeeklyChartWidget() {
-    final colors = Theme.of(context).colorScheme;
-    final days = ['S', 'T', 'Q', 'Q', 'S', 'S', 'D'];
-    final todayIndex = DateTime.now().weekday - 1;
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: colors.surface,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: colors.outline.withOpacity(0.1)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF26A69A).withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Icon(
-                  Icons.show_chart_rounded,
-                  color: Color(0xFF26A69A),
-                  size: 18,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Text(
-                'Atividade Semanal',
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                  color: colors.onSurface,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          SizedBox(
-            height: 60,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: List.generate(7, (index) {
-                final isToday = index == todayIndex;
-                final height = 15.0 + (index * 5) + (isToday ? 15 : 0);
-
-                return Column(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    Container(
-                      width: 24,
-                      height: height.clamp(10, 45),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: isToday
-                              ? [
-                                  const Color(0xFF26A69A),
-                                  const Color(0xFF26A69A).withOpacity(0.7),
-                                ]
-                              : [
-                                  const Color(0xFF26A69A).withOpacity(0.4),
-                                  const Color(0xFF26A69A).withOpacity(0.2),
-                                ],
-                          begin: Alignment.bottomCenter,
-                          end: Alignment.topCenter,
-                        ),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      days[index],
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: isToday ? FontWeight.w700 : FontWeight.w500,
-                        color: isToday
-                            ? const Color(0xFF26A69A)
-                            : colors.onSurfaceVariant.withOpacity(0.7),
-                      ),
-                    ),
-                  ],
-                );
-              }),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildHabitsWidgetCompact() {
     final colors = Theme.of(context).colorScheme;
     return GestureDetector(
@@ -1421,14 +1201,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         decoration: BoxDecoration(
           color: colors.surface,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: colors.outline.withOpacity(0.1)),
+          border: Border.all(color: colors.outline.withValues(alpha: 0.1)),
         ),
         child: Row(
           children: [
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: const Color(0xFF5C6BC0).withOpacity(0.15),
+                color: const Color(0xFF5C6BC0).withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: const Icon(
@@ -1471,13 +1251,28 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   // MOOD SECTION COMPACTO
   // ==========================================
   Widget _buildWellnessActivityCard() {
-    return _DayOverviewCard(
+    return HomeDayOverview(
       habitRepoInitialized: _habitRepoInitialized,
       taskRepoInitialized: _taskRepoInitialized,
+      onTapTasks: () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const TasksScreen()),
+      ),
+      onTapNotes: () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const NotesScreen()),
+      ),
+      onTapMood: () => showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (context) => const AddMoodRecordForm(),
+      ),
+      onTapTimer: () => ref.read(navigationProvider.notifier).goToTimer(),
     );
   }
 
-  Widget _buildMoodSection(BuildContext context) {
+  Widget _buildMoodSection(BuildContext context, String? avatarPath) {
     final colors = Theme.of(context).colorScheme;
 
     return Container(
@@ -1494,10 +1289,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             children: [
               CircleAvatar(
                 radius: 20,
-                backgroundImage: ref.read(settingsProvider).avatarPath != null
-                    ? FileImage(File(ref.read(settingsProvider).avatarPath!))
+                backgroundImage: avatarPath != null
+                    ? FileImage(File(avatarPath))
                     : null,
-                child: ref.read(settingsProvider).avatarPath == null
+                child: avatarPath == null
                     ? Icon(Icons.person, color: colors.onPrimaryContainer)
                     : null,
               ),
@@ -1572,7 +1367,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     vertical: 8,
                   ),
                   decoration: BoxDecoration(
-                    color: colors.primary.withOpacity(0.1),
+                    color: colors.primary.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Row(
@@ -1662,7 +1457,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                                   gradient: LinearGradient(
                                     colors: [
                                       colors.primary,
-                                      colors.primary.withOpacity(0.7),
+                                      colors.primary.withValues(alpha: 0.7),
                                     ],
                                     begin: Alignment.topLeft,
                                     end: Alignment.bottomRight,
@@ -1788,7 +1583,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               width: 42,
               height: 42,
               decoration: BoxDecoration(
-                color: color.withOpacity(0.12),
+                color: color.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Center(
@@ -1853,7 +1648,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                           fontWeight: FontWeight.w600,
                           color: isSelected
                               ? colors.primary
-                              : colors.onSurfaceVariant.withOpacity(0.6),
+                              : colors.onSurfaceVariant.withValues(alpha: 0.6),
                         ),
                       ),
                       const SizedBox(height: 4),
@@ -1901,7 +1696,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             decoration: BoxDecoration(
               color: _isCalendarExpanded
                   ? colors.primary
-                  : colors.onSurface.withOpacity(0.05),
+                  : colors.onSurface.withValues(alpha: 0.05),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(
@@ -1981,7 +1776,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                           vertical: 8,
                         ),
                         decoration: BoxDecoration(
-                          color: colors.primary.withOpacity(0.1),
+                          color: colors.primary.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Row(
@@ -2091,7 +1886,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
-                      color: colors.onSurfaceVariant.withOpacity(0.6),
+                      color: colors.onSurfaceVariant.withValues(alpha: 0.6),
                     ),
                   ),
                 ),
@@ -2161,11 +1956,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     return Column(mainAxisSize: MainAxisSize.min, children: days);
   }
 
-  double _calculatePageViewHeight() {
-    // Altura mais compacta para melhor uso do espaço
-    return 280;
-  }
-
   Widget _buildHabitsTasksTabBar(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
 
@@ -2196,7 +1986,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     : null,
                 color: _habitsTasksTabIndex == 0
                     ? null
-                    : colors.surfaceContainerHighest.withOpacity(0.4),
+                    : colors.surfaceContainerHighest.withValues(alpha: 0.4),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Row(
@@ -2207,7 +1997,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     size: 18,
                     color: _habitsTasksTabIndex == 0
                         ? Colors.white
-                        : colors.onSurfaceVariant.withOpacity(0.6),
+                        : colors.onSurfaceVariant.withValues(alpha: 0.6),
                   ),
                   const SizedBox(width: 6),
                   Text(
@@ -2217,7 +2007,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                       fontWeight: FontWeight.w600,
                       color: _habitsTasksTabIndex == 0
                           ? Colors.white
-                          : colors.onSurfaceVariant.withOpacity(0.6),
+                          : colors.onSurfaceVariant.withValues(alpha: 0.6),
                     ),
                   ),
                 ],
@@ -2246,7 +2036,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     : null,
                 color: _habitsTasksTabIndex == 1
                     ? null
-                    : colors.surfaceContainerHighest.withOpacity(0.4),
+                    : colors.surfaceContainerHighest.withValues(alpha: 0.4),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Row(
@@ -2257,7 +2047,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     size: 18,
                     color: _habitsTasksTabIndex == 1
                         ? Colors.white
-                        : colors.onSurfaceVariant.withOpacity(0.6),
+                        : colors.onSurfaceVariant.withValues(alpha: 0.6),
                   ),
                   const SizedBox(width: 6),
                   Text(
@@ -2267,7 +2057,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                       fontWeight: FontWeight.w600,
                       color: _habitsTasksTabIndex == 1
                           ? Colors.white
-                          : colors.onSurfaceVariant.withOpacity(0.6),
+                          : colors.onSurfaceVariant.withValues(alpha: 0.6),
                     ),
                   ),
                 ],
@@ -2347,14 +2137,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            colors.primary.withOpacity(0.08),
-            colors.primaryContainer.withOpacity(0.05),
+            colors.primary.withValues(alpha: 0.08),
+            colors.primaryContainer.withValues(alpha: 0.05),
           ],
           begin: Alignment.centerLeft,
           end: Alignment.centerRight,
         ),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: colors.primary.withOpacity(0.2), width: 1.5),
+        border: Border.all(
+          color: colors.primary.withValues(alpha: 0.2),
+          width: 1.5,
+        ),
       ),
       child: Row(
         children: [
@@ -2362,7 +2155,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             padding: const EdgeInsets.only(left: 14),
             child: Icon(
               Icons.add_task_rounded,
-              color: colors.primary.withOpacity(0.6),
+              color: colors.primary.withValues(alpha: 0.6),
               size: 20,
             ),
           ),
@@ -2374,7 +2167,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 hintText: 'Adicionar nova tarefa...',
                 hintStyle: TextStyle(
                   fontSize: 14,
-                  color: colors.onSurfaceVariant.withOpacity(0.5),
+                  color: colors.onSurfaceVariant.withValues(alpha: 0.5),
                 ),
                 border: InputBorder.none,
                 contentPadding: const EdgeInsets.symmetric(
@@ -2400,7 +2193,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 child: Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: colors.primary.withOpacity(0.15),
+                    color: colors.primary.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(
@@ -2423,9 +2216,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       key: const ValueKey('empty_tasks'),
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: colors.surfaceContainerHighest.withOpacity(0.3),
+        color: colors.surfaceContainerHighest.withValues(alpha: 0.3),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: colors.outline.withOpacity(0.1)),
+        border: Border.all(color: colors.outline.withValues(alpha: 0.1)),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -2433,7 +2226,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           Icon(
             Icons.task_alt_rounded,
             size: 48,
-            color: UltravioletColors.accentGreen.withOpacity(0.6),
+            color: UltravioletColors.accentGreen.withValues(alpha: 0.6),
           ),
           const SizedBox(height: 12),
           Text(
@@ -2451,7 +2244,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             'Digite acima para criar',
             style: TextStyle(
               fontSize: 12,
-              color: colors.onSurfaceVariant.withOpacity(0.7),
+              color: colors.onSurfaceVariant.withValues(alpha: 0.7),
             ),
           ),
         ],
@@ -2497,8 +2290,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   ),
                   decoration: BoxDecoration(
                     color: completed == total && total > 0
-                        ? UltravioletColors.accentGreen.withOpacity(0.15)
-                        : colors.primary.withOpacity(0.15),
+                        ? UltravioletColors.accentGreen.withValues(alpha: 0.15)
+                        : colors.primary.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
@@ -2581,7 +2374,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             child: Container(
               padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
               decoration: BoxDecoration(
-                color: colors.surfaceContainerHighest.withOpacity(0.5),
+                color: colors.surfaceContainerHighest.withValues(alpha: 0.5),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Row(
@@ -2668,13 +2461,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: isCompleted
-              ? UltravioletColors.accentGreen.withOpacity(0.05)
+              ? UltravioletColors.accentGreen.withValues(alpha: 0.05)
               : colors.surface,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: isCompleted
-                ? UltravioletColors.accentGreen.withOpacity(0.2)
-                : colors.outline.withOpacity(0.1),
+                ? UltravioletColors.accentGreen.withValues(alpha: 0.2)
+                : colors.outline.withValues(alpha: 0.1),
           ),
         ),
         child: Row(
@@ -2708,7 +2501,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                             fontSize: 15,
                             fontWeight: FontWeight.w600,
                             color: isCompleted
-                                ? colors.onSurfaceVariant.withOpacity(0.7)
+                                ? colors.onSurfaceVariant.withValues(alpha: 0.7)
                                 : colors.onSurface,
                             decoration: isCompleted
                                 ? TextDecoration.lineThrough
@@ -2727,10 +2520,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                             vertical: 2,
                           ),
                           decoration: BoxDecoration(
-                            color: priorityColor.withOpacity(0.1),
+                            color: priorityColor.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(4),
                             border: Border.all(
-                              color: priorityColor.withOpacity(0.2),
+                              color: priorityColor.withValues(alpha: 0.2),
                             ),
                           ),
                           child: Text(
@@ -2895,7 +2688,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     horizontal: 16,
                   ),
                   decoration: BoxDecoration(
-                    color: colors.surfaceContainerHighest.withOpacity(0.5),
+                    color: colors.surfaceContainerHighest.withValues(
+                      alpha: 0.5,
+                    ),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Row(
@@ -2965,13 +2760,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         color: isCompleted
-            ? color.withOpacity(0.08)
+            ? color.withValues(alpha: 0.08)
             : Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
           color: isCompleted
-              ? color.withOpacity(0.4)
-              : Theme.of(context).colorScheme.outline.withOpacity(0.1),
+              ? color.withValues(alpha: 0.4)
+              : Theme.of(context).colorScheme.outline.withValues(alpha: 0.1),
           width: isCompleted ? 1.5 : 1,
         ),
       ),
@@ -3038,10 +2833,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                         width: 48,
                         height: 48,
                         decoration: BoxDecoration(
-                          color: isCompleted ? color : color.withOpacity(0.25),
+                          color: isCompleted
+                              ? color
+                              : color.withValues(alpha: 0.25),
                           shape: BoxShape.circle,
                           border: Border.all(
-                            color: isCompleted ? color : color.withOpacity(0.5),
+                            color: isCompleted
+                                ? color
+                                : color.withValues(alpha: 0.5),
                             width: 2,
                           ),
                         ),
@@ -3100,7 +2899,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                                     vertical: 2,
                                   ),
                                   decoration: BoxDecoration(
-                                    color: Colors.orange.withOpacity(0.2),
+                                    color: Colors.orange.withValues(alpha: 0.2),
                                     borderRadius: BorderRadius.circular(10),
                                   ),
                                   child: Row(
@@ -3159,7 +2958,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                           color: Theme.of(context)
                               .colorScheme
                               .surfaceContainerHighest
-                              .withOpacity(0.3),
+                              .withValues(alpha: 0.3),
                           shape: BoxShape.circle,
                         ),
                         child: Icon(
@@ -3288,7 +3087,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                         style: ElevatedButton.styleFrom(
                           backgroundColor: color,
                           elevation: 2,
-                          shadowColor: color.withOpacity(0.4),
+                          shadowColor: color.withValues(alpha: 0.4),
                           padding: const EdgeInsets.symmetric(
                             horizontal: 16,
                             vertical: 8,
@@ -3308,7 +3107,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             secondChild: Column(
               children: [
                 Divider(
-                  color: UltravioletColors.outline.withOpacity(0.1),
+                  color: UltravioletColors.outline.withValues(alpha: 0.1),
                   height: 1,
                 ),
                 Padding(
@@ -3458,13 +3257,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       textColor = colorScheme.onSurface;
     } else {
       // Other month day number
-      textColor = colorScheme.onSurface.withOpacity(0.3);
+      textColor = colorScheme.onSurface.withValues(alpha: 0.3);
     }
 
     return Container(
       decoration: BoxDecoration(
         color: isCompleted
-            ? color.withOpacity(0.15) // Soft tint for completed
+            ? color.withValues(alpha: 0.15) // Soft tint for completed
             : (isHighlighted ? color : Colors.transparent),
         borderRadius: BorderRadius.circular(6),
         border: isCompleted
@@ -3490,7 +3289,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     return Container(
       padding: const EdgeInsets.all(40),
       decoration: BoxDecoration(
-        color: UltravioletColors.surfaceVariant.withOpacity(0.2),
+        color: UltravioletColors.surfaceVariant.withValues(alpha: 0.2),
         borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
@@ -3514,10 +3313,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
               decoration: BoxDecoration(
-                color: UltravioletColors.primary.withOpacity(0.2),
+                color: UltravioletColors.primary.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
-                  color: UltravioletColors.primary.withOpacity(0.5),
+                  color: UltravioletColors.primary.withValues(alpha: 0.5),
                 ),
               ),
               child: const Text(
@@ -3582,7 +3381,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: colors.primary.withOpacity(0.1),
+                      color: colors.primary.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Icon(
@@ -3662,7 +3461,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(14),
       ),
       child: Column(
@@ -3713,1365 +3512,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   // ==========================================
   // GRÁFICO SEMANAL (Bar Chart)
   // ==========================================
-  Widget _buildWeeklyChart(BuildContext context) {
-    if (!_habitRepoInitialized) return const SizedBox.shrink();
-
-    final colors = Theme.of(context).colorScheme;
-
-    return OdysseyCard(
-      padding: const EdgeInsets.all(24),
-      margin: EdgeInsets.zero,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Estatísticas',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: colors.onSurface,
-                  letterSpacing: -0.5,
-                ),
-              ),
-              // Chart Toggle
-              GestureDetector(
-                onTap: () {
-                  setState(() {
-                    _chartViewMode = _chartViewMode == 0 ? 1 : 0;
-                  });
-                  HapticFeedback.lightImpact();
-                },
-                child: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: colors.surfaceContainerHighest.withOpacity(0.3),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: colors.outline.withOpacity(0.1)),
-                  ),
-                  child: AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 300),
-                    transitionBuilder: (child, anim) =>
-                        ScaleTransition(scale: anim, child: child),
-                    child: Icon(
-                      _chartViewMode == 0
-                          ? Icons.pie_chart_rounded
-                          : Icons.show_chart_rounded,
-                      key: ValueKey(_chartViewMode),
-                      size: 20,
-                      color: colors.primary,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-
-          // Premium Category Selector Pills
-          Row(
-            children: [
-              _buildPremiumTab(0, 'Hábitos', Icons.check_circle_outline),
-              _buildPremiumTab(1, 'Foco', Icons.timer_outlined),
-              _buildPremiumTab(2, 'Humor', Icons.mood_outlined),
-            ],
-          ),
-
-          const SizedBox(height: 32),
-
-          // Chart Area
-          SizedBox(
-            height: 220,
-            child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 400),
-              switchInCurve: Curves.easeOutBack,
-              switchOutCurve: Curves.easeInBack,
-              child: KeyedSubtree(
-                key: ValueKey(_selectedChartIndex),
-                child: _buildSelectedChart(context),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPremiumTab(int index, String label, IconData icon) {
-    final isSelected = _selectedChartIndex == index;
-    final colors = Theme.of(context).colorScheme;
-
-    // Cores por categoria
-    final categoryColors = [
-      const Color(0xFF4CAF50), // Hábitos - Verde
-      const Color(0xFF2196F3), // Foco - Azul
-      const Color(0xFFFF9800), // Humor - Laranja
-    ];
-    final color = categoryColors[index];
-
-    return Expanded(
-      child: GestureDetector(
-        onTap: () {
-          HapticFeedback.selectionClick();
-          setState(() => _selectedChartIndex = index);
-        },
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 250),
-          margin: const EdgeInsets.symmetric(horizontal: 3),
-          padding: const EdgeInsets.symmetric(vertical: 10),
-          decoration: BoxDecoration(
-            gradient: isSelected
-                ? LinearGradient(
-                    colors: [color, color.withOpacity(0.8)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  )
-                : null,
-            color: isSelected ? null : Colors.transparent,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                icon,
-                size: 16,
-                color: isSelected
-                    ? Colors.white
-                    : colors.onSurfaceVariant.withOpacity(0.6),
-              ),
-              const SizedBox(width: 6),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                  color: isSelected
-                      ? Colors.white
-                      : colors.onSurfaceVariant.withOpacity(0.6),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSelectedChart(BuildContext context) {
-    if (_chartViewMode == 1) {
-      switch (_selectedChartIndex) {
-        case 0:
-          return _buildHabitsRadarChartAnalysis(context);
-        case 1:
-          return _buildFocusDonutChart(context);
-        case 2:
-          return _buildMoodFrequencyChart(context);
-      }
-    }
-
-    switch (_selectedChartIndex) {
-      case 0:
-        return _buildHabitsBarChart(context);
-      case 1:
-        return _buildFocusLineChart(context);
-      case 2:
-        return _buildMoodTrendChart(context);
-      default:
-        return const SizedBox.shrink();
-    }
-  }
-
-  Widget _buildHabitsBarChart(BuildContext context) {
-    final habitRepo = ref.watch(habitRepositoryProvider);
-    final colors = Theme.of(context).colorScheme;
-
-    return ValueListenableBuilder(
-      valueListenable: habitRepo.box.listenable(),
-      builder: (context, box, _) {
-        final weekRates = habitRepo.getWeekCompletionRates();
-        final dayNames = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
-
-        double totalRate = 0;
-        for (var rate in weekRates.values) {
-          totalRate += rate;
-        }
-        final avgRate = (totalRate / 7 * 100).toInt();
-
-        return Column(
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                _buildAnalysisBadge(
-                  context,
-                  'Média Semanal',
-                  '$avgRate%',
-                  Icons.bar_chart_rounded,
-                  colors.primary,
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Expanded(
-              child: BarChart(
-                BarChartData(
-                  barTouchData: BarTouchData(
-                    touchTooltipData: BarTouchTooltipData(
-                      getTooltipColor: (_) => colors.surfaceContainerHighest,
-                      getTooltipItem: (group, groupIndex, rod, rodIndex) {
-                        return BarTooltipItem(
-                          '${(rod.toY * 100).toInt()}%',
-                          TextStyle(
-                            color: colors.primary,
-                            fontWeight: FontWeight.bold,
-                          ),
-                          children: [
-                            TextSpan(
-                              text: '\nConcluído',
-                              style: TextStyle(
-                                color: colors.onSurfaceVariant,
-                                fontSize: 10,
-                                fontWeight: FontWeight.normal,
-                              ),
-                            ),
-                          ],
-                        );
-                      },
-                    ),
-                  ),
-                  gridData: FlGridData(
-                    show: true,
-                    drawVerticalLine: false,
-                    horizontalInterval: 0.25,
-                    getDrawingHorizontalLine: (value) => FlLine(
-                      color: colors.outlineVariant.withOpacity(0.1),
-                      strokeWidth: 1,
-                    ),
-                  ),
-                  titlesData: FlTitlesData(
-                    show: true,
-                    rightTitles: const AxisTitles(
-                      sideTitles: SideTitles(showTitles: false),
-                    ),
-                    topTitles: const AxisTitles(
-                      sideTitles: SideTitles(showTitles: false),
-                    ),
-                    leftTitles: const AxisTitles(
-                      sideTitles: SideTitles(showTitles: false),
-                    ),
-                    bottomTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        getTitlesWidget: (double value, TitleMeta meta) {
-                          final index = value.toInt();
-                          if (index < 0 || index >= dayNames.length) {
-                            return const SizedBox.shrink();
-                          }
-
-                          final isToday = index == (DateTime.now().weekday - 1);
-                          return SideTitleWidget(
-                            meta: meta,
-                            space: 8,
-                            child: Text(
-                              dayNames[index],
-                              style: TextStyle(
-                                color: isToday
-                                    ? colors.primary
-                                    : colors.onSurfaceVariant,
-                                fontWeight: isToday
-                                    ? FontWeight.bold
-                                    : FontWeight.normal,
-                                fontSize: 10,
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                  ),
-                  borderData: FlBorderData(show: false),
-                  barGroups: List.generate(7, (index) {
-                    final rate = weekRates[index] ?? 0.0;
-                    final isToday = index == (DateTime.now().weekday - 1);
-
-                    return BarChartGroupData(
-                      x: index,
-                      barRods: [
-                        BarChartRodData(
-                          toY: rate.clamp(0.01, 1.0),
-                          gradient: LinearGradient(
-                            colors: isToday
-                                ? [colors.primary, colors.tertiary]
-                                : [
-                                    const Color(0xFF07E092).withOpacity(0.7),
-                                    const Color(0xFF00C853),
-                                  ],
-                            begin: Alignment.bottomCenter,
-                            end: Alignment.topCenter,
-                          ),
-                          width: 14,
-                          borderRadius: BorderRadius.circular(6),
-                          backDrawRodData: BackgroundBarChartRodData(
-                            show: true,
-                            toY: 1.0,
-                            color: colors.surfaceContainerHighest.withOpacity(
-                              0.3,
-                            ),
-                          ),
-                        ),
-                      ],
-                    );
-                  }),
-                  maxY: 1.05,
-                ),
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  Widget _buildPieDetail(
-    String title,
-    String value,
-    Color color, {
-    bool isLarge = false,
-  }) {
-    return Row(
-      children: [
-        Container(
-          width: isLarge ? 12 : 8,
-          height: isLarge ? 12 : 8,
-          decoration: BoxDecoration(shape: BoxShape.circle, color: color),
-        ),
-        const SizedBox(width: 6),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: TextStyle(
-                  fontSize: isLarge ? 14 : 11,
-                  fontWeight: isLarge ? FontWeight.bold : FontWeight.w500,
-                  color: Theme.of(context).colorScheme.onSurface,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              if (isLarge)
-                Text(
-                  value,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-                ),
-            ],
-          ),
-        ),
-        if (!isLarge)
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.bold,
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
-          ),
-      ],
-    );
-  }
-
-  // ==========================================
-  // FOCUS CHARTS (Values: 0: Line, 2: Scatter)
-  // ==========================================
-
-  Widget _buildFocusLineChart(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    final timeRepo = ref.watch(timeTrackingRepositoryProvider);
-
-    return ValueListenableBuilder(
-      valueListenable: timeRepo.box.listenable(),
-      builder: (context, box, _) {
-        final startOfWeek = _selectedDate.subtract(
-          Duration(days: _selectedDate.weekday - 1),
-        );
-        final endOfWeek = startOfWeek.add(const Duration(days: 7));
-        final dailyMinutes = List.filled(7, 0.0);
-
-        final allRecords = timeRepo.fetchAllTimeTrackingRecords();
-        for (var record in allRecords) {
-          if (record.startTime.isAfter(
-                startOfWeek.subtract(const Duration(seconds: 1)),
-              ) &&
-              record.startTime.isBefore(endOfWeek)) {
-            final dayIndex = record.startTime.weekday - 1;
-            if (dayIndex >= 0 && dayIndex < 7) {
-              dailyMinutes[dayIndex] += record.durationInSeconds / 60;
-            }
-          }
-        }
-
-        final maxVal = dailyMinutes.reduce(max);
-
-        if (maxVal == 0) {
-          return Center(
-            child: Text(
-              'Sem sessões de foco',
-              style: TextStyle(color: colors.onSurfaceVariant, fontSize: 12),
-            ),
-          );
-        }
-
-        final totalMinutes =
-            dailyMinutes.reduce((value, element) => value + element) * 60;
-        final totalHours = totalMinutes / 60;
-        final dailyAvg = totalHours / 7;
-
-        final allPoints = <FlSpot>[];
-        for (int i = 0; i < 7; i++) {
-          allPoints.add(FlSpot(i.toDouble(), dailyMinutes[i]));
-        }
-
-        return Column(
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                _buildAnalysisBadge(
-                  context,
-                  'Total Foco',
-                  '${totalHours.toStringAsFixed(1)}h',
-                  Icons.timer_outlined,
-                  colors.primary,
-                ),
-                _buildAnalysisBadge(
-                  context,
-                  'Média Diária',
-                  '${dailyAvg.toStringAsFixed(1)}h',
-                  Icons.show_chart_rounded,
-                  colors.tertiary,
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Expanded(
-              child: LineChart(
-                LineChartData(
-                  gridData: FlGridData(
-                    show: true,
-                    verticalInterval: 1,
-                    horizontalInterval: maxVal > 0 ? maxVal / 4 : 15,
-                    getDrawingHorizontalLine: (value) => FlLine(
-                      color: colors.outlineVariant.withOpacity(0.1),
-                      strokeWidth: 1,
-                    ),
-                    getDrawingVerticalLine: (value) => FlLine(
-                      color: colors.outlineVariant.withOpacity(0.1),
-                      strokeWidth: 1,
-                    ),
-                  ),
-                  titlesData: FlTitlesData(
-                    show: true,
-                    rightTitles: const AxisTitles(
-                      sideTitles: SideTitles(showTitles: false),
-                    ),
-                    topTitles: const AxisTitles(
-                      sideTitles: SideTitles(showTitles: false),
-                    ),
-                    leftTitles: const AxisTitles(
-                      sideTitles: SideTitles(showTitles: false),
-                    ),
-                    bottomTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        interval: 1,
-                        getTitlesWidget: (value, meta) {
-                          final dayNames = ['S', 'T', 'Q', 'Q', 'S', 'S', 'D'];
-                          final idx = value.toInt();
-                          if (idx < 0 || idx >= 7) {
-                            return const SizedBox.shrink();
-                          }
-                          return SideTitleWidget(
-                            meta: meta,
-                            space: 8,
-                            child: Text(
-                              dayNames[idx],
-                              style: TextStyle(
-                                fontSize: 10,
-                                color: colors.onSurfaceVariant,
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                  ),
-                  borderData: FlBorderData(show: false),
-                  minX: 0,
-                  maxX: 6,
-                  minY: 0,
-                  maxY: maxVal > 0 ? maxVal * 1.2 : 60,
-                  lineBarsData: [
-                    LineChartBarData(
-                      spots: allPoints,
-                      isCurved: true,
-                      curveSmoothness: 0.35,
-                      color: colors.primary,
-                      barWidth: 3,
-                      isStrokeCapRound: true,
-                      dotData: FlDotData(
-                        show: true,
-                        getDotPainter: (spot, percent, barData, index) {
-                          return FlDotCirclePainter(
-                            radius: 4,
-                            color: colors.surface,
-                            strokeWidth: 2,
-                            strokeColor: colors.primary,
-                          );
-                        },
-                      ),
-                      belowBarData: BarAreaData(
-                        show: true,
-                        gradient: LinearGradient(
-                          colors: [
-                            colors.primary.withOpacity(0.3),
-                            colors.primary.withOpacity(0.0),
-                          ],
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                        ),
-                      ),
-                    ),
-                  ],
-                  lineTouchData: LineTouchData(
-                    touchTooltipData: LineTouchTooltipData(
-                      getTooltipColor: (_) => colors.surfaceContainerHighest,
-                      getTooltipItems: (touchedSpots) {
-                        return touchedSpots.map((spot) {
-                          final hours = spot.y.toInt();
-                          final minutes = ((spot.y - hours) * 60).toInt();
-                          return LineTooltipItem(
-                            '${hours}h ${minutes}m',
-                            TextStyle(
-                              color: colors.onSurface,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          );
-                        }).toList();
-                      },
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  // ==========================================
-  // MOOD CHARTS
-  // ==========================================
-
-  Widget _buildMoodTrendChart(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    final moodRepo = ref.watch(moodRecordRepositoryProvider);
-
-    return ValueListenableBuilder(
-      valueListenable: moodRepo.box.listenable(),
-      builder: (context, box, _) {
-        final startOfWeek = _selectedDate.subtract(
-          Duration(days: _selectedDate.weekday - 1),
-        );
-        final endOfWeek = startOfWeek.add(const Duration(days: 7));
-
-        final dailyScores = List.filled(7, 0.0);
-        final dailyCounts = List.filled(7, 0);
-
-        final allRecords = moodRepo.fetchMoodRecords().values;
-        for (var record in allRecords) {
-          if (record.date.isAfter(
-                startOfWeek.subtract(const Duration(seconds: 1)),
-              ) &&
-              record.date.isBefore(endOfWeek)) {
-            final dayIndex = record.date.weekday - 1;
-            if (dayIndex >= 0 && dayIndex < 7) {
-              dailyScores[dayIndex] += record.score;
-              dailyCounts[dayIndex]++;
-            }
-          }
-        }
-
-        final spots = <FlSpot>[];
-        double totalScore = 0;
-        int totalDays = 0;
-
-        for (int i = 0; i < 7; i++) {
-          if (dailyCounts[i] > 0) {
-            final dailyAvg = dailyScores[i] / dailyCounts[i];
-            spots.add(FlSpot(i.toDouble(), dailyAvg));
-            totalScore += dailyAvg;
-            totalDays++;
-          }
-        }
-
-        if (spots.isEmpty) {
-          return Center(
-            child: Text(
-              'Sem registros de humor',
-              style: TextStyle(color: colors.onSurfaceVariant, fontSize: 12),
-            ),
-          );
-        }
-
-        final avgMood = totalScore / totalDays;
-
-        return Column(
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                _buildAnalysisBadge(
-                  context,
-                  'Humor Médio',
-                  avgMood.toStringAsFixed(1),
-                  Icons.mood,
-                  _getColorForScore(avgMood),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Expanded(
-              child: LineChart(
-                LineChartData(
-                  gridData: FlGridData(
-                    show: true,
-                    horizontalInterval: 1,
-                    drawVerticalLine: false,
-                    getDrawingHorizontalLine: (value) => FlLine(
-                      color: colors.outlineVariant.withOpacity(0.05),
-                      strokeWidth: 1,
-                    ),
-                  ),
-                  titlesData: FlTitlesData(
-                    show: true,
-                    rightTitles: const AxisTitles(
-                      sideTitles: SideTitles(showTitles: false),
-                    ),
-                    topTitles: const AxisTitles(
-                      sideTitles: SideTitles(showTitles: false),
-                    ),
-                    bottomTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        interval: 1,
-                        getTitlesWidget: (value, meta) {
-                          final dayNames = ['S', 'T', 'Q', 'Q', 'S', 'S', 'D'];
-                          final idx = value.toInt();
-                          if (idx < 0 || idx >= 7) {
-                            return const SizedBox.shrink();
-                          }
-                          return SideTitleWidget(
-                            meta: meta,
-                            child: Text(
-                              dayNames[idx],
-                              style: TextStyle(
-                                fontSize: 10,
-                                color: colors.onSurfaceVariant,
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                    leftTitles: const AxisTitles(
-                      sideTitles: SideTitles(showTitles: false),
-                    ),
-                  ),
-                  borderData: FlBorderData(show: false),
-                  minX: 0,
-                  maxX: 6,
-                  minY: 1,
-                  maxY: 5.5,
-                  lineBarsData: [
-                    LineChartBarData(
-                      spots: spots,
-                      isCurved: true,
-                      gradient: const LinearGradient(
-                        colors: [
-                          Color(0xFFFF5E5E),
-                          Color(0xFFFFB703),
-                          Color(0xFF07E092),
-                        ],
-                        stops: [0.0, 0.5, 1.0],
-                      ),
-                      barWidth: 4,
-                      isStrokeCapRound: true,
-                      dotData: FlDotData(
-                        show: true,
-                        getDotPainter: (spot, percent, barData, index) {
-                          Color color = Colors.grey;
-                          if (spot.y >= 4) {
-                            color = const Color(0xFF07E092);
-                          } else if (spot.y >= 3) {
-                            color = const Color(0xFFFFB703);
-                          } else {
-                            color = const Color(0xFFFF5E5E);
-                          }
-
-                          return FlDotCirclePainter(
-                            radius: 5,
-                            color: color,
-                            strokeWidth: 2,
-                            strokeColor: colors.surface,
-                          );
-                        },
-                      ),
-                      belowBarData: BarAreaData(
-                        show: true,
-                        gradient: LinearGradient(
-                          colors: [
-                            const Color(0xFFFFB703).withOpacity(0.2),
-                            const Color(0xFFFFB703).withOpacity(0.0),
-                          ],
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                        ),
-                      ),
-                    ),
-                  ],
-                  lineTouchData: LineTouchData(
-                    touchTooltipData: LineTouchTooltipData(
-                      getTooltipColor: (_) => colors.surfaceContainerHighest,
-
-                      getTooltipItems: (touchedSpots) {
-                        return touchedSpots.map((spot) {
-                          String moodText;
-                          if (spot.y >= 4.5) {
-                            moodText = 'Maravilhoso';
-                          } else if (spot.y >= 3.5) {
-                            moodText = 'Bem';
-                          } else if (spot.y >= 2.5) {
-                            moodText = 'Neutro';
-                          } else if (spot.y >= 1.5) {
-                            moodText = 'Mal';
-                          } else {
-                            moodText = 'Horrível';
-                          }
-                          return LineTooltipItem(
-                            moodText,
-                            TextStyle(
-                              color: colors.onSurface,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          );
-                        }).toList();
-                      },
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  // ==========================================
-  // ANALYSIS CHARTS (Mode 1 - Premium Views)
-  // ==========================================
-
-  Widget _buildFocusDonutChart(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    final timeRepo = ref.watch(timeTrackingRepositoryProvider);
-
-    return ValueListenableBuilder(
-      valueListenable: timeRepo.box.listenable(),
-      builder: (context, box, _) {
-        final startOfWeek = _selectedDate.subtract(
-          Duration(days: _selectedDate.weekday - 1),
-        );
-        final endOfWeek = startOfWeek.add(const Duration(days: 7));
-
-        final allRecords = timeRepo.fetchAllTimeTrackingRecords();
-        final weeklyRecords = allRecords
-            .where(
-              (r) =>
-                  r.startTime.isAfter(
-                    startOfWeek.subtract(const Duration(seconds: 1)),
-                  ) &&
-                  r.startTime.isBefore(endOfWeek),
-            )
-            .toList();
-
-        final durationByActivity = <String, double>{};
-        double totalMinutes = 0;
-
-        for (var record in weeklyRecords) {
-          final minutes = record.durationInSeconds / 60;
-          if (minutes > 0) {
-            durationByActivity.update(
-              record.activityName,
-              (v) => v + minutes,
-              ifAbsent: () => minutes,
-            );
-            totalMinutes += minutes;
-          }
-        }
-
-        if (totalMinutes == 0) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.donut_small_rounded,
-                  color: colors.onSurfaceVariant.withOpacity(0.5),
-                  size: 32,
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Sem foco essa semana',
-                  style: TextStyle(
-                    color: colors.onSurfaceVariant,
-                    fontSize: 12,
-                  ),
-                ),
-              ],
-            ),
-          );
-        }
-
-        final sortedEntries = durationByActivity.entries.toList()
-          ..sort((a, b) => b.value.compareTo(a.value));
-
-        return Row(
-          children: [
-            Expanded(
-              flex: 5, // Slightly more space for chart
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  PieChart(
-                    PieChartData(
-                      centerSpaceRadius: 40,
-                      sectionsSpace: 2,
-                      startDegreeOffset: 270,
-                      sections: List.generate(sortedEntries.length, (i) {
-                        final entry = sortedEntries[i];
-                        final isTouched = i == _focusTouchedIndex;
-                        return PieChartSectionData(
-                          color: _getNiceColor(i, colors),
-                          value: entry.value,
-                          title: '',
-                          radius: isTouched ? 30 : 25,
-                          showTitle: false,
-                        );
-                      }),
-                      pieTouchData: PieTouchData(
-                        touchCallback: (FlTouchEvent event, pieTouchResponse) {
-                          setState(() {
-                            if (!event.isInterestedForInteractions ||
-                                pieTouchResponse == null ||
-                                pieTouchResponse.touchedSection == null) {
-                              _focusTouchedIndex = -1;
-                              return;
-                            }
-                            _focusTouchedIndex = pieTouchResponse
-                                .touchedSection!
-                                .touchedSectionIndex;
-                          });
-                        },
-                      ),
-                    ),
-                  ),
-                  Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        _focusTouchedIndex != -1 &&
-                                _focusTouchedIndex < sortedEntries.length
-                            ? sortedEntries[_focusTouchedIndex].key
-                            : 'Total',
-                        style: TextStyle(
-                          fontSize: 10,
-                          color: colors.onSurfaceVariant,
-                          fontWeight: FontWeight.w500,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      Text(
-                        _focusTouchedIndex != -1 &&
-                                _focusTouchedIndex < sortedEntries.length
-                            ? '${(sortedEntries[_focusTouchedIndex].value).toInt()}m'
-                            : '${(totalMinutes / 60).toStringAsFixed(1)}h',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: colors.onSurface,
-                          letterSpacing: -0.5,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              flex: 4,
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Top Atividades',
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                        color: colors.onSurfaceVariant.withOpacity(0.7),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    ...sortedEntries.take(4).map((e) {
-                      final i = sortedEntries.indexOf(e);
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 6),
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 10,
-                              height: 10,
-                              decoration: BoxDecoration(
-                                color: _getNiceColor(i, colors),
-                                borderRadius: BorderRadius.circular(3),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    e.key,
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w600,
-                                      color: colors.onSurface,
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                  Text(
-                                    '${(e.value / totalMinutes * 100).toInt()}% • ${(e.value).toInt()}m',
-                                    style: TextStyle(
-                                      fontSize: 10,
-                                      color: colors.onSurfaceVariant,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    }).toList(),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  Color _getNiceColor(int index, ColorScheme colors) {
-    final palette = [
-      const Color(0xFF6930C3),
-      const Color(0xFF5E60CE),
-      const Color(0xFF5390D9),
-      const Color(0xFF48BFE3),
-      const Color(0xFF64DFDF),
-    ];
-    return palette[index % palette.length];
-  }
-
-  Widget _buildMoodFrequencyChart(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    final moodRepo = ref.watch(moodRecordRepositoryProvider);
-
-    return ValueListenableBuilder(
-      valueListenable: moodRepo.box.listenable(),
-      builder: (context, box, _) {
-        final startOfWeek = _selectedDate.subtract(
-          Duration(days: _selectedDate.weekday - 1),
-        );
-        final endOfWeek = startOfWeek.add(const Duration(days: 7));
-        final records = moodRepo
-            .fetchMoodRecords()
-            .values
-            .where(
-              (r) =>
-                  r.date.isAfter(
-                    startOfWeek.subtract(const Duration(seconds: 1)),
-                  ) &&
-                  r.date.isBefore(endOfWeek),
-            )
-            .toList();
-
-        if (records.isEmpty) {
-          return Center(
-            child: Text(
-              'Sem registros',
-              style: TextStyle(color: colors.onSurfaceVariant, fontSize: 12),
-            ),
-          );
-        }
-
-        final counts = List.filled(6, 0); // 1 to 5
-        int maxCount = 0;
-        int dominantScore = 0;
-
-        for (var r in records) {
-          final score = r.score.round().clamp(1, 5);
-          counts[score]++;
-          if (counts[score] > maxCount) {
-            maxCount = counts[score];
-            dominantScore = score;
-          }
-        }
-
-        final dominantLabel = dominantScore > 0
-            ? [
-                '',
-                'Horrível',
-                'Mal',
-                'Neutro',
-                'Bem',
-                'Maravilhoso',
-              ][dominantScore]
-            : 'N/A';
-        final dominantIconData = dominantScore > 0
-            ? [
-                Icons.sentiment_very_dissatisfied,
-                Icons.sentiment_very_dissatisfied,
-                Icons.sentiment_dissatisfied,
-                Icons.sentiment_neutral,
-                Icons.sentiment_satisfied,
-                Icons.sentiment_very_satisfied_rounded,
-              ][dominantScore]
-            : Icons.help_outline;
-
-        return Column(
-          children: [
-            // Summary Header
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  dominantIconData,
-                  color: dominantScore > 0
-                      ? _getColorForScore(dominantScore.toDouble())
-                      : colors.onSurfaceVariant,
-                  size: 20,
-                ),
-                const SizedBox(width: 8),
-                RichText(
-                  text: TextSpan(
-                    text: 'Humor Predominante: ',
-                    style: TextStyle(
-                      color: colors.onSurfaceVariant,
-                      fontSize: 12,
-                    ),
-                    children: [
-                      TextSpan(
-                        text: dominantLabel,
-                        style: TextStyle(
-                          color: colors.onSurface,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Expanded(
-              child: BarChart(
-                BarChartData(
-                  alignment: BarChartAlignment.spaceAround,
-                  maxY: (maxCount + 1).toDouble(),
-                  gridData: FlGridData(
-                    show: true,
-                    drawVerticalLine: false,
-                    horizontalInterval: 1,
-                    getDrawingHorizontalLine: (value) => FlLine(
-                      color: colors.outlineVariant.withOpacity(0.05),
-                      strokeWidth: 1,
-                    ),
-                  ),
-                  titlesData: FlTitlesData(
-                    show: true,
-                    rightTitles: const AxisTitles(
-                      sideTitles: SideTitles(showTitles: false),
-                    ),
-                    topTitles: const AxisTitles(
-                      sideTitles: SideTitles(showTitles: false),
-                    ),
-                    leftTitles: const AxisTitles(
-                      sideTitles: SideTitles(showTitles: false),
-                    ),
-                    bottomTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        getTitlesWidget: (val, meta) {
-                          final index = val.toInt();
-                          if (index < 1 || index > 5) {
-                            return const SizedBox.shrink();
-                          }
-                          final iconData = [
-                            Icons.sentiment_very_dissatisfied,
-                            Icons.sentiment_dissatisfied,
-                            Icons.sentiment_neutral,
-                            Icons.sentiment_satisfied,
-                            Icons.sentiment_very_satisfied_rounded,
-                          ][index - 1];
-                          return SideTitleWidget(
-                            meta: meta,
-                            child: Icon(
-                              iconData,
-                              size: 16,
-                              color: colors.onSurfaceVariant,
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                  ),
-                  borderData: FlBorderData(show: false),
-                  barGroups: List.generate(5, (i) {
-                    final score = i + 1;
-                    final count = counts[score];
-                    Color color;
-                    switch (score) {
-                      case 5:
-                        color = const Color(0xFF07E092);
-                        break;
-                      case 4:
-                        color = const Color(0xFFB5E48C);
-                        break;
-                      case 3:
-                        color = const Color(0xFFFFB703);
-                        break;
-                      case 2:
-                        color = const Color(0xFFFF832B);
-                        break;
-                      default:
-                        color = const Color(0xFFFF5E5E);
-                        break;
-                    }
-
-                    return BarChartGroupData(
-                      x: score,
-                      barRods: [
-                        BarChartRodData(
-                          toY: count.toDouble(),
-                          color: color,
-                          width: 16,
-                          borderRadius: const BorderRadius.vertical(
-                            top: Radius.circular(6),
-                          ),
-                          backDrawRodData: BackgroundBarChartRodData(
-                            show: true,
-                            toY: (maxCount + 1).toDouble(),
-                            color: colors.surfaceContainerHighest.withOpacity(
-                              0.2,
-                            ),
-                          ),
-                        ),
-                      ],
-                      showingTooltipIndicators: count > 0 ? [0] : [],
-                    );
-                  }),
-                  barTouchData: BarTouchData(
-                    enabled: false,
-                    touchTooltipData: BarTouchTooltipData(
-                      getTooltipColor: (_) => Colors.transparent,
-                      tooltipPadding: EdgeInsets.zero,
-                      tooltipMargin: 2,
-                      getTooltipItem: (group, groupIndex, rod, rodIndex) {
-                        return BarTooltipItem(
-                          rod.toY.toInt().toString(),
-                          TextStyle(
-                            color: colors.onSurfaceVariant,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 10,
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  Widget _buildHabitsRadarChartAnalysis(BuildContext context) {
-    final habitRepo = ref.watch(habitRepositoryProvider);
-    final colors = Theme.of(context).colorScheme;
-
-    return ValueListenableBuilder(
-      valueListenable: habitRepo.box.listenable(),
-      builder: (context, box, _) {
-        final weekRates = habitRepo.getWeekCompletionRates();
-        final dayNames = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
-
-        final entries = <RadarEntry>[];
-        bool hasData = false;
-        double totalRate = 0;
-        int maxDayIndex = 0;
-        double maxRate = -1;
-
-        for (int i = 0; i < 7; i++) {
-          final baseRate = weekRates[i] ?? 0.0;
-          final val = baseRate * 100;
-          if (val > 0) hasData = true;
-          totalRate += baseRate;
-          if (baseRate > maxRate) {
-            maxRate = baseRate;
-            maxDayIndex = i;
-          }
-          entries.add(RadarEntry(value: val));
-        }
-
-        if (!hasData) {
-          return Center(
-            child: Text(
-              'Sem dados esta semana',
-              style: TextStyle(color: colors.onSurfaceVariant, fontSize: 12),
-            ),
-          );
-        }
-
-        final consistency = (totalRate / 7 * 100).toInt();
-        final bestDay = dayNames[maxDayIndex];
-
-        return Column(
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                _buildAnalysisBadge(
-                  context,
-                  'Consistência',
-                  '$consistency%',
-                  Icons.timelapse_rounded,
-                  colors.primary,
-                ),
-                _buildAnalysisBadge(
-                  context,
-                  'Melhor Dia',
-                  bestDay,
-                  Icons.calendar_today_rounded,
-                  const Color(0xFF07E092),
-                ),
-              ],
-            ),
-            Expanded(
-              child: RadarChart(
-                RadarChartData(
-                  radarShape: RadarShape.polygon,
-                  radarBackgroundColor: Colors.transparent,
-                  borderData: FlBorderData(show: false),
-                  tickCount: 1,
-                  gridBorderData: BorderSide(
-                    color: colors.outlineVariant.withOpacity(0.2),
-                    width: 1,
-                  ),
-                  tickBorderData: const BorderSide(color: Colors.transparent),
-                  titleTextStyle: TextStyle(
-                    color: colors.onSurfaceVariant,
-                    fontSize: 10,
-                  ),
-                  getTitle: (index, angle) => RadarChartTitle(
-                    text: dayNames[index],
-                    angle: 0,
-                  ), // fixed angle
-                  dataSets: [
-                    RadarDataSet(
-                      fillColor: colors.primary.withOpacity(0.25),
-                      borderColor: colors.primary.withOpacity(0.8),
-                      entryRadius: 3,
-                      borderWidth: 2,
-                      dataEntries: entries,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  Widget _buildAnalysisBadge(
-    BuildContext context,
-    String label,
-    String value,
-    IconData icon,
-    Color color,
-  ) {
-    final colors = Theme.of(context).colorScheme;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: colors.surfaceContainerHighest.withOpacity(0.3),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: colors.outlineVariant.withOpacity(0.2)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 14, color: color),
-          const SizedBox(width: 6),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: TextStyle(fontSize: 9, color: colors.onSurfaceVariant),
-              ),
-              Text(
-                value,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                  color: colors.onSurface,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
 
   void refresh() {
     if (mounted) setState(() {});
@@ -5370,15 +3810,15 @@ extension _HomeScreenStateDataInsights on _HomeScreenState {
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
-                    colors.primaryContainer.withOpacity(0.3),
-                    colors.secondaryContainer.withOpacity(0.2),
+                    colors.primaryContainer.withValues(alpha: 0.3),
+                    colors.secondaryContainer.withValues(alpha: 0.2),
                   ],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
                 borderRadius: BorderRadius.circular(32),
                 border: Border.all(
-                  color: colors.primary.withOpacity(0.2),
+                  color: colors.primary.withValues(alpha: 0.2),
                   width: 1.5,
                 ),
               ),
@@ -5394,8 +3834,8 @@ extension _HomeScreenStateDataInsights on _HomeScreenState {
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
                             colors: [
-                              colors.primary.withOpacity(0.15),
-                              colors.tertiary.withOpacity(0.1),
+                              colors.primary.withValues(alpha: 0.15),
+                              colors.tertiary.withValues(alpha: 0.1),
                             ],
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
@@ -5426,7 +3866,9 @@ extension _HomeScreenStateDataInsights on _HomeScreenState {
                               'Análise do seu progresso semanal',
                               style: TextStyle(
                                 fontSize: 12,
-                                color: colors.onSurfaceVariant.withOpacity(0.8),
+                                color: colors.onSurfaceVariant.withValues(
+                                  alpha: 0.8,
+                                ),
                               ),
                             ),
                           ],
@@ -5483,10 +3925,10 @@ extension _HomeScreenStateDataInsights on _HomeScreenState {
                             child: Container(
                               padding: const EdgeInsets.all(16),
                               decoration: BoxDecoration(
-                                color: colors.surface.withOpacity(0.8),
+                                color: colors.surface.withValues(alpha: 0.8),
                                 borderRadius: BorderRadius.circular(20),
                                 border: Border.all(
-                                  color: colors.outline.withOpacity(0.1),
+                                  color: colors.outline.withValues(alpha: 0.1),
                                   width: 1,
                                 ),
                               ),
@@ -5539,11 +3981,11 @@ extension _HomeScreenStateDataInsights on _HomeScreenState {
                                               (insight['gradient']
                                                       as List<Color>)
                                                   .first
-                                                  .withOpacity(0.2),
+                                                  .withValues(alpha: 0.2),
                                               (insight['gradient']
                                                       as List<Color>)
                                                   .last
-                                                  .withOpacity(0.1),
+                                                  .withValues(alpha: 0.1),
                                             ],
                                           ),
                                           borderRadius: BorderRadius.circular(
@@ -5554,7 +3996,7 @@ extension _HomeScreenStateDataInsights on _HomeScreenState {
                                                 (insight['gradient']
                                                         as List<Color>)
                                                     .first
-                                                    .withOpacity(0.3),
+                                                    .withValues(alpha: 0.3),
                                             width: 1,
                                           ),
                                         ),
@@ -5576,7 +4018,7 @@ extension _HomeScreenStateDataInsights on _HomeScreenState {
                                           Icons.arrow_forward_ios_rounded,
                                           size: 14,
                                           color: colors.onSurfaceVariant
-                                              .withOpacity(0.5),
+                                              .withValues(alpha: 0.5),
                                         ),
                                       ],
                                     ],
@@ -5595,10 +4037,10 @@ extension _HomeScreenStateDataInsights on _HomeScreenState {
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: colors.surface.withOpacity(0.5),
+                      color: colors.surface.withValues(alpha: 0.5),
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(
-                        color: colors.outline.withOpacity(0.1),
+                        color: colors.outline.withValues(alpha: 0.1),
                       ),
                     ),
                     child: Row(
@@ -5613,7 +4055,7 @@ extension _HomeScreenStateDataInsights on _HomeScreenState {
                         Container(
                           width: 1,
                           height: 30,
-                          color: colors.outline.withOpacity(0.2),
+                          color: colors.outline.withValues(alpha: 0.2),
                         ),
                         _buildMiniStat(
                           icon: Icons.check_circle_rounded,
@@ -5624,7 +4066,7 @@ extension _HomeScreenStateDataInsights on _HomeScreenState {
                         Container(
                           width: 1,
                           height: 30,
-                          color: colors.outline.withOpacity(0.2),
+                          color: colors.outline.withValues(alpha: 0.2),
                         ),
                         _buildMiniStat(
                           icon: Icons.mood_rounded,
@@ -5635,7 +4077,7 @@ extension _HomeScreenStateDataInsights on _HomeScreenState {
                         Container(
                           width: 1,
                           height: 30,
-                          color: colors.outline.withOpacity(0.2),
+                          color: colors.outline.withValues(alpha: 0.2),
                         ),
                         _buildMiniStat(
                           icon: Icons.note_rounded,
@@ -5820,14 +4262,16 @@ extension _HomeScreenStateDataInsights on _HomeScreenState {
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: [
-                        colors.primaryContainer.withOpacity(0.4),
+                        colors.primaryContainer.withValues(alpha: 0.4),
                         colors.surface,
                       ],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
                     borderRadius: BorderRadius.circular(32),
-                    border: Border.all(color: colors.outline.withOpacity(0.08)),
+                    border: Border.all(
+                      color: colors.outline.withValues(alpha: 0.08),
+                    ),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -6026,10 +4470,10 @@ extension _HomeScreenStateDataInsights on _HomeScreenState {
                                         width: itemWidth,
                                         height: 50 * heightFactor,
                                         decoration: BoxDecoration(
-                                          color: _getColorForRate(
-                                            rate,
-                                            colors,
-                                          ).withOpacity(isToday ? 1.0 : 0.8),
+                                          color: _getColorForRate(rate, colors)
+                                              .withValues(
+                                                alpha: isToday ? 1.0 : 0.8,
+                                              ),
                                           borderRadius: BorderRadius.circular(
                                             4,
                                           ),
@@ -6037,7 +4481,7 @@ extension _HomeScreenStateDataInsights on _HomeScreenState {
                                               ? [
                                                   BoxShadow(
                                                     color: colors.primary
-                                                        .withOpacity(0.4),
+                                                        .withValues(alpha: 0.4),
                                                     blurRadius: 8,
                                                     offset: const Offset(0, 2),
                                                   ),
@@ -6061,10 +4505,10 @@ extension _HomeScreenStateDataInsights on _HomeScreenState {
                         width: double.infinity,
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: colors.primary.withOpacity(0.08),
+                          color: colors.primary.withValues(alpha: 0.08),
                           borderRadius: BorderRadius.circular(16),
                           border: Border.all(
-                            color: colors.primary.withOpacity(0.1),
+                            color: colors.primary.withValues(alpha: 0.1),
                           ),
                         ),
                         child: Column(
@@ -6082,7 +4526,7 @@ extension _HomeScreenStateDataInsights on _HomeScreenState {
                                 fontSize: 13,
                                 fontStyle: FontStyle.italic,
                                 fontWeight: FontWeight.w500,
-                                color: colors.onSurface.withOpacity(0.8),
+                                color: colors.onSurface.withValues(alpha: 0.8),
                                 height: 1.4,
                               ),
                             ),
@@ -6093,7 +4537,7 @@ extension _HomeScreenStateDataInsights on _HomeScreenState {
                                 fontSize: 10,
                                 fontWeight: FontWeight.w700,
                                 letterSpacing: 1.2,
-                                color: colors.primary.withOpacity(0.7),
+                                color: colors.primary.withValues(alpha: 0.7),
                               ),
                             ),
                           ],
@@ -6121,9 +4565,11 @@ extension _HomeScreenStateDataInsights on _HomeScreenState {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.3),
+        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: theme.colorScheme.outline.withOpacity(0.05)),
+        border: Border.all(
+          color: theme.colorScheme.outline.withValues(alpha: 0.05),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -6131,7 +4577,7 @@ extension _HomeScreenStateDataInsights on _HomeScreenState {
           Container(
             padding: const EdgeInsets.all(6),
             decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
+              color: color.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(icon, size: 18, color: color),
@@ -6162,7 +4608,7 @@ extension _HomeScreenStateDataInsights on _HomeScreenState {
     if (rate >= 1.0) return const Color(0xFF00C853);
     if (rate >= 0.7) return const Color(0xFF69F0AE);
     if (rate >= 0.4) return colors.primary;
-    if (rate > 0) return colors.primary.withOpacity(0.5);
+    if (rate > 0) return colors.primary.withValues(alpha: 0.5);
     return colors.surfaceContainerHighest;
   }
 
@@ -6184,139 +4630,6 @@ extension _HomeScreenStateDataInsights on _HomeScreenState {
   // ==========================================
   // FAB
   // ==========================================
-  Widget _buildFAB(BuildContext context) {
-    return FloatingActionButton(
-      onPressed: () {
-        HapticFeedback.lightImpact();
-        _showQuickActionsSheet(context);
-      },
-      backgroundColor: UltravioletColors.primary,
-      child: const Icon(Icons.add, color: Colors.white),
-    );
-  }
-
-  void _showQuickActionsSheet(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: UltravioletColors.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (context) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: UltravioletColors.outline,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              const SizedBox(height: 20),
-              Text(
-                'Ações Rápidas',
-                style: Theme.of(
-                  context,
-                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
-              ),
-              const SizedBox(height: 20),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  _buildQuickActionItem(
-                    icon: Icons.mood_rounded,
-                    label: 'Humor',
-                    color: UltravioletColors.moodGood,
-                    onTap: () {
-                      Navigator.pop(context);
-                      showModalBottomSheet(
-                        useSafeArea: true,
-                        isScrollControlled: true,
-                        context: context,
-                        backgroundColor: Colors.transparent,
-                        builder: (context) => DraggableScrollableSheet(
-                          initialChildSize: 0.85,
-                          minChildSize: 0.5,
-                          maxChildSize: 0.95,
-                          builder: (context, scrollController) =>
-                              const AddMoodRecordForm(recordToEdit: null),
-                        ),
-                      );
-                    },
-                  ),
-                  _buildQuickActionItem(
-                    icon: Icons.event_repeat_rounded,
-                    label: 'Hábito',
-                    color: UltravioletColors.primary,
-                    onTap: () {
-                      Navigator.pop(context);
-                      _showAddHabitDialog(context);
-                    },
-                  ),
-                  _buildQuickActionItem(
-                    icon: Icons.timer_rounded,
-                    label: 'Timer',
-                    color: UltravioletColors.secondary,
-                    onTap: () {
-                      Navigator.pop(context);
-                      ref.read(navigationProvider.notifier).goToTimer();
-                    },
-                  ),
-                  _buildQuickActionItem(
-                    icon: Icons.calendar_today_rounded,
-                    label: 'Calendário',
-                    color: UltravioletColors.tertiary,
-                    onTap: () {
-                      Navigator.pop(context);
-                      ref.read(navigationProvider.notifier).goToLog();
-                    },
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildQuickActionItem({
-    required IconData icon,
-    required String label,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Column(
-        children: [
-          Container(
-            width: 60,
-            height: 60,
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.12),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Icon(icon, color: color, size: 28),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            label,
-            style: const TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-              color: UltravioletColors.onSurface,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   // Helper method to create quick task
   Future<void> _createQuickTask(TaskRepository taskRepo) async {
@@ -6357,419 +4670,6 @@ extension _HomeScreenStateDataInsights on _HomeScreenState {
   // ==========================================
   // PROFILE MENU - Menu de atalhos rápidos
   // ==========================================
-  void _showProfileMenu(BuildContext context, WidgetRef ref) {
-    final colors = Theme.of(context).colorScheme;
-    final settings = ref.read(settingsProvider);
-    final stats = ref.read(userStatsProvider);
-    final title = UserTitles.getTitleForXP(stats.totalXP);
-
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (ctx) => Container(
-        decoration: BoxDecoration(
-          color: colors.surface.withValues(alpha: 0.85),
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-          border: Border.all(
-            color: colors.primary.withValues(alpha: 0.1),
-            width: 1.5,
-          ),
-        ),
-        child: ClipRRect(
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-          child: BackdropFilter(
-            filter: ui.ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-            child: SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Handle
-                    Container(
-                      width: 40,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: colors.outlineVariant.withValues(alpha: 0.5),
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-
-                    // User Profile Card - Premium Look
-                    Container(
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [
-                            colors.primaryContainer.withValues(alpha: 0.7),
-                            colors.secondaryContainer.withValues(alpha: 0.5),
-                          ],
-                        ),
-                        borderRadius: BorderRadius.circular(24),
-                        border: Border.all(
-                          color: colors.primary.withValues(alpha: 0.1),
-                        ),
-                      ),
-                      child: Column(
-                        children: [
-                          Row(
-                            children: [
-                              GestureDetector(
-                                onTap: () {
-                                  Navigator.pop(ctx);
-                                  ref
-                                      .read(navigationProvider.notifier)
-                                      .goToProfile();
-                                },
-                                child: Container(
-                                  padding: const EdgeInsets.all(3),
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    gradient: LinearGradient(
-                                      colors: [
-                                        colors.primary,
-                                        colors.secondary,
-                                      ],
-                                    ),
-                                  ),
-                                  child: CircleAvatar(
-                                    radius: 32,
-                                    backgroundImage: settings.avatarPath != null
-                                        ? FileImage(File(settings.avatarPath!))
-                                        : null,
-                                    backgroundColor: colors.surface,
-                                    child: settings.avatarPath == null
-                                        ? Text(
-                                            settings.userName.isNotEmpty
-                                                ? settings.userName[0]
-                                                      .toUpperCase()
-                                                : 'U',
-                                            style: TextStyle(
-                                              fontSize: 24,
-                                              fontWeight: FontWeight.bold,
-                                              color: colors.primary,
-                                            ),
-                                          )
-                                        : null,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 16),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      settings.userName,
-                                      style: TextStyle(
-                                        fontSize: 20,
-                                        fontWeight: FontWeight.bold,
-                                        color: colors.onSurface,
-                                        letterSpacing: -0.5,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 8,
-                                        vertical: 2,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: colors.primary.withValues(
-                                          alpha: 0.1,
-                                        ),
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      child: Text(
-                                        '${title.emoji} ${title.name}',
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w600,
-                                          color: colors.primary,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.end,
-                                children: [
-                                  Text(
-                                    'Nível ${stats.level}',
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.bold,
-                                      color: colors.primary,
-                                    ),
-                                  ),
-                                  Text(
-                                    '${stats.totalXP} XP',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: colors.onSurfaceVariant,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 16),
-                          // XP Progress Bar
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text(
-                                    'Progresso do Nível',
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w500,
-                                      color: colors.onSurfaceVariant,
-                                    ),
-                                  ),
-                                  Text(
-                                    '${(stats.levelProgress * 100).round()}%',
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.bold,
-                                      color: colors.primary,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 6),
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(4),
-                                child: LinearProgressIndicator(
-                                  value: stats.levelProgress,
-                                  backgroundColor: colors.surface.withValues(
-                                    alpha: 0.5,
-                                  ),
-                                  valueColor: AlwaysStoppedAnimation<Color>(
-                                    colors.primary,
-                                  ),
-                                  minHeight: 6,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-
-                    // Quick Actions Grid
-                    GridView.count(
-                      shrinkWrap: true,
-                      crossAxisCount: 2,
-                      crossAxisSpacing: 12,
-                      mainAxisSpacing: 12,
-                      childAspectRatio: 2.5,
-                      physics: const NeverScrollableScrollPhysics(),
-                      children: [
-                        _quickActionCard(
-                          ctx,
-                          '📊',
-                          'Estatísticas',
-                          colors.primary,
-                          () {
-                            Navigator.pop(ctx);
-                            ref
-                                .read(navigationProvider.notifier)
-                                .goToProfile(tabIndex: 0);
-                          },
-                          colors,
-                        ),
-                        _quickActionCard(
-                          ctx,
-                          '🎯',
-                          'Metas',
-                          colors.secondary,
-                          () {
-                            Navigator.pop(ctx);
-                            ref
-                                .read(navigationProvider.notifier)
-                                .goToProfile(tabIndex: 4);
-                          },
-                          colors,
-                        ),
-                        _quickActionCard(
-                          ctx,
-                          '🏆',
-                          'Conquistas',
-                          colors.tertiary,
-                          () {
-                            Navigator.pop(ctx);
-                            ref
-                                .read(navigationProvider.notifier)
-                                .goToProfile(tabIndex: 2);
-                          },
-                          colors,
-                        ),
-                        _quickActionCard(
-                          ctx,
-                          '📅',
-                          'Calendário',
-                          WellnessColors.primary,
-                          () {
-                            Navigator.pop(ctx);
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => const HabitsCalendarScreen(),
-                              ),
-                            );
-                          },
-                          colors,
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 20),
-                    const Divider(),
-                    const SizedBox(height: 8),
-
-                    // Secondary Options
-                    _menuItem(ctx, '⚙️', 'Configurações', () {
-                      Navigator.pop(ctx);
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const SettingsScreen(),
-                        ),
-                      );
-                    }, colors),
-                    _menuItem(
-                      ctx,
-                      Theme.of(context).brightness == Brightness.dark
-                          ? '🌙'
-                          : '☀️',
-                      'Mudar Tema',
-                      () {
-                        final isDark =
-                            Theme.of(context).brightness == Brightness.dark;
-                        ref
-                            .read(settingsProvider.notifier)
-                            .setThemeMode(
-                              isDark ? ThemeMode.light : ThemeMode.dark,
-                            );
-                        HapticFeedback.mediumImpact();
-                      },
-                      colors,
-                      trailing: Switch.adaptive(
-                        value: Theme.of(context).brightness == Brightness.dark,
-                        activeColor: colors.primary,
-                        onChanged: (v) {
-                          ref
-                              .read(settingsProvider.notifier)
-                              .setThemeMode(
-                                v ? ThemeMode.dark : ThemeMode.light,
-                              );
-                          HapticFeedback.mediumImpact();
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _quickActionCard(
-    BuildContext context,
-    String emoji,
-    String title,
-    Color color,
-    VoidCallback onTap,
-    ColorScheme colors,
-  ) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: () {
-          HapticFeedback.lightImpact();
-          onTap();
-        },
-        borderRadius: BorderRadius.circular(16),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: color.withValues(alpha: 0.2)),
-          ),
-          child: Row(
-            children: [
-              Text(emoji, style: const TextStyle(fontSize: 20)),
-              const SizedBox(width: 12),
-              Text(
-                title,
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: colors.onSurface,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _menuItem(
-    BuildContext context,
-    String emoji,
-    String title,
-    VoidCallback onTap,
-    ColorScheme colors, {
-    Widget? trailing,
-  }) {
-    return ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      leading: Container(
-        width: 40,
-        height: 40,
-        decoration: BoxDecoration(
-          color: colors.surfaceContainerHighest.withValues(alpha: 0.5),
-          borderRadius: BorderRadius.circular(10),
-        ),
-        alignment: Alignment.center,
-        child: Text(emoji, style: const TextStyle(fontSize: 20)),
-      ),
-      title: Text(
-        title,
-        style: TextStyle(
-          fontSize: 15,
-          fontWeight: FontWeight.w500,
-          color: colors.onSurface,
-        ),
-      ),
-      trailing:
-          trailing ??
-          Icon(
-            Icons.chevron_right_rounded,
-            size: 20,
-            color: colors.onSurfaceVariant,
-          ),
-      onTap: () {
-        HapticFeedback.lightImpact();
-        onTap();
-      },
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-    );
-  }
 
   // ==========================================
   // SMART ADD - Adicionar Inteligente
@@ -6784,7 +4684,7 @@ extension _HomeScreenStateDataInsights on _HomeScreenState {
             id: DateTime.now().millisecondsSinceEpoch.toString(),
             name: text,
             iconCode: Icons.star.codePoint,
-            colorValue: UltravioletColors.primary.value,
+            colorValue: UltravioletColors.primary.toARGB32(),
             createdAt: DateTime.now(),
           );
           final repo = ref.read(habitRepositoryProvider);
@@ -7123,7 +5023,7 @@ extension _HomeScreenStateDataInsights on _HomeScreenState {
                         height: 48,
                         decoration: BoxDecoration(
                           color: isSelected
-                              ? selectedColor.withOpacity(0.3)
+                              ? selectedColor.withValues(alpha: 0.3)
                               : UltravioletColors.surfaceVariant,
                           borderRadius: BorderRadius.circular(12),
                           border: isSelected
@@ -7165,7 +5065,7 @@ extension _HomeScreenStateDataInsights on _HomeScreenState {
                           boxShadow: isSelected
                               ? [
                                   BoxShadow(
-                                    color: color.withOpacity(0.5),
+                                    color: color.withValues(alpha: 0.5),
                                     blurRadius: 8,
                                   ),
                                 ]
@@ -7195,7 +5095,7 @@ extension _HomeScreenStateDataInsights on _HomeScreenState {
                         id: DateTime.now().millisecondsSinceEpoch.toString(),
                         name: nameController.text,
                         iconCode: selectedIconCode,
-                        colorValue: selectedColor.value,
+                        colorValue: selectedColor.toARGB32(),
                         scheduledTime: timeStr,
                         daysOfWeek: selectedDays,
                         completedDates: [],
@@ -7206,6 +5106,7 @@ extension _HomeScreenStateDataInsights on _HomeScreenState {
                       );
 
                       await repo.addHabit(newHabit);
+                      if (!mounted) return;
                       Navigator.pop(context);
                       FeedbackService.showSuccess(context, '✨ Hábito criado!');
                     },
@@ -7465,7 +5366,7 @@ extension _HomeScreenStateDataInsights on _HomeScreenState {
                         height: 48,
                         decoration: BoxDecoration(
                           color: isSelected
-                              ? selectedColor.withOpacity(0.3)
+                              ? selectedColor.withValues(alpha: 0.3)
                               : UltravioletColors.surfaceVariant,
                           borderRadius: BorderRadius.circular(12),
                           border: isSelected
@@ -7507,7 +5408,7 @@ extension _HomeScreenStateDataInsights on _HomeScreenState {
                           boxShadow: isSelected
                               ? [
                                   BoxShadow(
-                                    color: color.withOpacity(0.5),
+                                    color: color.withValues(alpha: 0.5),
                                     blurRadius: 8,
                                   ),
                                 ]
@@ -7536,12 +5437,13 @@ extension _HomeScreenStateDataInsights on _HomeScreenState {
                       final updatedHabit = habit.copyWith(
                         name: nameController.text,
                         iconCode: selectedIconCode,
-                        colorValue: selectedColor.value,
+                        colorValue: selectedColor.toARGB32(),
                         scheduledTime: timeStr,
                         daysOfWeek: selectedDays,
                       );
 
                       await repo.updateHabit(updatedHabit);
+                      if (!mounted) return;
                       Navigator.pop(context);
                       FeedbackService.showSuccess(
                         context,
@@ -7573,8 +5475,12 @@ extension _HomeScreenStateDataInsights on _HomeScreenState {
                     onTap: () async {
                       final repo = ref.read(habitRepositoryProvider);
                       await repo.deleteHabit(habit.id);
+                      if (!mounted) return;
                       Navigator.pop(context);
-                      FeedbackService.showSuccess(context, 'Hábito removido');
+                      FeedbackService.showSuccess(
+                        context,
+                        '🗑️ Hábito removido',
+                      );
                     },
                     child: const Text(
                       'Remover hábito',
@@ -7600,7 +5506,7 @@ extension _HomeScreenStateDataInsights on _HomeScreenState {
       decoration: BoxDecoration(
         color: colors.surface,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: colors.outline.withOpacity(0.06)),
+        border: Border.all(color: colors.outline.withValues(alpha: 0.06)),
       ),
       child: Row(
         children: [
@@ -7609,7 +5515,7 @@ extension _HomeScreenStateDataInsights on _HomeScreenState {
           Container(
             width: 1,
             height: 32,
-            color: colors.outlineVariant.withOpacity(0.3),
+            color: colors.outlineVariant.withValues(alpha: 0.3),
           ),
           const SizedBox(width: 8),
           Expanded(child: _buildReadingsPill(context)),
@@ -7697,7 +5603,7 @@ extension _HomeScreenStateDataInsights on _HomeScreenState {
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: color.withOpacity(0.1),
+                    color: color.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Icon(icon, size: 18, color: color),
@@ -7958,7 +5864,7 @@ class _NewsCarouselWidgetState extends State<_NewsCarouselWidget> {
       padding: const EdgeInsets.all(16),
       margin: EdgeInsets.zero,
       backgroundColor: Theme.of(context).colorScheme.surface,
-      borderColor: const Color(0xFFFF6B6B).withOpacity(0.2),
+      borderColor: const Color(0xFFFF6B6B).withValues(alpha: 0.2),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -7968,7 +5874,7 @@ class _NewsCarouselWidgetState extends State<_NewsCarouselWidget> {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFF6B6B).withOpacity(0.15),
+                  color: const Color(0xFFFF6B6B).withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: const Icon(
@@ -8008,7 +5914,7 @@ class _NewsCarouselWidgetState extends State<_NewsCarouselWidget> {
                   child: Container(
                     padding: const EdgeInsets.all(6),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFFF6B6B).withOpacity(0.1),
+                      color: const Color(0xFFFF6B6B).withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: const Icon(
@@ -8205,7 +6111,7 @@ class _NewsCarouselWidgetState extends State<_NewsCarouselWidget> {
                   decoration: BoxDecoration(
                     color: isActive
                         ? const Color(0xFFFF6B6B)
-                        : const Color(0xFFFF6B6B).withOpacity(0.2),
+                        : const Color(0xFFFF6B6B).withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(3),
                   ),
                 );
@@ -8225,563 +6131,3 @@ class _NewsCarouselWidgetState extends State<_NewsCarouselWidget> {
 // ==========================================
 // CARD DE VISÃO GERAL DO DIA
 // ==========================================
-class _DayOverviewCard extends ConsumerWidget {
-  const _DayOverviewCard({
-    required this.habitRepoInitialized,
-    required this.taskRepoInitialized,
-  });
-
-  final bool habitRepoInitialized;
-  final bool taskRepoInitialized;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final colors = Theme.of(context).colorScheme;
-    final timerState = ref.watch(timerProvider);
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: colors.surface,
-        borderRadius: BorderRadius.circular(24),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      colors.primary.withOpacity(0.2),
-                      colors.tertiary.withOpacity(0.2),
-                    ],
-                  ),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(
-                  Icons.dashboard_rounded,
-                  color: colors.primary,
-                  size: 20,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Visão Geral',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: colors.onSurface,
-                      ),
-                    ),
-                    Text(
-                      DateFormat('EEEE, d MMM', 'pt_BR').format(DateTime.now()),
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: colors.onSurfaceVariant,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              if (timerState.isRunning)
-                _ActiveTimerIndicator(timerState: timerState),
-            ],
-          ),
-          const SizedBox(height: 16),
-
-          // Grid de Overview Items
-          if (!habitRepoInitialized || !taskRepoInitialized)
-            _buildLoadingGrid(colors)
-          else
-            _buildOverviewGrid(context, ref, colors, timerState),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildLoadingGrid(ColorScheme colors) {
-    return GridView.count(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      crossAxisCount: 3,
-      mainAxisSpacing: 10,
-      crossAxisSpacing: 10,
-      childAspectRatio: 1.1,
-      children: List.generate(
-        6,
-        (index) => _OverviewItemPlaceholder(colors: colors),
-      ),
-    );
-  }
-
-  Widget _buildOverviewGrid(
-    BuildContext context,
-    WidgetRef ref,
-    ColorScheme colors,
-    TimerState timerState,
-  ) {
-    final taskRepo = ref.watch(taskRepositoryProvider);
-    final notesRepo = ref.watch(notesRepositoryProvider);
-    final moodRepo = ref.watch(moodRecordRepositoryProvider);
-    final timeTrackingRepo = ref.watch(timeTrackingRepositoryProvider);
-
-    return FutureBuilder(
-      future: Future.wait([
-        taskRepo.getPendingTasksForToday(),
-        Future.value(notesRepo.getAllNotes()),
-        Future.value(moodRepo.fetchMoodRecords()),
-        Future.value(
-          timeTrackingRepo.fetchTimeTrackingRecordsByDate(DateTime.now()),
-        ),
-      ]),
-      builder: (context, snapshot) {
-        if (!snapshot.hasData) {
-          return _buildLoadingGrid(colors);
-        }
-
-        final tasks = snapshot.data![0] as List<TaskData>;
-        final notes = snapshot.data![1] as List<Map<String, dynamic>>;
-        final moods = snapshot.data![2] as Map<dynamic, MoodRecord>;
-        final timeRecords = snapshot.data![3] as List<TimeTrackingRecord>;
-
-        // Filtrar ideias (notas marcadas como ideia ou sem categoria específica)
-        final ideas = notes
-            .where(
-              (n) =>
-                  (n['category'] as String?)?.toLowerCase() == 'ideia' ||
-                  (n['category'] as String?)?.toLowerCase() == 'idea' ||
-                  (n['tags'] as List?)?.any(
-                        (t) => t.toString().toLowerCase().contains('ideia'),
-                      ) ==
-                      true,
-            )
-            .toList();
-
-        // Pegar humor mais recente de hoje
-        final todayMoods = moods.entries.where((e) {
-          final moodDate = e.value.date;
-          final now = DateTime.now();
-          return moodDate.year == now.year &&
-              moodDate.month == now.month &&
-              moodDate.day == now.day;
-        }).toList();
-        todayMoods.sort((a, b) => b.value.date.compareTo(a.value.date));
-        final latestMood = todayMoods.isNotEmpty
-            ? todayMoods.first.value
-            : null;
-
-        // Contar sessões Pomodoro de hoje
-        final pomodoroSessions = timerState.pomodoroSessions;
-
-        // Tarefas de alta prioridade
-        final highPriorityTasks = tasks
-            .where((t) => t.priority == 'high')
-            .length;
-
-        return Column(
-          children: [
-            // Primeira linha - 3 cards
-            Row(
-              children: [
-                Expanded(
-                  child: _OverviewItem(
-                    icon: Icons.check_circle_outline_rounded,
-                    label: 'Tarefas',
-                    value: '${tasks.length}',
-                    subtitle: highPriorityTasks > 0
-                        ? '$highPriorityTasks urgentes'
-                        : 'pendentes',
-                    color: tasks.isEmpty
-                        ? colors.primary
-                        : (highPriorityTasks > 0
-                              ? colors.error
-                              : colors.tertiary),
-                    onTap: () {
-                      HapticFeedback.lightImpact();
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const TasksScreen(),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: _OverviewItem(
-                    icon: Icons.lightbulb_outline_rounded,
-                    label: 'Ideias',
-                    value: '${ideas.length}',
-                    subtitle: notes.length > ideas.length
-                        ? '+${notes.length - ideas.length} notas'
-                        : 'capturadas',
-                    color: Colors.amber,
-                    onTap: () {
-                      HapticFeedback.lightImpact();
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const NotesScreen(),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: _OverviewItem(
-                    icon: _getMoodIcon(latestMood),
-                    label: 'Humor',
-                    value: latestMood != null ? _getMoodLabel(latestMood) : '—',
-                    subtitle: latestMood != null
-                        ? DateFormat('HH:mm').format(latestMood.date)
-                        : 'registrar',
-                    color: latestMood != null
-                        ? _getMoodColor(latestMood)
-                        : colors.onSurfaceVariant.withOpacity(0.5),
-                    onTap: () {
-                      HapticFeedback.lightImpact();
-                      showModalBottomSheet(
-                        context: context,
-                        isScrollControlled: true,
-                        backgroundColor: Colors.transparent,
-                        builder: (context) => const AddMoodRecordForm(),
-                      );
-                    },
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            // Segunda linha - 2 cards (Timer + Pomodoro)
-            Row(
-              children: [
-                Expanded(
-                  child: _OverviewItem(
-                    icon: timerState.isRunning
-                        ? Icons.timer_rounded
-                        : Icons.timer_outlined,
-                    label: 'Timer',
-                    value: timerState.isRunning
-                        ? _formatDuration(timerState.elapsed)
-                        : '${timeRecords.length}h',
-                    subtitle: timerState.isRunning
-                        ? (timerState.taskName ?? 'Em andamento')
-                        : 'registradas',
-                    color: timerState.isRunning
-                        ? WellnessColors.success
-                        : colors.primary,
-                    isActive: timerState.isRunning,
-                    onTap: () {
-                      HapticFeedback.lightImpact();
-                      ref.read(navigationProvider.notifier).goToTimer();
-                    },
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: _OverviewItem(
-                    icon: Icons.local_fire_department_rounded,
-                    label: 'Pomodoro',
-                    value: '$pomodoroSessions',
-                    subtitle: pomodoroSessions == 1 ? 'sessão' : 'sessões',
-                    color: pomodoroSessions > 0
-                        ? Colors.deepOrange
-                        : colors.onSurfaceVariant.withOpacity(0.5),
-                    onTap: () {
-                      HapticFeedback.lightImpact();
-                      ref
-                          .read(timerProvider.notifier)
-                          .updatePomodoroSettings(openPomodoroScreen: true);
-                      ref.read(navigationProvider.notifier).goToTimer();
-                    },
-                  ),
-                ),
-              ],
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  String _formatDuration(Duration duration) {
-    final hours = duration.inHours;
-    final minutes = duration.inMinutes.remainder(60);
-    final seconds = duration.inSeconds.remainder(60);
-
-    if (hours > 0) {
-      return '${hours}h${minutes.toString().padLeft(2, '0')}';
-    }
-    return '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
-  }
-
-  IconData _getMoodIcon(MoodRecord? mood) {
-    if (mood == null) return Icons.sentiment_neutral_rounded;
-
-    switch (mood.score) {
-      case 1:
-        return Icons.sentiment_very_dissatisfied_rounded;
-      case 2:
-        return Icons.sentiment_dissatisfied_rounded;
-      case 3:
-        return Icons.sentiment_neutral_rounded;
-      case 4:
-        return Icons.sentiment_satisfied_rounded;
-      case 5:
-        return Icons.sentiment_very_satisfied_rounded;
-      default:
-        return Icons.sentiment_neutral_rounded;
-    }
-  }
-
-  String _getMoodLabel(MoodRecord mood) {
-    switch (mood.score) {
-      case 1:
-        return 'Péssimo';
-      case 2:
-        return 'Mal';
-      case 3:
-        return 'Ok';
-      case 4:
-        return 'Bem';
-      case 5:
-        return 'Ótimo';
-      default:
-        return 'Ok';
-    }
-  }
-
-  Color _getMoodColor(MoodRecord mood) {
-    switch (mood.score) {
-      case 1:
-        return WellnessColors.error;
-      case 2:
-        return Colors.orange;
-      case 3:
-        return Colors.amber;
-      case 4:
-        return WellnessColors.primary;
-      case 5:
-        return WellnessColors.success;
-      default:
-        return Colors.amber;
-    }
-  }
-}
-
-// Widget para indicar timer ativo no header
-class _ActiveTimerIndicator extends StatefulWidget {
-  const _ActiveTimerIndicator({required this.timerState});
-
-  final TimerState timerState;
-
-  @override
-  State<_ActiveTimerIndicator> createState() => _ActiveTimerIndicatorState();
-}
-
-class _ActiveTimerIndicatorState extends State<_ActiveTimerIndicator>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _animation;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      duration: const Duration(milliseconds: 1000),
-      vsync: this,
-    )..repeat(reverse: true);
-    _animation = Tween<double>(begin: 0.6, end: 1.0).animate(_controller);
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _animation,
-      builder: (context, child) {
-        return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-          decoration: BoxDecoration(
-            color: WellnessColors.success.withOpacity(0.15 * _animation.value),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: WellnessColors.success.withOpacity(0.3)),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 8,
-                height: 8,
-                decoration: BoxDecoration(
-                  color: WellnessColors.success,
-                  shape: BoxShape.circle,
-                ),
-              ),
-              const SizedBox(width: 6),
-              const Text(
-                'Ativo',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  color: WellnessColors.success,
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-}
-
-// Item individual do overview
-class _OverviewItem extends StatelessWidget {
-  const _OverviewItem({
-    required this.icon,
-    required this.label,
-    required this.value,
-    required this.subtitle,
-    required this.color,
-    required this.onTap,
-    this.isActive = false,
-  });
-
-  final IconData icon;
-  final String label;
-  final String value;
-  final String subtitle;
-  final Color color;
-  final VoidCallback onTap;
-  final bool isActive;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: color.withOpacity(0.08),
-          borderRadius: BorderRadius.circular(16),
-          border: isActive
-              ? Border.all(color: color.withOpacity(0.4), width: 1.5)
-              : null,
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Row(
-              children: [
-                Icon(icon, size: 18, color: color),
-                const Spacer(),
-
-                if (isActive)
-                  Container(
-                    width: 6,
-                    height: 6,
-                    decoration: BoxDecoration(
-                      color: color,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              value,
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: colors.onSurface,
-              ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-                color: color,
-              ),
-            ),
-            Text(
-              subtitle,
-              style: TextStyle(fontSize: 10, color: colors.onSurfaceVariant),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// Placeholder para loading
-class _OverviewItemPlaceholder extends StatelessWidget {
-  const _OverviewItemPlaceholder({required this.colors});
-
-  final ColorScheme colors;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: colors.onSurface.withOpacity(0.04),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 20,
-            height: 20,
-            decoration: BoxDecoration(
-              color: colors.onSurface.withOpacity(0.08),
-              borderRadius: BorderRadius.circular(6),
-            ),
-          ),
-          const Spacer(),
-          Container(
-            width: 40,
-            height: 16,
-            decoration: BoxDecoration(
-              color: colors.onSurface.withOpacity(0.08),
-              borderRadius: BorderRadius.circular(4),
-            ),
-          ),
-          const SizedBox(height: 4),
-          Container(
-            width: 50,
-            height: 10,
-            decoration: BoxDecoration(
-              color: colors.onSurface.withOpacity(0.06),
-              borderRadius: BorderRadius.circular(3),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
