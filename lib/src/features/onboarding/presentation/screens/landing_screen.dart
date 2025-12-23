@@ -6,6 +6,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:rive/rive.dart' hide Image;
 import 'package:odyssey/src/constants/app_themes.dart';
 import 'package:odyssey/src/features/auth/presentation/widgets/sign_in_dialog.dart';
+import 'package:odyssey/src/features/auth/presentation/signup_screen.dart';
+import 'package:odyssey/src/localization/app_localizations.dart';
 
 class LandingScreen extends ConsumerStatefulWidget {
   const LandingScreen({Key? key}) : super(key: key);
@@ -207,7 +209,44 @@ class _LandingScreenState extends ConsumerState<LandingScreen>
                       },
                     ),
 
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 12),
+
+                    // Create Account Link
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          AppLocalizations.of(context)!.dontHaveAccount,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurface.withOpacity(0.5),
+                            fontFamily: "Inter",
+                            fontSize: 13,
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: () {
+                            HapticFeedback.lightImpact();
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const SignupScreen(),
+                              ),
+                            );
+                          },
+                          child: Text(
+                            AppLocalizations.of(context)!.createAccount,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: colors.accentPink,
+                              fontWeight: FontWeight.bold,
+                              fontFamily: "Inter",
+                              fontSize: 13,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 12),
 
                     // Info text
                     Text(

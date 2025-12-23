@@ -853,7 +853,7 @@ class _StatData {
 // PERSONAL GOALS - Design elegante
 // ============================================================
 
-class PersonalGoalsCard extends StatelessWidget {
+class PersonalGoalsCard extends StatefulWidget {
   final List<PersonalGoal> goals;
   final ColorScheme colors;
   final VoidCallback onAddGoal;
@@ -861,6 +861,7 @@ class PersonalGoalsCard extends StatelessWidget {
   final void Function(PersonalGoal goal)? onGoalTap;
   final void Function(PersonalGoal goal)? onIncrementGoal;
   final void Function(PersonalGoal goal)? onDeleteGoal;
+  final bool showAddButton;
 
   const PersonalGoalsCard({
     super.key,
@@ -871,16 +872,28 @@ class PersonalGoalsCard extends StatelessWidget {
     this.onGoalTap,
     this.onIncrementGoal,
     this.onDeleteGoal,
+    this.showAddButton = true,
   });
 
   @override
+  State<PersonalGoalsCard> createState() => _PersonalGoalsCardState();
+}
+
+class _PersonalGoalsCardState extends State<PersonalGoalsCard> {
+  bool _showCompleted = false;
+
+  @override
   Widget build(BuildContext context) {
-    final activeGoals = goals.where((g) => !g.isCompleted).take(3).toList();
+    final activeGoals = widget.goals
+        .where((g) => !g.isCompleted)
+        .take(3)
+        .toList();
+    final completedGoals = widget.goals.where((g) => g.isCompleted).toList();
 
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: colors.surfaceContainerHighest.withValues(alpha: 0.4),
+        color: widget.colors.surfaceContainerHighest.withValues(alpha: 0.4),
         borderRadius: BorderRadius.circular(24),
       ),
       child: Column(
@@ -895,26 +908,31 @@ class PersonalGoalsCard extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 17,
                   fontWeight: FontWeight.w600,
-                  color: colors.onSurface,
+                  color: widget.colors.onSurface,
                 ),
               ),
-              GestureDetector(
-                onTap: onAddGoal,
-                child: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: colors.primary.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(10),
+              if (widget.showAddButton)
+                GestureDetector(
+                  onTap: widget.onAddGoal,
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: widget.colors.primary.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(
+                      Icons.add,
+                      size: 18,
+                      color: widget.colors.primary,
+                    ),
                   ),
-                  child: Icon(Icons.add, size: 18, color: colors.primary),
                 ),
-              ),
             ],
           ),
           const SizedBox(height: 16),
 
-          // Goals list
-          if (activeGoals.isEmpty)
+          // Active Goals list
+          if (activeGoals.isEmpty && completedGoals.isEmpty)
             Center(
               child: Padding(
                 padding: const EdgeInsets.symmetric(vertical: 20),
@@ -923,8 +941,27 @@ class PersonalGoalsCard extends StatelessWidget {
                     const Text('🎯', style: TextStyle(fontSize: 32)),
                     const SizedBox(height: 8),
                     Text(
-                      'Nenhuma meta ativa',
-                      style: TextStyle(color: colors.onSurfaceVariant),
+                      'Nenhuma meta cadastrada',
+                      style: TextStyle(color: widget.colors.onSurfaceVariant),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          else if (activeGoals.isEmpty && completedGoals.isNotEmpty)
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                child: Column(
+                  children: [
+                    const Text('🏆', style: TextStyle(fontSize: 28)),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Todas as metas concluídas!',
+                      style: TextStyle(
+                        color: widget.colors.primary,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   ],
                 ),
@@ -935,28 +972,112 @@ class PersonalGoalsCard extends StatelessWidget {
               (goal) => PremiumGoalCard(
                 goal: goal,
                 onIncrement: () {
-                  if (onIncrementGoal != null) {
-                    onIncrementGoal!(goal);
+                  if (widget.onIncrementGoal != null) {
+                    widget.onIncrementGoal!(goal);
                   }
                 },
                 onDelete: () {
-                  if (onDeleteGoal != null) {
-                    onDeleteGoal!(goal);
+                  if (widget.onDeleteGoal != null) {
+                    widget.onDeleteGoal!(goal);
                   }
                 },
-                showActions: onIncrementGoal != null,
-                onTap: onGoalTap != null ? () => onGoalTap!(goal) : null,
+                showActions: widget.onIncrementGoal != null,
+                onTap: widget.onGoalTap != null
+                    ? () => widget.onGoalTap!(goal)
+                    : null,
               ),
             ),
 
-          if (activeGoals.isNotEmpty)
+          // Completed Goals Section
+          if (completedGoals.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            GestureDetector(
+              onTap: () => setState(() => _showCompleted = !_showCompleted),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
+                decoration: BoxDecoration(
+                  color: widget.colors.surfaceContainerHighest.withValues(
+                    alpha: 0.5,
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.check_circle_outline_rounded,
+                      size: 18,
+                      color: Color(0xFF51CF66),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Concluídas (${completedGoals.length})',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: widget.colors.onSurfaceVariant,
+                        ),
+                      ),
+                    ),
+                    AnimatedRotation(
+                      turns: _showCompleted ? 0.5 : 0,
+                      duration: const Duration(milliseconds: 200),
+                      child: Icon(
+                        Icons.expand_more_rounded,
+                        size: 20,
+                        color: widget.colors.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            AnimatedCrossFade(
+              duration: const Duration(milliseconds: 250),
+              crossFadeState: _showCompleted
+                  ? CrossFadeState.showSecond
+                  : CrossFadeState.showFirst,
+              firstChild: const SizedBox.shrink(),
+              secondChild: Padding(
+                padding: const EdgeInsets.only(top: 10),
+                child: Column(
+                  children: completedGoals
+                      .take(5)
+                      .map(
+                        (goal) => Opacity(
+                          opacity: 0.7,
+                          child: PremiumGoalCard(
+                            goal: goal,
+                            onIncrement: () {},
+                            onDelete: () {
+                              if (widget.onDeleteGoal != null) {
+                                widget.onDeleteGoal!(goal);
+                              }
+                            },
+                            showActions: false,
+                            onTap: widget.onGoalTap != null
+                                ? () => widget.onGoalTap!(goal)
+                                : null,
+                          ),
+                        ),
+                      )
+                      .toList(),
+                ),
+              ),
+            ),
+          ],
+
+          if (activeGoals.isNotEmpty || completedGoals.isNotEmpty)
             Center(
               child: TextButton(
-                onPressed: onViewAll,
+                onPressed: widget.onViewAll,
                 child: Text(
                   'Ver Todas as Metas',
                   style: TextStyle(
-                    color: colors.primary,
+                    color: widget.colors.primary,
                     fontWeight: FontWeight.w600,
                   ),
                 ),

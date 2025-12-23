@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:isar/isar.dart';
 import 'dart:math';
+
 import 'package:odyssey/src/features/mood_records/domain/mood_log/mood_record.dart';
 import 'package:odyssey/src/features/time_tracker/domain/time_tracking_record.dart';
 import 'package:odyssey/src/features/habits/domain/habit.dart';
 import 'package:odyssey/gen/assets.gen.dart';
+import 'package:odyssey/src/shared/data/isar_service.dart';
+import 'package:odyssey/src/features/diary/data/models/diary_entry_isar.dart';
 
 class DataSeeder {
   static final Random _random = Random();
@@ -46,7 +50,6 @@ class DataSeeder {
     // 4. Tasks (dados ricos)
     try {
       final taskBox = await Hive.openBox('tasks');
-      // Relaxed check: if we have few tasks (likely just old mocks or empty), re-seed
       if (taskBox.length < 5) {
         debugPrint('🌱 Seeding Tasks (Standard Set)...');
         await _seedTasks(taskBox);
@@ -57,7 +60,6 @@ class DataSeeder {
 
     // 5. Habits
     try {
-      // Verifica se o adapter já está registrado (HabitRepository deve ter feito isso)
       if (Hive.isAdapterRegistered(10)) {
         final habitBox = await Hive.openBox<Habit>('habits');
         if (habitBox.length < 2) {
@@ -78,15 +80,89 @@ class DataSeeder {
     } catch (e) {
       debugPrint('Error accessing gamification box: $e');
     }
+
+    // 7. Diary (Isar)
+    try {
+      final isar = IsarService.instance;
+      // Verifica se o schema está acessível via count (pode dar erro de getter se não gerado, vamos tentar)
+      // Se der erro aqui, captura no catch e segue a vida
+      final count = await isar.diaryEntryIsars.count();
+      if (count < 2) {
+        debugPrint('🌱 Seeding Diary (Isar)...');
+        await _seedDiary(isar);
+      }
+    } catch (e) {
+      debugPrint('Error seeding diary: $e');
+    }
   }
 
   static Future<void> seedAllData() async {
-    // Força re-seed de tudo (cuidado ao usar)
     await seedIfEmpty();
   }
 
+  static Future<void> _seedDiary(Isar isar) async {
+    final now = DateTime.now();
+
+    final sampleEntries = [
+      DiaryEntryIsar()
+        ..entryDate = now.subtract(const Duration(hours: 2))
+        ..createdAt = now.subtract(const Duration(hours: 2))
+        ..updatedAt = now.subtract(const Duration(hours: 2))
+        ..title = 'Reflexões sobre Produtividade'
+        ..content =
+            '[{"insert":"Hoje tive um insight interessante sobre como organizo meu tempo.\\n\\nPercebi que fazer as tarefas mais difíceis pela manhã muda completamente o ritmo do dia. A sensação de dever cumprido logo cedo libera uma energia incrível!\\n\\nVou tentar manter esse hábito amanhã.\\n"}]'
+        ..searchableText =
+            'Hoje tive um insight interessante sobre como organizo meu tempo. Percebi que fazer as tarefas mais difíceis pela manhã muda completamente o ritmo do dia. A sensação de dever cumprido logo cedo libera uma energia incrível! Vou tentar manter esse hábito amanhã.'
+        ..feeling = 'amazing'
+        ..tags = ['Produtividade', 'Insight', 'Manhã']
+        ..isStarred = true,
+
+      DiaryEntryIsar()
+        ..entryDate = now.subtract(const Duration(days: 1))
+        ..createdAt = now.subtract(const Duration(days: 1))
+        ..updatedAt = now.subtract(const Duration(days: 1))
+        ..title = 'Um dia difícil mas necessário'
+        ..content =
+            '[{"insert":"Às vezes as coisas não saem como planejado e tudo bem.\\nO projeto atrasou e fiquei frustrado, mas respirei fundo e replanejei.\\n\\nO importante é não paralisar diante dos obstáculos.\\n"}]'
+        ..searchableText =
+            'Às vezes as coisas não saem como planejado e tudo bem. O projeto atrasou e fiquei frustrado, mas respirei fundo e replanejei. O importante é não paralisar diante dos obstáculos.'
+        ..feeling = 'bad'
+        ..tags = ['Trabalho', 'Resiliência']
+        ..isStarred = false,
+
+      DiaryEntryIsar()
+        ..entryDate = now.subtract(const Duration(days: 3))
+        ..createdAt = now.subtract(const Duration(days: 3))
+        ..updatedAt = now.subtract(const Duration(days: 3))
+        ..title = 'Caminhada no Parque'
+        ..content =
+            '[{"insert":"O contato com a natureza sempre me renova.\\nO dia estava lindo, sol suave e brisa fresca.\\nVi várias pessoas passeando com cachorros e crianças brincando.\\n\\nMe sinto leve.\\n"}]'
+        ..searchableText =
+            'O contato com a natureza sempre me renova. O dia estava lindo, sol suave e brisa fresca. Vi várias pessoas passeando com cachorros e crianças brincando. Me sinto leve.'
+        ..feeling = 'good'
+        ..tags = ['Natureza', 'Paz', 'Lazer']
+        ..isStarred = true,
+
+      DiaryEntryIsar()
+        ..entryDate = now.subtract(const Duration(days: 5))
+        ..createdAt = now.subtract(const Duration(days: 5))
+        ..updatedAt = now.subtract(const Duration(days: 5))
+        ..title = 'Aprendendo Flutter'
+        ..content =
+            '[{"insert":"Estou adorando aprender sobre Riverpod e arquitetura limpa.\\nÉ desafiador, mas cada pequena vitória conta.\\nHoje consegui refatorar um módulo inteiro!\\n\\n#CodingLife\\n"}]'
+        ..searchableText =
+            'Estou adorando aprender sobre Riverpod e arquitetura limpa. É desafiador, mas cada pequena vitória conta. Hoje consegui refatorar um módulo inteiro! #CodingLife'
+        ..feeling = 'amazing'
+        ..tags = ['Flutter', 'Estudos', 'Tech']
+        ..isStarred = false,
+    ];
+
+    await isar.writeTxn(() async {
+      await isar.diaryEntryIsars.putAll(sampleEntries);
+    });
+  }
+
   static Future<void> _seedMoodRecords(Box<MoodRecord> box) async {
-    // Clear existing data (redundant if checking isEmpty but safe)
     await box.clear();
 
     final moods = [
@@ -138,25 +214,20 @@ class DataSeeder {
       null,
     ];
 
-    // Create records for the last 30 days
     final now = DateTime.now();
     for (int day = 30; day >= 0; day--) {
       final date = now.subtract(Duration(days: day));
       final recordsToday = _random.nextInt(3) + 1;
 
       for (int i = 0; i < recordsToday; i++) {
-        final hour = 8 + _random.nextInt(14); // Between 8am and 10pm
-        final minute = _random.nextInt(60);
         final recordDate = DateTime(
           date.year,
           date.month,
           date.day,
-          hour,
-          minute,
+          8 + _random.nextInt(14),
+          _random.nextInt(60),
         );
-
-        final moodIndex = _weightedRandom([0.15, 0.35, 0.25, 0.15, 0.10]);
-        final mood = moods[moodIndex];
+        final mood = moods[_weightedRandom([0.15, 0.35, 0.25, 0.15, 0.10])];
 
         final record = MoodRecord(
           label: mood['label'] as String,
@@ -167,7 +238,6 @@ class DataSeeder {
           note: notes[_random.nextInt(notes.length)],
           activities: [],
         );
-
         await box.add(record);
       }
     }
@@ -196,25 +266,22 @@ class DataSeeder {
       null,
       null,
     ];
-
     final now = DateTime.now();
+
     for (int day = 20; day >= 0; day--) {
       final date = now.subtract(Duration(days: day));
       final recordsToday = _random.nextInt(4) + 1;
 
       for (int i = 0; i < recordsToday; i++) {
-        final hour = 8 + _random.nextInt(12);
-        final minute = _random.nextInt(60);
         final startTime = DateTime(
           date.year,
           date.month,
           date.day,
-          hour,
-          minute,
+          8 + _random.nextInt(12),
+          _random.nextInt(60),
         );
         final durationMinutes = 15 + _random.nextInt(106);
         final endTime = startTime.add(Duration(minutes: durationMinutes));
-
         final activity = activities[_random.nextInt(activities.length)];
 
         final record = TimeTrackingRecord(
@@ -226,7 +293,6 @@ class DataSeeder {
           duration: Duration(minutes: durationMinutes),
           notes: notes[_random.nextInt(notes.length)],
         );
-
         await box.add(record);
       }
     }
@@ -234,7 +300,6 @@ class DataSeeder {
 
   static Future<void> _seedNotes(Box box) async {
     await box.clear();
-
     final sampleNotes = [
       {
         'content':
@@ -257,10 +322,11 @@ class DataSeeder {
             .toIso8601String(),
       },
     ];
-
     for (var i = 0; i < sampleNotes.length; i++) {
-      final note = sampleNotes[i];
-      await box.put('note_${DateTime.now().millisecondsSinceEpoch + i}', note);
+      await box.put(
+        'note_${DateTime.now().millisecondsSinceEpoch + i}',
+        sampleNotes[i],
+      );
     }
   }
 
@@ -269,34 +335,30 @@ class DataSeeder {
     final now = DateTime.now();
     String iso(DateTime d) => d.toIso8601String();
 
-    // Dados para popular
     final tasksData = [
-      // Pendentes - Hoje (SEM dueTime para não disparar notificações no seed!)
       {
         'title': 'Reunião de Design System',
-        'notes':
-            'Discutir a paleta de cores e tipografia para a nova versão. Revisar componentes no Figma.',
+        'notes': 'Discutir a paleta de cores e tipografia.',
         'completed': false,
         'priority': 'high',
         'category': 'Trabalho',
         'dueDate': iso(now),
-        'dueTime': null, // Removido para não disparar notificações
+        'dueTime': null,
         'createdAt': iso(now.subtract(const Duration(hours: 2))),
       },
       {
         'title': 'Ir à Academia',
-        'notes': 'Treino de perna e cardio - 30 minutos de esteira.',
+        'notes': 'Treino de perna e cardio.',
         'completed': false,
         'priority': 'medium',
         'category': 'Saúde',
         'dueDate': iso(now),
-        'dueTime': null, // Removido para não disparar notificações
+        'dueTime': null,
         'createdAt': iso(now.subtract(const Duration(hours: 4))),
       },
-      // Pendentes - Amanhã
       {
-        'title': 'Ler documentação do Riverpod',
-        'notes': 'Focar em AsyncNotifier e testes de unidade.',
+        'title': 'Ler documentação',
+        'notes': 'Focar em testes.',
         'completed': false,
         'priority': 'low',
         'category': 'Estudo',
@@ -304,47 +366,22 @@ class DataSeeder {
         'dueTime': null,
         'createdAt': iso(now.subtract(const Duration(days: 1))),
       },
-      // Pendentes - Semana
       {
-        'title': 'Compras da semana',
-        'notes': 'Frutas, vegetais, ovos, itens de limpeza e ração do gato.',
-        'completed': false,
+        'title': 'Comprar Mantimentos',
+        'notes': 'Lista semanal.',
+        'completed': true,
         'priority': 'medium',
         'category': 'Pessoal',
-        'dueDate': iso(now.add(const Duration(days: 2))),
-        'dueTime': null, // Removido para não disparar notificações
-        'createdAt': iso(now.subtract(const Duration(days: 1))),
-      },
-      // Completadas
-      {
-        'title': 'Pagar conta de internet',
-        'notes': null,
-        'completed': true,
-        'priority': 'high',
-        'category': 'Finanças',
         'dueDate': iso(now.subtract(const Duration(days: 1))),
         'dueTime': null,
-        'createdAt': iso(now.subtract(const Duration(days: 5))),
+        'createdAt': iso(now.subtract(const Duration(days: 2))),
         'completedAt': iso(now.subtract(const Duration(days: 1))),
-      },
-      {
-        'title': 'Consulta odontológica',
-        'notes': 'Check-up semestral',
-        'completed': true,
-        'priority': 'medium',
-        'category': 'Saúde',
-        'dueDate': iso(now.subtract(const Duration(days: 3))),
-        'dueTime': null, // Removido para não disparar notificações
-        'createdAt': iso(now.subtract(const Duration(days: 10))),
-        'completedAt': iso(now.subtract(const Duration(days: 3))),
       },
     ];
 
     for (var i = 0; i < tasksData.length; i++) {
-      final task = tasksData[i];
-      // Gerar chave baseada no tempo para garantir ordem
       final key = DateTime.now().millisecondsSinceEpoch + i;
-      await box.put(key.toString(), task);
+      await box.put(key.toString(), tasksData[i]);
     }
   }
 
@@ -358,9 +395,8 @@ class DataSeeder {
         name: 'Meditação Diária',
         iconCode: Icons.self_improvement.codePoint,
         colorValue: const Color(0xFF9B51E0).value,
-        scheduledTime:
-            null, // SEM horário para não disparar notificações no seed
-        daysOfWeek: [], // Todos os dias
+        scheduledTime: null,
+        daysOfWeek: [],
         completedDates: [
           now.subtract(const Duration(days: 1)),
           now.subtract(const Duration(days: 2)),
@@ -389,30 +425,13 @@ class DataSeeder {
         name: 'Ler 30 min',
         iconCode: Icons.menu_book.codePoint,
         colorValue: const Color(0xFF07E092).value,
-        scheduledTime:
-            null, // SEM horário para não disparar notificações no seed
+        scheduledTime: null,
         daysOfWeek: [],
         completedDates: [],
         currentStreak: 0,
         bestStreak: 5,
         createdAt: now.subtract(const Duration(days: 10)),
         order: 2,
-      ),
-      Habit(
-        id: 'habit_4_${now.millisecondsSinceEpoch}',
-        name: 'Corrida Matinal',
-        iconCode: Icons.directions_run.codePoint,
-        colorValue: const Color(0xFFFF6B6B).value,
-        scheduledTime:
-            null, // SEM horário para não disparar notificações no seed
-        daysOfWeek: [1, 3, 5], // Seg, Qua, Sex
-        completedDates: [
-          now.subtract(const Duration(days: 2)),
-        ], // Qua (se hoje for Sex, por exemplo)
-        currentStreak: 1,
-        bestStreak: 10,
-        createdAt: now.subtract(const Duration(days: 45)),
-        order: 3,
       ),
     ];
 

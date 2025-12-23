@@ -109,7 +109,7 @@ class HomeDayOverview extends ConsumerWidget {
       crossAxisCount: 3,
       mainAxisSpacing: 10,
       crossAxisSpacing: 10,
-      childAspectRatio: 1.1,
+      childAspectRatio: 1.0,
       children: List.generate(
         6,
         (index) => _OverviewItemPlaceholder(colors: colors),
@@ -161,7 +161,7 @@ class HomeDayOverview extends ConsumerWidget {
           crossAxisCount: 3,
           mainAxisSpacing: 10,
           crossAxisSpacing: 10,
-          childAspectRatio: 1.1,
+          childAspectRatio: 1.0,
           children: [
             _OverviewItem(
               icon: Icons.check_circle_outline_rounded,
@@ -338,6 +338,7 @@ class _OverviewItem extends StatelessWidget {
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
             Row(
               children: [
@@ -357,6 +358,7 @@ class _OverviewItem extends StatelessWidget {
             const Spacer(),
             FittedBox(
               fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
               child: Text(
                 value,
                 style: TextStyle(
@@ -366,22 +368,26 @@ class _OverviewItem extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(height: 2),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.w600,
-                color: color,
+            const SizedBox(height: 1),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(
+                label,
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                  color: color,
+                ),
               ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
             ),
-            Text(
-              subtitle,
-              style: TextStyle(fontSize: 9, color: colors.onSurfaceVariant),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(
+                subtitle,
+                style: TextStyle(fontSize: 9, color: colors.onSurfaceVariant),
+              ),
             ),
           ],
         ),

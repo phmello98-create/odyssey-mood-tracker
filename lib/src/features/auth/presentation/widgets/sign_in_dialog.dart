@@ -10,6 +10,8 @@ import 'package:odyssey/src/features/welcome/presentation/welcome_screen.dart';
 import 'package:odyssey/src/features/welcome/services/welcome_service.dart';
 import 'package:odyssey/src/features/auth/presentation/providers/migration_providers.dart';
 import 'package:odyssey/src/features/auth/presentation/screens/account_migration_screen.dart';
+import 'package:odyssey/src/features/auth/presentation/signup_screen.dart';
+import 'package:odyssey/src/localization/app_localizations.dart';
 
 class SignInDialog extends ConsumerStatefulWidget {
   const SignInDialog({Key? key, required this.closeModal}) : super(key: key);
@@ -333,7 +335,7 @@ class _SignInDialogState extends ConsumerState<SignInDialog> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
-                          "Entrar",
+                          AppLocalizations.of(context)!.entrar,
                           style: theme.textTheme.headlineMedium?.copyWith(
                             fontWeight: FontWeight.bold,
                             fontFamily: "Poppins",
@@ -535,6 +537,42 @@ class _SignInDialogState extends ConsumerState<SignInDialog> {
                             fontFamily: "Inter",
                             fontSize: 12,
                           ),
+                        ),
+                        const SizedBox(height: 24),
+
+                        // Create Account Link
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              AppLocalizations.of(context)!.dontHaveAccount,
+                              style: TextStyle(
+                                color: theme.colorScheme.onSurfaceVariant,
+                                fontFamily: "Inter",
+                                fontSize: 14,
+                              ),
+                            ),
+                            TextButton(
+                              onPressed: () {
+                                widget.closeModal();
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => const SignupScreen(),
+                                  ),
+                                );
+                              },
+                              child: Text(
+                                AppLocalizations.of(context)!.createAccount,
+                                style: TextStyle(
+                                  color: colors.accentPink,
+                                  fontWeight: FontWeight.bold,
+                                  fontFamily: "Inter",
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),

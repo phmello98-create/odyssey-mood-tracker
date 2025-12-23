@@ -41,13 +41,10 @@ class _SignupScreenState extends ConsumerState<SignupScreen>
       parent: _animationController,
       curve: Curves.easeOut,
     );
-    _slideAnimation = Tween<Offset>(
-      begin: const Offset(0, 0.1),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.easeOut,
-    ));
+    _slideAnimation =
+        Tween<Offset>(begin: const Offset(0, 0.1), end: Offset.zero).animate(
+          CurvedAnimation(parent: _animationController, curve: Curves.easeOut),
+        );
     _animationController.forward();
   }
 
@@ -148,7 +145,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen>
         ),
         const SizedBox(height: 24),
         Text(
-          'Criar Conta',
+          AppLocalizations.of(context)!.createAccount,
           style: TextStyle(
             fontSize: 32,
             fontWeight: FontWeight.w800,
@@ -158,11 +155,8 @@ class _SignupScreenState extends ConsumerState<SignupScreen>
         ),
         const SizedBox(height: 8),
         Text(
-          'Preencha os dados abaixo para começar',
-          style: TextStyle(
-            fontSize: 16,
-            color: colors.onSurfaceVariant,
-          ),
+          AppLocalizations.of(context)!.signupHeaderSubtitle,
+          style: TextStyle(fontSize: 16, color: colors.onSurfaceVariant),
         ),
       ],
     );
@@ -173,7 +167,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen>
       controller: _nameController,
       textCapitalization: TextCapitalization.words,
       decoration: InputDecoration(
-        labelText: 'Nome',
+        labelText: AppLocalizations.of(context)!.fullName,
         hintText: 'Seu nome',
         prefixIcon: Icon(Icons.person_outline_rounded, color: colors.primary),
         border: OutlineInputBorder(
@@ -209,7 +203,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen>
       keyboardType: TextInputType.emailAddress,
       autocorrect: false,
       decoration: InputDecoration(
-        labelText: 'Email',
+        labelText: AppLocalizations.of(context)!.email,
         hintText: 'seu@email.com',
         prefixIcon: Icon(Icons.email_outlined, color: colors.primary),
         border: OutlineInputBorder(
@@ -244,12 +238,14 @@ class _SignupScreenState extends ConsumerState<SignupScreen>
       controller: _passwordController,
       obscureText: _obscurePassword,
       decoration: InputDecoration(
-        labelText: 'Senha',
+        labelText: AppLocalizations.of(context)!.password,
         hintText: 'Mínimo 6 caracteres',
         prefixIcon: Icon(Icons.lock_outline_rounded, color: colors.primary),
         suffixIcon: IconButton(
           icon: Icon(
-            _obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+            _obscurePassword
+                ? Icons.visibility_outlined
+                : Icons.visibility_off_outlined,
             color: colors.onSurfaceVariant,
           ),
           onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
@@ -286,15 +282,19 @@ class _SignupScreenState extends ConsumerState<SignupScreen>
       controller: _confirmPasswordController,
       obscureText: _obscureConfirmPassword,
       decoration: InputDecoration(
-        labelText: 'Confirmar Senha',
+        labelText: AppLocalizations.of(context)!.confirmPassword,
         hintText: 'Repita a senha',
         prefixIcon: Icon(Icons.lock_outline_rounded, color: colors.primary),
         suffixIcon: IconButton(
           icon: Icon(
-            _obscureConfirmPassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+            _obscureConfirmPassword
+                ? Icons.visibility_outlined
+                : Icons.visibility_off_outlined,
             color: colors.onSurfaceVariant,
           ),
-          onPressed: () => setState(() => _obscureConfirmPassword = !_obscureConfirmPassword),
+          onPressed: () => setState(
+            () => _obscureConfirmPassword = !_obscureConfirmPassword,
+          ),
         ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
@@ -330,19 +330,14 @@ class _SignupScreenState extends ConsumerState<SignupScreen>
           value: _acceptedTerms,
           onChanged: (value) => setState(() => _acceptedTerms = value ?? false),
           activeColor: colors.primary,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(4),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
         ),
         Expanded(
           child: GestureDetector(
             onTap: () => setState(() => _acceptedTerms = !_acceptedTerms),
             child: RichText(
               text: TextSpan(
-                style: TextStyle(
-                  fontSize: 13,
-                  color: colors.onSurfaceVariant,
-                ),
+                style: TextStyle(fontSize: 13, color: colors.onSurfaceVariant),
                 children: [
                   const TextSpan(text: 'Li e concordo com os '),
                   TextSpan(
@@ -421,9 +416,9 @@ class _SignupScreenState extends ConsumerState<SignupScreen>
                   color: Colors.white,
                 ),
               )
-            : const Text(
-                'Criar Conta',
-                style: TextStyle(
+            : Text(
+                AppLocalizations.of(context)!.createAccount,
+                style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w700,
                 ),
@@ -438,14 +433,11 @@ class _SignupScreenState extends ConsumerState<SignupScreen>
         onPressed: () => Navigator.pop(context),
         child: RichText(
           text: TextSpan(
-            style: TextStyle(
-              fontSize: 14,
-              color: colors.onSurfaceVariant,
-            ),
+            style: TextStyle(fontSize: 14, color: colors.onSurfaceVariant),
             children: [
-              const TextSpan(text: 'Já tem uma conta? '),
+              TextSpan(text: AppLocalizations.of(context)!.jaTemUmaConta),
               TextSpan(
-                text: 'Entrar',
+                text: AppLocalizations.of(context)!.entrar,
                 style: TextStyle(
                   color: colors.primary,
                   fontWeight: FontWeight.w700,
@@ -476,7 +468,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen>
     if (result.isSuccess) {
       // Sucesso - navegar para home ou verificação de email
       HapticFeedback.mediumImpact();
-      
+
       // Mostrar diálogo de verificação de email se necessário
       final user = result.userOrNull;
       if (user != null && !user.emailVerified) {
@@ -487,13 +479,15 @@ class _SignupScreenState extends ConsumerState<SignupScreen>
     } else {
       // Erro
       HapticFeedback.heavyImpact();
-      setState(() => _errorMessage = result.errorMessage ?? 'Erro ao criar conta');
+      setState(
+        () => _errorMessage = result.errorMessage ?? 'Erro ao criar conta',
+      );
     }
   }
 
   void _showVerificationDialog() {
     final colors = Theme.of(context).colorScheme;
-    
+
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -532,10 +526,14 @@ class _SignupScreenState extends ConsumerState<SignupScreen>
         actions: [
           TextButton(
             onPressed: () async {
-              await ref.read(authControllerProvider.notifier).resendVerificationEmail();
+              await ref
+                  .read(authControllerProvider.notifier)
+                  .resendVerificationEmail();
               if (mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text(AppLocalizations.of(context)!.emailReenviado)),
+                  SnackBar(
+                    content: Text(AppLocalizations.of(context)!.emailReenviado),
+                  ),
                 );
               }
             },
