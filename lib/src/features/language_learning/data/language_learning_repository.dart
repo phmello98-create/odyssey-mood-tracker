@@ -6,9 +6,11 @@ import 'package:odyssey/src/features/language_learning/domain/study_session.dart
 import 'package:odyssey/src/features/language_learning/domain/vocabulary_item.dart';
 import 'package:odyssey/src/features/language_learning/domain/immersion_log.dart';
 
-final languageLearningRepositoryProvider = Provider<LanguageLearningRepository>((ref) {
-  return LanguageLearningRepository();
-});
+final languageLearningRepositoryProvider = Provider<LanguageLearningRepository>(
+  (ref) {
+    return LanguageLearningRepository();
+  },
+);
 
 class LanguageLearningRepository {
   static const String _languagesBoxName = 'languages';
@@ -24,7 +26,8 @@ class LanguageLearningRepository {
   Box<StudySession> get sessionsBox => _sessionsBox;
   Box<VocabularyItem> get vocabularyBox => _vocabularyBox;
 
-  String _generateId() => '${DateTime.now().millisecondsSinceEpoch}_${DateTime.now().microsecond}';
+  String _generateId() =>
+      '${DateTime.now().millisecondsSinceEpoch}_${DateTime.now().microsecond}';
 
   Future<void> init() async {
     if (_isInitialized) return;
@@ -96,12 +99,16 @@ class LanguageLearningRepository {
 
   Future<void> deleteLanguage(String id) async {
     // Delete all sessions and vocabulary for this language
-    final sessionsToDelete = _sessionsBox.values.where((s) => s.languageId == id).toList();
+    final sessionsToDelete = _sessionsBox.values
+        .where((s) => s.languageId == id)
+        .toList();
     for (final session in sessionsToDelete) {
       await _sessionsBox.delete(session.id);
     }
 
-    final vocabToDelete = _vocabularyBox.values.where((v) => v.languageId == id).toList();
+    final vocabToDelete = _vocabularyBox.values
+        .where((v) => v.languageId == id)
+        .toList();
     for (final vocab in vocabToDelete) {
       await _vocabularyBox.delete(vocab.id);
     }
@@ -115,10 +122,7 @@ class LanguageLearningRepository {
     languages.insert(newIndex, language);
 
     for (int i = 0; i < languages.length; i++) {
-      await _languagesBox.put(
-        languages[i].id,
-        languages[i].copyWith(order: i),
-      );
+      await _languagesBox.put(languages[i].id, languages[i].copyWith(order: i));
     }
   }
 
@@ -135,16 +139,24 @@ class LanguageLearningRepository {
   }
 
   List<StudySession> getSessionsForDate(DateTime date) {
-    return getAllSessions().where((s) =>
-        s.startTime.year == date.year &&
-        s.startTime.month == date.month &&
-        s.startTime.day == date.day).toList();
+    return getAllSessions()
+        .where(
+          (s) =>
+              s.startTime.year == date.year &&
+              s.startTime.month == date.month &&
+              s.startTime.day == date.day,
+        )
+        .toList();
   }
 
   List<StudySession> getSessionsForDateRange(DateTime start, DateTime end) {
-    return getAllSessions().where((s) =>
-        s.startTime.isAfter(start.subtract(const Duration(days: 1))) &&
-        s.startTime.isBefore(end.add(const Duration(days: 1)))).toList();
+    return getAllSessions()
+        .where(
+          (s) =>
+              s.startTime.isAfter(start.subtract(const Duration(days: 1))) &&
+              s.startTime.isBefore(end.add(const Duration(days: 1))),
+        )
+        .toList();
   }
 
   Future<StudySession> addSession({
@@ -183,7 +195,11 @@ class LanguageLearningRepository {
         await _languagesBox.put(
           language.id,
           language.copyWith(
-            totalMinutesStudied: (language.totalMinutesStudied - session.durationMinutes).clamp(0, 999999),
+            totalMinutesStudied:
+                (language.totalMinutesStudied - session.durationMinutes).clamp(
+                  0,
+                  999999,
+                ),
           ),
         );
       }
@@ -198,15 +214,19 @@ class LanguageLearningRepository {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final lastStudied = language.lastStudiedAt;
-    
+
     int newStreak = language.currentStreak;
-    
+
     if (lastStudied == null) {
       newStreak = 1;
     } else {
-      final lastStudiedDate = DateTime(lastStudied.year, lastStudied.month, lastStudied.day);
+      final lastStudiedDate = DateTime(
+        lastStudied.year,
+        lastStudied.month,
+        lastStudied.day,
+      );
       final yesterday = today.subtract(const Duration(days: 1));
-      
+
       if (lastStudiedDate == today) {
         // Already studied today, streak stays the same
       } else if (lastStudiedDate == yesterday) {
@@ -218,7 +238,9 @@ class LanguageLearningRepository {
       }
     }
 
-    final newBestStreak = newStreak > language.bestStreak ? newStreak : language.bestStreak;
+    final newBestStreak = newStreak > language.bestStreak
+        ? newStreak
+        : language.bestStreak;
 
     await _languagesBox.put(
       languageId,
@@ -238,15 +260,21 @@ class LanguageLearningRepository {
   }
 
   List<VocabularyItem> getVocabularyForLanguage(String languageId) {
-    return _vocabularyBox.values.where((v) => v.languageId == languageId).toList();
+    return _vocabularyBox.values
+        .where((v) => v.languageId == languageId)
+        .toList();
   }
 
   List<VocabularyItem> getVocabularyNeedingReview(String languageId) {
-    return getVocabularyForLanguage(languageId).where((v) => v.needsReview).toList();
+    return getVocabularyForLanguage(
+      languageId,
+    ).where((v) => v.needsReview).toList();
   }
 
   List<VocabularyItem> getVocabularyByStatus(String languageId, String status) {
-    return getVocabularyForLanguage(languageId).where((v) => v.status == status).toList();
+    return getVocabularyForLanguage(
+      languageId,
+    ).where((v) => v.status == status).toList();
   }
 
   Future<VocabularyItem> addVocabularyItem({
@@ -314,7 +342,10 @@ class LanguageLearningRepository {
   // ==================== STATISTICS ====================
 
   int getTotalMinutesStudied() {
-    return getAllLanguages().fold(0, (sum, lang) => sum + lang.totalMinutesStudied);
+    return getAllLanguages().fold(
+      0,
+      (sum, lang) => sum + lang.totalMinutesStudied,
+    );
   }
 
   int getTotalVocabularyCount() {
@@ -322,14 +353,17 @@ class LanguageLearningRepository {
   }
 
   int getMasteredVocabularyCount() {
-    return _vocabularyBox.values.where((v) => v.status == VocabularyStatus.mastered).length;
+    return _vocabularyBox.values
+        .where((v) => v.status == VocabularyStatus.mastered)
+        .length;
   }
 
   Map<String, int> getMinutesPerActivityType(String languageId) {
     final sessions = getSessionsForLanguage(languageId);
     final map = <String, int>{};
     for (final session in sessions) {
-      map[session.activityType] = (map[session.activityType] ?? 0) + session.durationMinutes;
+      map[session.activityType] =
+          (map[session.activityType] ?? 0) + session.durationMinutes;
     }
     return map;
   }

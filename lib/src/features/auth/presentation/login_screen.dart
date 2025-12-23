@@ -512,15 +512,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
       children: [
         // Base gradient
         Container(
-          decoration: BoxDecoration(
+          decoration: const BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [
-                _darkBg,
-                const Color(0xFF1A1A2E),
-                const Color(0xFF16213E),
-              ],
+              colors: [_darkBg, Color(0xFF1A1A2E), Color(0xFF16213E)],
             ),
           ),
         ),
@@ -1484,7 +1480,7 @@ We are committed to protecting your privacy and personal data.
                 onTap: _navigateToSignup,
                 child: Text(
                   _t('Criar agora', 'Create now'),
-                  style: TextStyle(
+                  style: const TextStyle(
                     color: _accentColor,
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
@@ -1613,7 +1609,7 @@ We are committed to protecting your privacy and personal data.
       child: Container(
         height: 56,
         decoration: BoxDecoration(
-          gradient: LinearGradient(
+          gradient: const LinearGradient(
             colors: _primaryGradient,
             begin: Alignment.centerLeft,
             end: Alignment.centerRight,
@@ -1733,7 +1729,7 @@ We are committed to protecting your privacy and personal data.
           onTap: _navigateToSignup,
           child: Text(
             _t('Criar conta', 'Create account'),
-            style: TextStyle(
+            style: const TextStyle(
               color: _accentColor,
               fontSize: 14,
               fontWeight: FontWeight.w700,

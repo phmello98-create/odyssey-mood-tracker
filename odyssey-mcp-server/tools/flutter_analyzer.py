@@ -98,6 +98,8 @@ class FlutterAnalyzer:
         
         if "Hive" in content or "@HiveType" in content:
             databases.append("hive")
+        if "Isar" in content or "@collection" in content:
+            databases.append("isar")
         if "sqflite" in content:
             databases.append("sqflite")
         if "SharedPreferences" in content:
@@ -263,6 +265,54 @@ class FlutterAnalyzer:
         return {
             "models": models,
             "count": len(models)
+        }
+    
+    def analyze_isar_models(self) -> dict[str, Any]:
+        """Analisa modelos Isar"""
+        models = []
+        
+        # Procura por arquivos com @collection
+        for dart_file in self.lib_path.rglob("*.dart"):
+            content = dart_file.read_text(encoding='utf-8')
+            
+            if "@collection" in content:
+                # Extrai informações do modelo
+                class_pattern = r"@collection\s+class\s+(\w+)"
+                
+                # Padrões para campos Isar
+                id_pattern = r"Id\s+(\w+)\s*="
+                index_pattern = r"@Index\([^)]*\)\s+(?:late\s+)?(?:\w+(?:<.+?>)?)\s+(\w+)"
+                field_pattern = r"(?:late\s+)?(\w+(?:<.+?>)?)\s+(\w+)(?:\s*=|\s*;)"
+                
+                class_match = re.search(class_pattern, content)
+                
+                if class_match:
+                    model_name = class_match.group(1)
+                    
+                    # Analisa campos
+                    model_info = {
+                        "name": model_name,
+                        "file": str(dart_file.relative_to(self.project_root)),
+                        "id_field": None,
+                        "indexed_fields": [],
+                        "fields": []
+                    }
+                    
+                    # ID
+                    id_match = re.search(id_pattern, content)
+                    if id_match:
+                        model_info["id_field"] = id_match.group(1)
+                    
+                    # Indexes
+                    indexes = re.findall(index_pattern, content)
+                    model_info["indexed_fields"] = indexes
+                    
+                    models.append(model_info)
+        
+        return {
+            "models": models,
+            "count": len(models),
+            "database": "isar"
         }
     
     def analyze_state_management(self) -> dict[str, Any]:

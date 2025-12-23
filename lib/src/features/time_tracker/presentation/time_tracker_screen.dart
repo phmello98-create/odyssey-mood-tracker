@@ -42,7 +42,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
   bool _showProductivity = false;
   bool _showWeekStats = false;
   bool _showFullscreenTimer = false;
-  bool _isHistoryExpanded = false;
+  final bool _isHistoryExpanded = false;
 
   // Timer state
   Activity? _selectedActivity;
@@ -716,10 +716,10 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                   const SizedBox(height: 8),
                   Row(
                     children: [
-                      Icon(
+                      const Icon(
                         Icons.arrow_forward_rounded,
                         size: 16,
-                        color: const Color(0xFF27AE60),
+                        color: Color(0xFF27AE60),
                       ),
                       const SizedBox(width: 8),
                       Expanded(
@@ -6782,7 +6782,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
             ),
             const SizedBox(height: 16),
             DropdownButtonFormField<String>(
-              value: _selectedCategory,
+              initialValue: _selectedCategory,
               decoration: const InputDecoration(labelText: 'Categoria'),
               items: _categories.map((c) {
                 return DropdownMenuItem(value: c, child: Text(c));

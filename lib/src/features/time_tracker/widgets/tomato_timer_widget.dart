@@ -46,13 +46,15 @@ class _TomatoTimerWidgetState extends State<TomatoTimerWidget>
   late Animation<double> _pulseAnimation;
   late Animation<double> _bounceAnimation;
 
-  // Cores do tomate
+  // Cores do tomate (públicas para o painter)
   static const Color tomatoRed = Color(0xFFE74C3C);
   static const Color tomatoDarkRed = Color(0xFFC0392B);
   static const Color tomatoLightRed = Color(0xFFFF6B6B);
   static const Color leafGreen = Color(0xFF27AE60);
   static const Color leafDarkGreen = Color(0xFF1E8449);
   static const Color breakBlue = Color(0xFF3498DB);
+  static const Color breakDarkBlue = Color(0xFF2980B9);
+  static const Color breakLightBlue = Color(0xFF5DADE2);
 
   @override
   void initState() {
@@ -385,16 +387,16 @@ class _TomatoPainter extends CustomPainter {
 
     // Cores
     final baseColor = isBreak
-        ? const Color(0xFF3498DB)
-        : const Color(0xFFE74C3C);
+        ? _TomatoTimerWidgetState.breakBlue
+        : _TomatoTimerWidgetState.tomatoRed;
     final lightColor = isBreak
-        ? const Color(0xFF5DADE2)
-        : const Color(0xFFFF6B6B);
+        ? _TomatoTimerWidgetState.breakLightBlue
+        : _TomatoTimerWidgetState.tomatoLightRed;
     final darkColor = isBreak
-        ? const Color(0xFF2980B9)
-        : const Color(0xFFC0392B);
-    const leafColor = Color(0xFF27AE60);
-    const leafDarkColor = Color(0xFF1E8449);
+        ? _TomatoTimerWidgetState.breakDarkBlue
+        : _TomatoTimerWidgetState.tomatoDarkRed;
+    const leafColor = _TomatoTimerWidgetState.leafGreen;
+    const leafDarkColor = _TomatoTimerWidgetState.leafDarkGreen;
 
     // Sombra do tomate
     final shadowPaint = Paint()

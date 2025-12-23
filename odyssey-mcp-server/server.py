@@ -133,6 +133,17 @@ def analyze_hive_models() -> dict[str, Any]:
 
 
 @mcp.tool()
+def analyze_isar_models() -> dict[str, Any]:
+    """
+    Analisa todos os modelos Isar no projeto.
+    
+    Returns:
+        Lista de coleções Isar e suas configurações
+    """
+    return flutter_analyzer.analyze_isar_models()
+
+
+@mcp.tool()
 def find_unused_dependencies() -> dict[str, Any]:
     """
     Encontra dependências declaradas mas não utilizadas no projeto.
@@ -357,9 +368,10 @@ Considere:
 if __name__ == "__main__":
     print(f"🚀 Odyssey Flutter MCP Server starting...")
     print(f"📂 Project root: {PROJECT_ROOT}")
-    print(f"✓ Server initialized with {len(mcp._tools)} tools")
-    print(f"✓ Resources available: {len(mcp._resources)}")
-    print(f"✓ Prompts available: {len(mcp._prompts)}")
+    # print(f"✓ Server initialized with {len(mcp._tools)} tools")
+    # print(f"✓ Resources available: {len(mcp._resources)}")
+    # print(f"✓ Prompts available: {len(mcp._prompts)}")
+    print(f"✓ Server initialized")
     
     # Start the server
     mcp.run()

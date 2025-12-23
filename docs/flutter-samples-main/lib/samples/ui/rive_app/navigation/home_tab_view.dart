@@ -5,7 +5,7 @@ import 'package:flutter_samples/samples/ui/rive_app/models/courses.dart';
 import 'package:flutter_samples/samples/ui/rive_app/theme.dart';
 
 class HomeTabView extends StatefulWidget {
-  const HomeTabView({Key? key}) : super(key: key);
+  const HomeTabView({super.key});
 
   @override
   State<HomeTabView> createState() => _HomeTabViewState();
@@ -27,8 +27,9 @@ class _HomeTabViewState extends State<HomeTabView> {
         ),
         child: SingleChildScrollView(
           padding: EdgeInsets.only(
-              top: MediaQuery.of(context).padding.top + 60,
-              bottom: MediaQuery.of(context).padding.bottom),
+            top: MediaQuery.of(context).padding.top + 60,
+            bottom: MediaQuery.of(context).padding.bottom,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -43,15 +44,16 @@ class _HomeTabViewState extends State<HomeTabView> {
                 padding: const EdgeInsets.fromLTRB(10, 10, 10, 20),
                 scrollDirection: Axis.horizontal,
                 child: Row(
-                  children: _courses
-                      .map(
-                        (course) => Padding(
-                          key: course.id,
-                          padding: const EdgeInsets.all(10),
-                          child: VCard(course: course),
-                        ),
-                      )
-                      .toList(),
+                  children:
+                      _courses
+                          .map(
+                            (course) => Padding(
+                              key: course.id,
+                              padding: const EdgeInsets.all(10),
+                              child: VCard(course: course),
+                            ),
+                          )
+                          .toList(),
                 ),
               ),
               const Padding(
@@ -68,15 +70,16 @@ class _HomeTabViewState extends State<HomeTabView> {
                     _courseSections.length,
                     (index) => Container(
                       key: _courseSections[index].id,
-                      width: MediaQuery.of(context).size.width > 992
-                          ? ((MediaQuery.of(context).size.width - 20) / 2)
-                          : MediaQuery.of(context).size.width,
+                      width:
+                          MediaQuery.of(context).size.width > 992
+                              ? ((MediaQuery.of(context).size.width - 20) / 2)
+                              : MediaQuery.of(context).size.width,
                       padding: const EdgeInsets.fromLTRB(10, 0, 10, 20),
                       child: HCard(section: _courseSections[index]),
                     ),
                   ),
                 ),
-              )
+              ),
             ],
           ),
         ),

@@ -113,10 +113,10 @@ class _TimerTaskSelectorState extends ConsumerState<TimerTaskSelector> {
                   const SizedBox(height: 8),
                   Row(
                     children: [
-                      Icon(
+                      const Icon(
                         Icons.arrow_forward_rounded,
                         size: 16,
-                        color: const Color(0xFF27AE60),
+                        color: Color(0xFF27AE60),
                       ),
                       const SizedBox(width: 8),
                       Expanded(

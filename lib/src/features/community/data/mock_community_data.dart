@@ -519,6 +519,12 @@ class MockCommunityData {
     return _mockFollowStats[userId] ?? FollowStats(userId: userId);
   }
 
+  static List<PublicUserProfile> getOdysseyTeam() {
+    return _mockUsers.where((u) {
+      return u.userId.startsWith('bot_') || u.userId == 'user_admin';
+    }).toList();
+  }
+
   // ===========================================================================
   // POSTS
   // ===========================================================================

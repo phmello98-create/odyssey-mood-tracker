@@ -286,7 +286,7 @@ class _SignInDialogState extends ConsumerState<SignInDialog> {
   Widget build(BuildContext context) {
     final colors = context.odysseyColors;
     final theme = Theme.of(context);
-    final shadowColor = Colors.black;
+    const shadowColor = Colors.black;
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -436,6 +436,7 @@ class _SignInDialogState extends ConsumerState<SignInDialog> {
                                 bottomLeft: Radius.circular(20),
                                 bottomRight: Radius.circular(20),
                               ),
+                              onPressed: _isLoading ? null : _login,
                               child: _isLoading
                                   ? const SizedBox(
                                       width: 24,
@@ -467,7 +468,6 @@ class _SignInDialogState extends ConsumerState<SignInDialog> {
                                         ),
                                       ],
                                     ),
-                              onPressed: _isLoading ? null : _login,
                             ),
                           ),
                         ),
@@ -585,7 +585,8 @@ class _SignInDialogState extends ConsumerState<SignInDialog> {
                     child: CupertinoButton(
                       padding: EdgeInsets.zero,
                       borderRadius: BorderRadius.circular(18),
-                      minSize: 36,
+                      onPressed: widget.closeModal,
+                      minimumSize: const Size(36, 36),
                       child: Container(
                         width: 36,
                         height: 36,
@@ -606,7 +607,6 @@ class _SignInDialogState extends ConsumerState<SignInDialog> {
                           size: 20,
                         ),
                       ),
-                      onPressed: widget.closeModal,
                     ),
                   ),
                 ),

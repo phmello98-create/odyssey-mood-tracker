@@ -221,14 +221,18 @@ class NotificationScheduler {
     bool? eveningEnabled,
     int? eveningHour,
   }) async {
-    if (morningEnabled != null)
+    if (morningEnabled != null) {
       await _prefs!.setBool(_keyMoodMorningEnabled, morningEnabled);
-    if (morningHour != null)
+    }
+    if (morningHour != null) {
       await _prefs!.setInt(_keyMoodMorningHour, morningHour);
-    if (eveningEnabled != null)
+    }
+    if (eveningEnabled != null) {
       await _prefs!.setBool(_keyMoodEveningEnabled, eveningEnabled);
-    if (eveningHour != null)
+    }
+    if (eveningHour != null) {
       await _prefs!.setInt(_keyMoodEveningHour, eveningHour);
+    }
 
     await _scheduleMoodReminders();
   }
@@ -299,10 +303,12 @@ class NotificationScheduler {
     bool? enabled,
     int? intervalMinutes,
   }) async {
-    if (enabled != null)
+    if (enabled != null) {
       await _prefs!.setBool(_keyHabitReminderEnabled, enabled);
-    if (intervalMinutes != null)
+    }
+    if (intervalMinutes != null) {
       await _prefs!.setInt(_keyHabitReminderInterval, intervalMinutes);
+    }
 
     _startHabitCheckTimer();
   }
@@ -420,10 +426,12 @@ class NotificationScheduler {
     bool? enabled,
     int? intervalMinutes,
   }) async {
-    if (enabled != null)
+    if (enabled != null) {
       await _prefs!.setBool(_keyTaskReminderEnabled, enabled);
-    if (intervalMinutes != null)
+    }
+    if (intervalMinutes != null) {
       await _prefs!.setInt(_keyTaskReminderInterval, intervalMinutes);
+    }
 
     _startTaskCheckTimer();
   }
@@ -493,8 +501,9 @@ class NotificationScheduler {
     int? timesPerDay,
   }) async {
     if (enabled != null) await _prefs!.setBool(_keyMotivationEnabled, enabled);
-    if (timesPerDay != null)
+    if (timesPerDay != null) {
       await _prefs!.setInt(_keyMotivationPerDay, timesPerDay);
+    }
 
     _startMotivationTimer();
   }

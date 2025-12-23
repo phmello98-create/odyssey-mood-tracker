@@ -1006,8 +1006,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
   String _formatReminderTimes(List<TimeOfDay> times) {
     final l10n = AppLocalizations.of(context)!;
     if (times.isEmpty) return l10n.noReminders;
-    if (times.length == 1)
+    if (times.length == 1) {
       return '${times[0].hour.toString().padLeft(2, '0')}:${times[0].minute.toString().padLeft(2, '0')}';
+    }
     return l10n.multipleReminders(times.length);
   }
 
@@ -1475,10 +1476,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
               width: double.infinity,
               child: ElevatedButton(
                 onPressed: () {
-                  if (nameController.text.isNotEmpty)
+                  if (nameController.text.isNotEmpty) {
                     ref
                         .read(settingsProvider.notifier)
                         .setUserName(nameController.text);
+                  }
                   Navigator.pop(context);
                 },
                 style: ElevatedButton.styleFrom(
@@ -1754,10 +1756,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
                             context: context,
                             initialTime: const TimeOfDay(hour: 9, minute: 0),
                           );
-                          if (time != null)
+                          if (time != null) {
                             await ref
                                 .read(settingsProvider.notifier)
                                 .addReminderTime(time);
+                          }
                         },
                         icon: Icon(
                           Icons.add_circle,
@@ -1801,10 +1804,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
                               context: context,
                               initialTime: time,
                             );
-                            if (newTime != null)
+                            if (newTime != null) {
                               await ref
                                   .read(settingsProvider.notifier)
                                   .updateReminderTime(index, newTime);
+                            }
                           },
                           icon: Icon(
                             Icons.edit,

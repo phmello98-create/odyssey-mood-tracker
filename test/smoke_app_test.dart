@@ -54,8 +54,7 @@ class _FakeAuthRepository implements AuthRepository {
     String email,
     String password,
     String displayName,
-  ) =>
-      Future.value(const AuthResult.failure(message: 'not implemented'));
+  ) => Future.value(const AuthResult.failure(message: 'not implemented'));
 
   @override
   Future<AuthResult> upgradeGuestAccount(String email, String password) =>
@@ -64,10 +63,15 @@ class _FakeAuthRepository implements AuthRepository {
   @override
   Future<AuthResult> updateProfile({String? displayName, String? photoURL}) =>
       Future.value(const AuthResult.failure(message: 'not implemented'));
+  @override
+  Future<AuthResult> resendVerificationEmail() =>
+      Future.value(const AuthResult.failure(message: 'not implemented'));
 }
 
-class _FakeAppInitializer extends StateNotifier<AppInitState> {
-  _FakeAppInitializer() : super(const AppInitState(status: AppInitStatus.success));
+class _FakeAppInitializer extends AppInitializer {
+  _FakeAppInitializer() : super() {
+    state = const AppInitState(status: AppInitStatus.success);
+  }
 
   Future<void> initialize() async {
     state = const AppInitState(status: AppInitStatus.success);
