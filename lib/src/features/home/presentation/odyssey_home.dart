@@ -11,6 +11,10 @@ import 'package:odyssey/src/features/notes/presentation/notes_screen.dart';
 import 'package:odyssey/src/features/tasks/presentation/tasks_screen.dart';
 import 'package:odyssey/src/features/library/presentation/library_screen.dart';
 import 'package:odyssey/src/features/calendar/presentation/calendar_screen.dart';
+import 'package:odyssey/src/features/diary/presentation/pages/diary_page.dart';
+import 'package:odyssey/src/features/community/presentation/screens/community_screen.dart';
+import 'package:odyssey/src/features/habits/presentation/habits_calendar_screen.dart';
+import 'package:odyssey/src/features/news/presentation/news_screen.dart';
 import 'package:odyssey/src/features/settings/presentation/settings_screen.dart';
 import 'package:odyssey/src/features/settings/presentation/modern_notification_settings_screen.dart';
 import 'package:odyssey/src/features/onboarding/onboarding.dart';
@@ -890,9 +894,18 @@ class _OdysseyHomeState extends ConsumerState<OdysseyHome>
                 ),
               ),
             ),
+
+            // ==========================================
+            // FLOATING BOTTOM BAR (Inside Stack for true floating effect)
+            // ==========================================
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: _buildAnimatedBottomBar(colors),
+            ),
           ],
         ),
-        bottomNavigationBar: _buildAnimatedBottomBar(colors),
       ),
     );
   }
@@ -1039,6 +1052,81 @@ class _OdysseyHomeState extends ConsumerState<OdysseyHome>
                       'Perfil',
                       _currentIndex == 4,
                       () => _performNavigation(4),
+                    ),
+
+                    const SizedBox(height: 12),
+                    const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 24),
+                      child: Divider(color: Colors.white10),
+                    ),
+                    const SizedBox(height: 12),
+
+                    _sideMenuItem(
+                      Icons.check_circle_rounded,
+                      'Tarefas',
+                      false,
+                      () {
+                        _toggleSideMenu();
+                        _navigateToScreen(
+                          const TasksScreen(),
+                          title: 'Tarefas',
+                        );
+                      },
+                    ),
+                    _sideMenuItem(
+                      Icons.event_repeat_rounded,
+                      'Hábitos',
+                      false,
+                      () {
+                        _toggleSideMenu();
+                        _navigateToScreen(
+                          const HabitsCalendarScreen(),
+                          title: 'Hábitos',
+                        );
+                      },
+                    ),
+                    _sideMenuItem(Icons.note_alt_rounded, 'Notas', false, () {
+                      _toggleSideMenu();
+                      _navigateToScreen(const NotesScreen(), title: 'Notas');
+                    }),
+                    _sideMenuItem(Icons.book_rounded, 'Diário', false, () {
+                      _toggleSideMenu();
+                      _navigateToScreen(const DiaryPage(), title: 'Diário');
+                    }),
+                    _sideMenuItem(
+                      Icons.library_books_rounded,
+                      'Livros',
+                      false,
+                      () {
+                        _toggleSideMenu();
+                        _navigateToScreen(
+                          const LibraryScreen(),
+                          title: 'Livros',
+                        );
+                      },
+                    ),
+                    _sideMenuItem(Icons.forum_rounded, 'Comunidade', false, () {
+                      _toggleSideMenu();
+                      _navigateToScreen(
+                        const CommunityScreen(),
+                        title: 'Comunidade',
+                      );
+                    }),
+                    _sideMenuItem(Icons.article_rounded, 'Artigos', false, () {
+                      _toggleSideMenu();
+                      _navigateToScreen(const NewsScreen(), title: 'Artigos');
+                    }),
+                    _sideMenuItem(
+                      Icons.auto_graph_rounded,
+                      'Estatísticas',
+                      false,
+                      () {
+                        _toggleSideMenu();
+                        _navigateToScreen(
+                          const AnalyticsScreen(),
+                          title: 'Estatísticas',
+                        );
+                      },
                     ),
 
                     const SizedBox(height: 24),
