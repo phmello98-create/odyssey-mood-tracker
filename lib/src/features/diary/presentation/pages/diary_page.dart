@@ -1,8 +1,11 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
-import '../controllers/diary_providers.dart';
-import '../../data/models/diary_entry.dart';
+
+import '../../data/models/diary_entry_isar.dart';
+import '../controllers/diary_isar_provider.dart';
+import '../widgets/diary_calendar_strip.dart';
 import 'diary_editor_page.dart';
 
 class DiaryPage extends ConsumerStatefulWidget {
@@ -13,264 +16,336 @@ class DiaryPage extends ConsumerStatefulWidget {
 }
 
 class _DiaryPageState extends ConsumerState<DiaryPage> {
-  String _searchQuery = '';
   bool _showStarredOnly = false;
+  bool _isCardView = true;
+  DateTime? _selectedDate;
+  final TextEditingController _searchController = TextEditingController();
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    final entriesAsync = _showStarredOnly
-        ? ref.watch(starredEntriesProvider)
-        : _searchQuery.isEmpty
-            ? ref.watch(diaryEntriesProvider)
-            : ref.watch(searchEntriesProvider(_searchQuery));
+    final diaryStream = ref.watch(diaryIsarStreamProvider);
+    final theme = Theme.of(context);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Diário'),
-        actions: [
-          IconButton(
-            icon: Icon(
-              _showStarredOnly ? Icons.star : Icons.star_border,
-              color: _showStarredOnly ? Colors.amber : null,
+      backgroundColor: theme.colorScheme.surface,
+      body: CustomScrollView(
+        slivers: [
+          SliverAppBar(
+            expandedHeight: 120,
+            floating: true,
+            pinned: true,
+            backgroundColor: theme.colorScheme.surface,
+            elevation: 0,
+            flexibleSpace: FlexibleSpaceBar(
+              titlePadding: const EdgeInsets.only(left: 16, bottom: 16),
+              title: Text(
+                'Meu Diário',
+                style: theme.textTheme.headlineMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: theme.colorScheme.onSurface,
+                ),
+              ),
             ),
-            onPressed: () {
-              setState(() {
-                _showStarredOnly = !_showStarredOnly;
-              });
-            },
-            tooltip: 'Favoritos',
+            actions: [
+              IconButton(
+                icon: Icon(_isCardView ? Icons.view_list : Icons.view_agenda),
+                tooltip: _isCardView ? 'Ver como lista' : 'Ver como cards',
+                onPressed: () => setState(() => _isCardView = !_isCardView),
+              ),
+              IconButton(
+                icon: Icon(_showStarredOnly ? Icons.star : Icons.star_border),
+                color: _showStarredOnly ? Colors.amber : null,
+                onPressed: () =>
+                    setState(() => _showStarredOnly = !_showStarredOnly),
+              ),
+              const SizedBox(width: 8),
+            ],
           ),
-          IconButton(
-            icon: const Icon(Icons.search),
-            onPressed: _showSearchDialog,
-            tooltip: 'Buscar',
-          ),
-        ],
-      ),
-      body: entriesAsync.when(
-        data: (entries) => entries.isEmpty
-            ? _buildEmptyState()
-            : _buildEntriesList(entries),
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, stack) => Center(
-          child: Text('Erro ao carregar entradas: $error'),
-        ),
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _createNewEntry(context),
-        icon: const Icon(Icons.add),
-        label: const Text('Nova Entrada'),
-      ),
-    );
-  }
 
-  Widget _buildEmptyState() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.book_outlined,
-            size: 100,
-            color: Colors.grey[400],
-          ),
-          const SizedBox(height: 16),
-          Text(
-            _showStarredOnly
-                ? 'Nenhuma entrada favorita'
-                : _searchQuery.isNotEmpty
-                    ? 'Nenhuma entrada encontrada'
-                    : 'Comece seu diário!',
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.w600,
-              color: Colors.grey[600],
+          // Calendário Horizontal
+          SliverToBoxAdapter(
+            child: DiaryCalendarStrip(
+              selectedDate: _selectedDate,
+              onDateSelected: (date) => setState(() => _selectedDate = date),
             ),
           ),
-          const SizedBox(height: 8),
-          Text(
-            _showStarredOnly
-                ? 'Marque entradas como favoritas para vê-las aqui'
-                : _searchQuery.isNotEmpty
-                    ? 'Tente buscar por outro termo'
-                    : 'Clique no botão + para criar sua primeira entrada',
-            style: TextStyle(
-              fontSize: 16,
-              color: Colors.grey[500],
-            ),
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
-    );
-  }
 
-  Widget _buildEntriesList(List<DiaryEntry> entries) {
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: entries.length,
-      itemBuilder: (context, index) {
-        final entry = entries[index];
-        return _DiaryEntryCard(
-          entry: entry,
-          onTap: () => _openEntry(context, entry),
-        );
-      },
-    );
-  }
+          const SliverToBoxAdapter(child: SizedBox(height: 8)),
 
-  void _createNewEntry(BuildContext context) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => const DiaryEditorPage()),
-    );
-  }
+          diaryStream.when(
+            data: (entries) {
+              var displayedEntries = entries;
 
-  void _openEntry(BuildContext context, DiaryEntry entry) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => DiaryEditorPage(entryId: entry.id)),
-    );
-  }
+              // Filtro por favoritos
+              if (_showStarredOnly) {
+                displayedEntries = displayedEntries
+                    .where((e) => e.isStarred)
+                    .toList();
+              }
 
-  Future<void> _showSearchDialog() async {
-    final result = await showDialog<String>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Buscar no Diário'),
-        content: TextField(
-          autofocus: true,
-          decoration: const InputDecoration(
-            hintText: 'Digite para buscar...',
-            prefixIcon: Icon(Icons.search),
-          ),
-          onSubmitted: (value) => Navigator.pop(context, value),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancelar'),
-          ),
-        ],
-      ),
-    );
+              // Filtro por data
+              if (_selectedDate != null) {
+                displayedEntries = displayedEntries.where((e) {
+                  return e.entryDate.year == _selectedDate!.year &&
+                      e.entryDate.month == _selectedDate!.month &&
+                      e.entryDate.day == _selectedDate!.day;
+                }).toList();
+              }
 
-    if (result != null && mounted) {
-      setState(() {
-        _searchQuery = result;
-      });
-    }
-  }
-}
-
-class _DiaryEntryCard extends ConsumerWidget {
-  final DiaryEntry entry;
-  final VoidCallback onTap;
-
-  const _DiaryEntryCard({
-    required this.entry,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final dateFormat = DateFormat('dd/MM/yyyy');
-    final timeFormat = DateFormat('HH:mm');
-
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Header com data e ações
-              Row(
-                children: [
-                  if (entry.feeling != null) ...[
-                    Text(
-                      entry.feeling!,
-                      style: const TextStyle(fontSize: 24),
-                    ),
-                    const SizedBox(width: 8),
-                  ],
-                  Expanded(
+              if (displayedEntries.isEmpty) {
+                return SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: Center(
                     child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Text(
-                          dateFormat.format(entry.entryDate),
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
+                        Icon(
+                          Icons.book_outlined,
+                          size: 64,
+                          color: theme.colorScheme.outline.withValues(
+                            alpha: 0.5,
                           ),
                         ),
+                        const SizedBox(height: 16),
                         Text(
-                          timeFormat.format(entry.entryDate),
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey[600],
+                          _selectedDate == null
+                              ? 'Seu diário está vazio'
+                              : 'Nada neste dia',
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
                           ),
                         ),
+                        const SizedBox(height: 8),
+                        if (_selectedDate == null)
+                          Text(
+                            'Toque em + para começar',
+                            style: theme.textTheme.bodyMedium,
+                          ),
                       ],
                     ),
                   ),
-                  IconButton(
-                    icon: Icon(
-                      entry.starred ? Icons.star : Icons.star_border,
-                      color: entry.starred ? Colors.amber : Colors.grey,
-                    ),
-                    onPressed: () => _toggleStarred(ref),
+                );
+              }
+
+              return SliverPadding(
+                padding: const EdgeInsets.fromLTRB(
+                  16,
+                  0,
+                  16,
+                  80,
+                ), // Padding extra embaixo
+                sliver: SliverList(
+                  delegate: SliverChildBuilderDelegate((context, index) {
+                    final entry = displayedEntries[index];
+                    return _isCardView
+                        ? _DiaryEntryCard(entry: entry)
+                        : _DiaryEntryListItem(entry: entry);
+                  }, childCount: displayedEntries.length),
+                ),
+              );
+            },
+            loading: () => const SliverFillRemaining(
+              child: Center(child: CircularProgressIndicator()),
+            ),
+            error: (err, stack) => SliverFillRemaining(
+              child: Center(child: Text('Erro ao carregar diário: $err')),
+            ),
+          ),
+        ],
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const DiaryEditorPage()),
+          );
+        },
+        label: const Text('Escrever'),
+        icon: const Icon(Icons.edit),
+      ),
+    );
+  }
+}
+
+class _DiaryEntryCard extends StatelessWidget {
+  final DiaryEntryIsar entry;
+
+  const _DiaryEntryCard({required this.entry});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final dateFormat = DateFormat('dd', 'pt_BR'); // Dia
+    final monthFormat = DateFormat('MMM', 'pt_BR'); // Mês abrev
+    final timeFormat = DateFormat('HH:mm');
+
+    // Mapeamento de humor para cores e icones (simplificado)
+    // Em um app real, use um helper compartilhado
+    final moodColor = _getMoodColor(entry.feeling ?? 'neutral');
+    final moodIcon = _getMoodIcon(entry.feeling ?? 'neutral');
+
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => DiaryEditorPage(
+              entryId: entry.id.toString(),
+              initialDate: entry.entryDate,
+            ),
+          ),
+        );
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surfaceContainer,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(
+            color: theme.colorScheme.outline.withValues(alpha: 0.1),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.03),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Coluna da Data
+              Container(
+                width: 70,
+                decoration: BoxDecoration(
+                  color: moodColor.withValues(alpha: 0.1),
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(24),
+                    bottomLeft: Radius.circular(24),
                   ),
-                ],
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      dateFormat.format(entry.entryDate),
+                      style: theme.textTheme.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.w900,
+                        color: moodColor,
+                        height: 1.0,
+                      ),
+                    ),
+                    Text(
+                      monthFormat.format(entry.entryDate).toUpperCase(),
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: moodColor.withValues(alpha: 0.8),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Icon(moodIcon, color: moodColor, size: 20),
+                  ],
+                ),
               ),
 
-              // Título
-              if (entry.title != null && entry.title!.isNotEmpty) ...[
-                const SizedBox(height: 12),
-                Text(
-                  entry.title!,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
+              // Conteúdo
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            timeFormat.format(entry.entryDate),
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                          if (entry.isStarred)
+                            const Icon(
+                              Icons.star_rounded,
+                              size: 16,
+                              color: Colors.amber,
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        entry.title ?? 'Sem título',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        entry.searchableText ?? 'Sem conteúdo...',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 12),
 
-              // Preview do conteúdo
-              if (entry.searchableText != null &&
-                  entry.searchableText!.isNotEmpty) ...[
-                const SizedBox(height: 8),
-                Text(
-                  entry.searchableText!,
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey[700],
+                      // Tags
+                      if (entry.tags.isNotEmpty)
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 4,
+                          children: entry.tags.take(3).map((tag) {
+                            return Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color:
+                                    theme.colorScheme.surfaceContainerHighest,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Text(
+                                '#$tag',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                    ],
                   ),
-                  maxLines: 3,
-                  overflow: TextOverflow.ellipsis,
                 ),
-              ],
+              ),
 
-              // Tags
-              if (entry.tags.isNotEmpty) ...[
-                const SizedBox(height: 12),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: entry.tags
-                      .map((tag) => Chip(
-                            label: Text(tag),
-                            visualDensity: VisualDensity.compact,
-                          ))
-                      .toList(),
+              // Preview de Imagem (se existir)
+              if (entry.imagePath != null)
+                ClipRRect(
+                  borderRadius: const BorderRadius.only(
+                    topRight: Radius.circular(24),
+                    bottomRight: Radius.circular(24),
+                  ),
+                  child: Image.file(
+                    File(entry.imagePath!),
+                    width: 80,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                  ),
                 ),
-              ],
             ],
           ),
         ),
@@ -278,10 +353,168 @@ class _DiaryEntryCard extends ConsumerWidget {
     );
   }
 
-  Future<void> _toggleStarred(WidgetRef ref) async {
-    final repository = ref.read(diaryRepositoryProvider);
-    await repository.toggleStarred(entry.id);
-    ref.invalidate(diaryEntriesProvider);
-    ref.invalidate(starredEntriesProvider);
+  Color _getMoodColor(String feeling) {
+    switch (feeling) {
+      case 'amazing':
+        return const Color(0xFF4ADE80);
+      case 'good':
+        return const Color(0xFF81C784);
+      case 'bad':
+        return const Color(0xFFFFB74D);
+      case 'terrible':
+        return const Color(0xFFEF5350);
+      default:
+        return const Color(0xFF64748B);
+    }
+  }
+
+  IconData _getMoodIcon(String feeling) {
+    switch (feeling) {
+      case 'amazing':
+        return Icons.sentiment_very_satisfied_rounded;
+      case 'good':
+        return Icons.sentiment_satisfied_rounded;
+      case 'bad':
+        return Icons.sentiment_dissatisfied_rounded;
+      case 'terrible':
+        return Icons.sentiment_very_dissatisfied_rounded;
+      default:
+        return Icons.sentiment_neutral_rounded;
+    }
+  }
+}
+
+// ============================================
+// LISTA COMPACTA
+// ============================================
+class _DiaryEntryListItem extends StatelessWidget {
+  final DiaryEntryIsar entry;
+
+  const _DiaryEntryListItem({required this.entry});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final dateFormat = DateFormat('dd/MM', 'pt_BR');
+    final timeFormat = DateFormat('HH:mm');
+    final moodColor = _getMoodColor(entry.feeling ?? 'neutral');
+
+    return ListTile(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => DiaryEditorPage(
+              entryId: entry.id.toString(),
+              initialDate: entry.entryDate,
+            ),
+          ),
+        );
+      },
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      leading: entry.imagePath != null
+          ? ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Image.file(
+                File(entry.imagePath!),
+                width: 48,
+                height: 48,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) =>
+                    _buildDateBadge(dateFormat, moodColor),
+              ),
+            )
+          : _buildDateBadge(dateFormat, moodColor),
+      title: Text(
+        entry.title ?? 'Sem título',
+        style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      ),
+      subtitle: Row(
+        children: [
+          Text(
+            timeFormat.format(entry.entryDate),
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.outline,
+            ),
+          ),
+          if (entry.tags.isNotEmpty) ...[
+            const SizedBox(width: 8),
+            Text(
+              entry.tags.take(2).map((t) => '#$t').join(' '),
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.primary,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ],
+      ),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (entry.isStarred)
+            const Icon(Icons.star_rounded, size: 18, color: Colors.amber),
+          Icon(
+            _getMoodIcon(entry.feeling ?? 'neutral'),
+            color: moodColor,
+            size: 22,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDateBadge(DateFormat format, Color color) {
+    return Container(
+      width: 48,
+      height: 48,
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Center(
+        child: Text(
+          format.format(entry.entryDate),
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.bold,
+            color: color,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Color _getMoodColor(String feeling) {
+    switch (feeling) {
+      case 'amazing':
+        return const Color(0xFF4ADE80);
+      case 'good':
+        return const Color(0xFF81C784);
+      case 'bad':
+        return const Color(0xFFFFB74D);
+      case 'terrible':
+        return const Color(0xFFEF5350);
+      default:
+        return const Color(0xFF64748B);
+    }
+  }
+
+  IconData _getMoodIcon(String feeling) {
+    switch (feeling) {
+      case 'amazing':
+        return Icons.sentiment_very_satisfied_rounded;
+      case 'good':
+        return Icons.sentiment_satisfied_rounded;
+      case 'bad':
+        return Icons.sentiment_dissatisfied_rounded;
+      case 'terrible':
+        return Icons.sentiment_very_dissatisfied_rounded;
+      default:
+        return Icons.sentiment_neutral_rounded;
+    }
   }
 }

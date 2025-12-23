@@ -3170,4 +3170,26 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get errorInit => 'Ops! Algo deu errado';
+
+  @override
+  String get dontHaveAccount => 'Não tem uma conta?';
+
+  @override
+  String get createAccount => 'Criar conta';
+
+  @override
+  String get email => 'Email';
+
+  @override
+  String get password => 'Senha';
+
+  @override
+  String get confirmPassword => 'Confirmar Senha';
+
+  @override
+  String get fullName => 'Nome Completo';
+
+  @override
+  String get signupHeaderSubtitle =>
+      'Junte-se a nós em sua jornada de autoconhecimento e evolução.';
 }

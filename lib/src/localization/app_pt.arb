@@ -1016,5 +1016,12 @@
   "waterWidgetDescription": "Acompanhe seu consumo de água",
   "preparando": "Preparando...",
   "errorInit": "Ops! Algo deu errado",
+  "dontHaveAccount": "Não tem uma conta?",
+  "createAccount": "Criar conta",
+  "email": "Email",
+  "password": "Senha",
+  "confirmPassword": "Confirmar Senha",
+  "fullName": "Nome Completo",
+  "signupHeaderSubtitle": "Junte-se a nós em sua jornada de autoconhecimento e evolução.",
   "@@locale": "pt"
 }

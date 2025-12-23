@@ -3163,4 +3163,26 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get errorInit => 'Oops! Something went wrong';
+
+  @override
+  String get dontHaveAccount => 'Don\'t have an account?';
+
+  @override
+  String get createAccount => 'Create account';
+
+  @override
+  String get email => 'Email';
+
+  @override
+  String get password => 'Password';
+
+  @override
+  String get confirmPassword => 'Confirm Password';
+
+  @override
+  String get fullName => 'Full Name';
+
+  @override
+  String get signupHeaderSubtitle =>
+      'Join us on your journey of self-discovery and evolution.';
 }

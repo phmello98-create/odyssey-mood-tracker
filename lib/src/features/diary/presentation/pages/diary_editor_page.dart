@@ -1,17 +1,18 @@
 import 'dart:convert';
-
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_quill/flutter_quill.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
+import 'package:path_provider/path_provider.dart';
 
-import '../../../../localization/app_localizations.dart';
-import '../../data/models/diary_entry.dart';
-import '../controllers/diary_providers.dart';
-import '../widgets/feeling_selector_widget.dart';
+import '../../data/models/diary_entry_isar.dart';
+import '../../data/repositories/diary_isar_repository.dart';
+import '../widgets/diary_editor_widgets.dart';
 
 class DiaryEditorPage extends ConsumerStatefulWidget {
-  final String? entryId;
+  final String? entryId; // Pode ser String legado ou ID numérico stringified
   final DateTime? initialDate;
   final String? initialPrompt;
 
@@ -29,671 +30,435 @@ class DiaryEditorPage extends ConsumerStatefulWidget {
 class _DiaryEditorPageState extends ConsumerState<DiaryEditorPage> {
   late QuillController _quillController;
   late TextEditingController _titleController;
-  late TextEditingController _tagController;
-  late FocusNode _editorFocusNode;
   late ScrollController _scrollController;
+  late FocusNode _editorFocusNode;
 
-  DiaryEntry? _existingEntry;
+  DiaryEntryIsar? _currentEntry;
   String? _selectedFeeling;
   List<String> _tags = [];
+  String? _imagePath; // Caminho da foto anexada
   late DateTime _entryDate;
+
   bool _isLoading = true;
   bool _hasChanges = false;
   bool _isSaving = false;
-  bool _showPrompt = true;
 
   @override
   void initState() {
     super.initState();
     _titleController = TextEditingController();
-    _tagController = TextEditingController();
     _editorFocusNode = FocusNode();
     _scrollController = ScrollController();
     _quillController = QuillController.basic();
     _entryDate = widget.initialDate ?? DateTime.now();
 
-    _titleController.addListener(_onContentChanged);
-    _quillController.addListener(_onContentChanged);
+    _titleController.addListener(_markChanged);
+    _quillController.addListener(_markChanged);
 
     _loadEntry();
   }
 
+  void _markChanged() {
+    if (!_hasChanges) setState(() => _hasChanges = true);
+  }
+
   @override
   void dispose() {
-    _titleController.removeListener(_onContentChanged);
-    _quillController.removeListener(_onContentChanged);
     _titleController.dispose();
-    _tagController.dispose();
     _quillController.dispose();
     _editorFocusNode.dispose();
     _scrollController.dispose();
     super.dispose();
   }
 
-  void _onContentChanged() {
-    if (!_hasChanges) {
-      setState(() => _hasChanges = true);
-    }
-  }
-
   Future<void> _loadEntry() async {
     if (widget.entryId != null) {
-      final repository = ref.read(diaryRepositoryProvider);
-      final entry = await repository.getEntry(widget.entryId!);
+      // Tentar parsing para Isar ID
+      final isarId = int.tryParse(widget.entryId!);
 
-      if (entry != null && mounted) {
-        setState(() {
-          _existingEntry = entry;
+      if (isarId != null) {
+        final repo = ref.read(diaryIsarRepositoryProvider);
+        final entry = await repo.getById(isarId);
+
+        if (entry != null && mounted) {
+          _currentEntry = entry;
           _titleController.text = entry.title ?? '';
           _selectedFeeling = entry.feeling;
           _tags = List.from(entry.tags);
           _entryDate = entry.entryDate;
+          _imagePath = entry.imagePath;
 
-          // Parse Quill Delta JSON
-          try {
-            if (entry.content.isNotEmpty && entry.content != '[]') {
-              final deltaJson = jsonDecode(entry.content) as List;
+          if (entry.content != null && entry.content!.isNotEmpty) {
+            try {
+              final json = jsonDecode(entry.content!);
               _quillController = QuillController(
-                document: Document.fromJson(deltaJson),
+                document: Document.fromJson(json),
                 selection: const TextSelection.collapsed(offset: 0),
               );
-              _quillController.addListener(_onContentChanged);
+              _quillController.addListener(_markChanged);
+            } catch (e) {
+              debugPrint('Error parsing quill content: $e');
             }
-          } catch (e) {
-            debugPrint('Error parsing Quill delta: $e');
           }
-        });
+        }
+      } else {
+        // TODO: Lógica de migração legado se necessário
+        // Por enquanto, IDs não numéricos são ignorados (ou tratados como novos em branco)
       }
+    } else if (widget.initialPrompt != null) {
+      // Inserir prompt no editor se for novo
+      _quillController.document.insert(0, '\n\n"${widget.initialPrompt}"\n');
     }
 
     setState(() => _isLoading = false);
   }
 
-  @override
-  Widget build(BuildContext context) {
-    if (_isLoading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
+  Future<void> _saveEntry() async {
+    if (_isSaving) return;
+    setState(() => _isSaving = true);
+
+    try {
+      final repo = ref.read(diaryIsarRepositoryProvider);
+      final contentJson = jsonEncode(
+        _quillController.document.toDelta().toJson(),
       );
-    }
-
-    final theme = Theme.of(context);
-    final isEditing = widget.entryId != null;
-
-    return PopScope(
-      canPop: !_hasChanges,
-      onPopInvokedWithResult: (didPop, result) async {
-        if (didPop) return;
-        final shouldPop = await _showDiscardDialog();
-        if (shouldPop && mounted) {
-          Navigator.pop(context);
-        }
-      },
-      child: Scaffold(
-        appBar: AppBar(
-          title: Text(isEditing ? 'Editar Entrada' : 'Nova Entrada'),
-          actions: [
-            if (isEditing)
-              IconButton(
-                icon: const Icon(Icons.delete_outline),
-                onPressed: _confirmDelete,
-                tooltip: 'Excluir',
-              ),
-            TextButton.icon(
-              onPressed: _isSaving ? null : _saveEntry,
-              icon: _isSaving
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.check),
-              label: const Text('Salvar'),
-            ),
-          ],
-        ),
-        body: Column(
-          children: [
-            Expanded(
-              child: SingleChildScrollView(
-                controller: _scrollController,
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Prompt de inspiração (se houver)
-                    if (widget.initialPrompt != null && _showPrompt)
-                      _buildPromptCard(theme),
-
-                    // Data da entrada
-                    _buildDateSelector(theme),
-                    const SizedBox(height: 16),
-
-                    // Seletor de sentimento
-                    _buildFeelingSection(theme),
-                    const SizedBox(height: 16),
-
-                    // Campo de título
-                    _buildTitleField(theme),
-                    const SizedBox(height: 16),
-
-                    // Editor de texto rico
-                    _buildEditor(theme),
-                    const SizedBox(height: 16),
-
-                    // Tags
-                    _buildTagsSection(theme),
-                    const SizedBox(height: 100), // Espaço para toolbar
-                  ],
-                ),
-              ),
-            ),
-
-            // Toolbar do Quill
-            _buildToolbar(theme),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDateSelector(ThemeData theme) {
-    final dateFormat = DateFormat('EEEE, dd \'de\' MMMM \'de\' yyyy', 'pt_BR');
-
-    return InkWell(
-      onTap: _selectDate,
-      borderRadius: BorderRadius.circular(8),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.calendar_today,
-              size: 18,
-              color: theme.colorScheme.primary,
-            ),
-            const SizedBox(width: 8),
-            Text(
-              dateFormat.format(_entryDate),
-              style: TextStyle(
-                color: theme.colorScheme.primary,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            const SizedBox(width: 4),
-            Icon(
-              Icons.arrow_drop_down,
-              color: theme.colorScheme.primary,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFeelingSection(ThemeData theme) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          AppLocalizations.of(context)!.diaryHowAreYouFeeling,
-          style: theme.textTheme.titleSmall?.copyWith(
-            color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
-          ),
-        ),
-        const SizedBox(height: 8),
-        FeelingSelectorWidget(
-          selectedFeeling: _selectedFeeling,
-          onFeelingSelected: (feeling) {
-            setState(() {
-              _selectedFeeling = feeling;
-              _hasChanges = true;
-            });
-          },
-        ),
-      ],
-    );
-  }
-
-  Widget _buildTitleField(ThemeData theme) {
-    return TextField(
-      controller: _titleController,
-      style: theme.textTheme.headlineSmall?.copyWith(
-        fontWeight: FontWeight.bold,
-      ),
-      decoration: InputDecoration(
-        hintText: AppLocalizations.of(context)!.diaryEditorTitle,
-        hintStyle: theme.textTheme.headlineSmall?.copyWith(
-          fontWeight: FontWeight.bold,
-          color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
-        ),
-        border: InputBorder.none,
-        contentPadding: EdgeInsets.zero,
-      ),
-      textCapitalization: TextCapitalization.sentences,
-    );
-  }
-
-  Widget _buildEditor(ThemeData theme) {
-    return Container(
-      constraints: const BoxConstraints(minHeight: 300),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
-        ),
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(12),
-        child: QuillEditor.basic(
-          controller: _quillController,
-          focusNode: _editorFocusNode,
-          config: QuillEditorConfig(
-            padding: const EdgeInsets.all(16),
-            placeholder: AppLocalizations.of(context)!.diaryEditorContentPlaceholder,
-            expands: false,
-            scrollable: true,
-            autoFocus: false,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildToolbar(ThemeData theme) {
-    return Container(
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
-            blurRadius: 4,
-            offset: const Offset(0, -2),
-          ),
-        ],
-      ),
-      child: SafeArea(
-        top: false,
-        child: QuillSimpleToolbar(
-          controller: _quillController,
-          config: const QuillSimpleToolbarConfig(
-            toolbarIconAlignment: WrapAlignment.start,
-            multiRowsDisplay: false,
-            showDividers: false,
-            showFontFamily: false,
-            showFontSize: false,
-            showBoldButton: true,
-            showItalicButton: true,
-            showUnderLineButton: true,
-            showStrikeThrough: false,
-            showInlineCode: false,
-            showColorButton: false,
-            showBackgroundColorButton: false,
-            showClearFormat: false,
-            showAlignmentButtons: false,
-            showLeftAlignment: false,
-            showCenterAlignment: false,
-            showRightAlignment: false,
-            showJustifyAlignment: false,
-            showHeaderStyle: true,
-            showListNumbers: true,
-            showListBullets: true,
-            showListCheck: true,
-            showCodeBlock: false,
-            showQuote: true,
-            showIndent: false,
-            showLink: false,
-            showUndo: true,
-            showRedo: true,
-            showDirection: false,
-            showSearchButton: false,
-            showSubscript: false,
-            showSuperscript: false,
-            showClipboardCut: false,
-            showClipboardCopy: false,
-            showClipboardPaste: false,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTagsSection(ThemeData theme) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Tags',
-          style: theme.textTheme.titleSmall?.copyWith(
-            color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
-          ),
-        ),
-        const SizedBox(height: 8),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            ..._tags.map((tag) => Chip(
-                  label: Text(tag),
-                  deleteIcon: const Icon(Icons.close, size: 18),
-                  onDeleted: () => _removeTag(tag),
-                )),
-            ActionChip(
-              avatar: const Icon(Icons.add, size: 18),
-              label: const Text('Adicionar tag'),
-              onPressed: _showAddTagDialog,
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildPromptCard(ThemeData theme) {
-    final colorScheme = theme.colorScheme;
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 20),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            colorScheme.tertiaryContainer,
-            colorScheme.secondaryContainer,
-          ],
-        ),
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: colorScheme.tertiary.withValues(alpha: 0.15),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: colorScheme.tertiary.withValues(alpha: 0.2),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  Icons.lightbulb_rounded,
-                  color: colorScheme.tertiary,
-                  size: 20,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  'Inspiração',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: colorScheme.onTertiaryContainer.withValues(alpha: 0.8),
-                  ),
-                ),
-              ),
-              IconButton(
-                icon: Icon(
-                  Icons.close_rounded,
-                  color: colorScheme.onTertiaryContainer.withValues(alpha: 0.6),
-                  size: 18,
-                ),
-                onPressed: () => setState(() => _showPrompt = false),
-                tooltip: 'Fechar',
-                visualDensity: VisualDensity.compact,
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Text(
-            '"${widget.initialPrompt}"',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w500,
-              fontStyle: FontStyle.italic,
-              color: colorScheme.onTertiaryContainer,
-              height: 1.4,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _selectDate() async {
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: _entryDate,
-      firstDate: DateTime(2000),
-      lastDate: DateTime.now().add(const Duration(days: 1)),
-      locale: const Locale('pt', 'BR'),
-    );
-
-    if (picked != null && mounted) {
-      // Mantém a hora atual se for hoje, senão usa meio-dia
+      final plainText = _quillController.document.toPlainText().trim();
       final now = DateTime.now();
-      final newDate = DateTime(
-        picked.year,
-        picked.month,
-        picked.day,
-        picked.year == now.year &&
-                picked.month == now.month &&
-                picked.day == now.day
-            ? now.hour
-            : 12,
-        picked.year == now.year &&
-                picked.month == now.month &&
-                picked.day == now.day
-            ? now.minute
-            : 0,
-      );
+
+      final entry = _currentEntry ?? DiaryEntryIsar();
+
+      entry
+        ..title = _titleController.text.trim().isEmpty
+            ? null
+            : _titleController.text.trim()
+        ..content = contentJson
+        ..feeling = _selectedFeeling
+        ..tags = _tags
+        ..entryDate = _entryDate
+        ..searchableText = plainText.isEmpty ? null : plainText
+        ..imagePath = _imagePath
+        ..updatedAt = now;
+
+      if (_currentEntry == null) {
+        entry.createdAt = now;
+      }
+
+      await repo.saveEntry(entry);
+
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Salvo com sucesso!'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('Error saving entry: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erro ao salvar: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
+  }
+
+  Future<void> _pickImage() async {
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 1200,
+      imageQuality: 85,
+    );
+
+    if (picked != null) {
+      // Copiar para diretório do app
+      final appDir = await getApplicationDocumentsDirectory();
+      final fileName = 'diary_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      final savedImage = await File(
+        picked.path,
+      ).copy('${appDir.path}/$fileName');
 
       setState(() {
-        _entryDate = newDate;
+        _imagePath = savedImage.path;
         _hasChanges = true;
       });
     }
   }
 
-  void _removeTag(String tag) {
+  void _removeImage() {
     setState(() {
-      _tags.remove(tag);
+      _imagePath = null;
       _hasChanges = true;
     });
   }
 
-  Future<void> _showAddTagDialog() async {
-    _tagController.clear();
+  @override
+  Widget build(BuildContext context) {
+    if (_isLoading)
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
 
+    final theme = Theme.of(context);
+
+    return Scaffold(
+      backgroundColor: theme.colorScheme.surface,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        centerTitle: true,
+        title: Column(
+          children: [
+            Text(
+              widget.entryId != null ? 'Editando' : 'Nova Entrada',
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            Text(
+              DateFormat('d MMMM, y', 'pt_BR').format(_entryDate),
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 16),
+            child: FilledButton.icon(
+              onPressed: _saveEntry,
+              icon: _isSaving
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Icon(Icons.check, size: 18),
+              label: const Text('Salvar'),
+              style: FilledButton.styleFrom(
+                visualDensity: VisualDensity.compact,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+      body: Column(
+        children: [
+          Expanded(
+            child: SingleChildScrollView(
+              controller: _scrollController,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Humor
+                  Text(
+                    'Como você está?',
+                    style: theme.textTheme.labelLarge?.copyWith(
+                      color: theme.colorScheme.primary,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  PremiumMoodSelector(
+                    selectedMood: _selectedFeeling,
+                    onSelected: (val) => setState(() {
+                      _selectedFeeling = val;
+                      _hasChanges = true;
+                    }),
+                  ),
+                  const SizedBox(height: 24),
+
+                  // Título
+                  HeadlessTitleField(
+                    controller: _titleController,
+                    hintText: 'Título da sua história...',
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Tags
+                  ModernTagInput(
+                    tags: _tags,
+                    onAddTag: (tag) => setState(() {
+                      if (!_tags.contains(tag)) _tags.add(tag);
+                      _hasChanges = true;
+                    }),
+                    onRemoveTag: (tag) => setState(() => _tags.remove(tag)),
+                    onInputTap: _showAddTagDialog,
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Foto
+                  _buildPhotoSection(theme),
+
+                  const Divider(height: 40),
+
+                  // Editor
+                  QuillEditor.basic(
+                    controller: _quillController,
+                    focusNode: _editorFocusNode,
+                    config: QuillEditorConfig(
+                      padding: EdgeInsets.zero,
+                      placeholder: 'Escreva sobre seu dia...',
+                      autoFocus: false,
+                    ),
+                  ),
+
+                  const SizedBox(height: 80), // Espaço extra
+                ],
+              ),
+            ),
+          ),
+
+          // Toolbar
+          Container(
+            padding: const EdgeInsets.only(bottom: 16, top: 8),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surface,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.05),
+                  offset: const Offset(0, -4),
+                  blurRadius: 16,
+                ),
+              ],
+            ),
+            child: QuillSimpleToolbar(
+              controller: _quillController,
+              config: const QuillSimpleToolbarConfig(
+                showFontFamily: false,
+                showFontSize: false,
+                showSearchButton: false,
+                showSubscript: false,
+                showSuperscript: false,
+                toolbarIconAlignment: WrapAlignment.center,
+                showClipboardCopy: false,
+                showClipboardCut: false,
+                showClipboardPaste: false,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _showAddTagDialog() async {
+    final controller = TextEditingController();
     final result = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Adicionar Tag'),
+        title: const Text('Nova Tag'),
         content: TextField(
-          controller: _tagController,
+          controller: controller,
           autofocus: true,
           decoration: const InputDecoration(
-            hintText: 'Nome da tag',
-            prefixIcon: Icon(Icons.tag),
+            hintText: 'Ex: Trabalho, Família...',
+            border: OutlineInputBorder(),
           ),
-          textCapitalization: TextCapitalization.words,
-          onSubmitted: (value) => Navigator.pop(context, value),
+          onSubmitted: (val) => Navigator.pop(context, val),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text('Cancelar'),
           ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, _tagController.text),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, controller.text),
             child: const Text('Adicionar'),
           ),
         ],
       ),
     );
 
-    if (result != null && result.trim().isNotEmpty && mounted) {
-      final tag = result.trim();
-      if (!_tags.contains(tag)) {
-        setState(() {
-          _tags.add(tag);
-          _hasChanges = true;
-        });
-      }
+    if (result != null && result.isNotEmpty) {
+      setState(() {
+        _tags.add(result);
+        _hasChanges = true;
+      });
     }
   }
 
-  Future<void> _saveEntry() async {
-    if (_isSaving) return;
-
-    setState(() => _isSaving = true);
-
-    try {
-      final repository = ref.read(diaryRepositoryProvider);
-
-      // Converte o documento Quill para JSON
-      final deltaJson = jsonEncode(_quillController.document.toDelta().toJson());
-
-      // Extrai texto plano para busca
-      final plainText = _quillController.document.toPlainText().trim();
-
-      final now = DateTime.now();
-
-      final entry = _existingEntry?.copyWith(
-            title: _titleController.text.trim().isEmpty
-                ? null
-                : _titleController.text.trim(),
-            content: deltaJson,
-            feeling: _selectedFeeling,
-            tags: _tags,
-            entryDate: _entryDate,
-            searchableText: plainText.isEmpty ? null : plainText,
-            updatedAt: now,
-          ) ??
-          DiaryEntry(
-            id: now.millisecondsSinceEpoch.toString(),
-            createdAt: now,
-            updatedAt: now,
-            entryDate: _entryDate,
-            title: _titleController.text.trim().isEmpty
-                ? null
-                : _titleController.text.trim(),
-            content: deltaJson,
-            feeling: _selectedFeeling,
-            tags: _tags,
-            searchableText: plainText.isEmpty ? null : plainText,
-          );
-
-      await repository.saveEntry(entry);
-
-      // Invalida os providers para atualizar a lista
-      ref.invalidate(diaryEntriesProvider);
-      ref.invalidate(starredEntriesProvider);
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Entrada salva com sucesso!'),
-            behavior: SnackBarBehavior.floating,
+  Widget _buildPhotoSection(ThemeData theme) {
+    if (_imagePath != null) {
+      return Stack(
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: Image.file(
+              File(_imagePath!),
+              width: double.infinity,
+              height: 180,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => _buildAddPhotoButton(theme),
+            ),
           ),
-        );
-        Navigator.pop(context);
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Erro ao salvar: $e'),
-            backgroundColor: Colors.red,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _isSaving = false);
-      }
-    }
-  }
-
-  Future<void> _confirmDelete() async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Excluir Entrada'),
-        content: const Text(
-          'Tem certeza que deseja excluir esta entrada? Esta ação não pode ser desfeita.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancelar'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Excluir'),
+          Positioned(
+            top: 8,
+            right: 8,
+            child: GestureDetector(
+              onTap: _removeImage,
+              child: Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: Colors.black54,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: const Icon(Icons.close, color: Colors.white, size: 18),
+              ),
+            ),
           ),
         ],
-      ),
-    );
-
-    if (confirm == true && widget.entryId != null && mounted) {
-      final repository = ref.read(diaryRepositoryProvider);
-      await repository.deleteEntry(widget.entryId!);
-
-      ref.invalidate(diaryEntriesProvider);
-      ref.invalidate(starredEntriesProvider);
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(AppLocalizations.of(context)!.diaryEntryDeleted),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-        Navigator.pop(context);
-      }
+      );
     }
+    return _buildAddPhotoButton(theme);
   }
 
-  Future<bool> _showDiscardDialog() async {
-    final result = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(AppLocalizations.of(context)!.diaryDiscardChanges),
-        content: Text(
-          AppLocalizations.of(context)!.diaryDiscardChangesMessage,
+  Widget _buildAddPhotoButton(ThemeData theme) {
+    return GestureDetector(
+      onTap: _pickImage,
+      child: Container(
+        width: double.infinity,
+        height: 100,
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surfaceContainerHighest.withValues(
+            alpha: 0.5,
+          ),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: theme.colorScheme.outline.withValues(alpha: 0.2),
+          ),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text(AppLocalizations.of(context)!.continueEditing),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: Text(AppLocalizations.of(context)!.discard),
-          ),
-        ],
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.add_photo_alternate_outlined,
+              size: 32,
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Adicionar foto',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ),
       ),
     );
-
-    return result ?? false;
   }
 }

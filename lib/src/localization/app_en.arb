@@ -1016,5 +1016,12 @@
   "waterWidgetDescription": "Track your water intake",
   "preparando": "Preparing...",
   "errorInit": "Oops! Something went wrong",
+  "dontHaveAccount": "Don't have an account?",
+  "createAccount": "Create account",
+  "email": "Email",
+  "password": "Password",
+  "confirmPassword": "Confirm Password",
+  "fullName": "Full Name",
+  "signupHeaderSubtitle": "Join us on your journey of self-discovery and evolution.",
   "@@locale": "en"
 }

@@ -6115,6 +6115,48 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Oops! Something went wrong'**
   String get errorInit;
+
+  /// No description provided for @dontHaveAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Don\'t have an account?'**
+  String get dontHaveAccount;
+
+  /// No description provided for @createAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Create account'**
+  String get createAccount;
+
+  /// No description provided for @email.
+  ///
+  /// In en, this message translates to:
+  /// **'Email'**
+  String get email;
+
+  /// No description provided for @password.
+  ///
+  /// In en, this message translates to:
+  /// **'Password'**
+  String get password;
+
+  /// No description provided for @confirmPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm Password'**
+  String get confirmPassword;
+
+  /// No description provided for @fullName.
+  ///
+  /// In en, this message translates to:
+  /// **'Full Name'**
+  String get fullName;
+
+  /// No description provided for @signupHeaderSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Join us on your journey of self-discovery and evolution.'**
+  String get signupHeaderSubtitle;
 }
 
 class _AppLocalizationsDelegate
