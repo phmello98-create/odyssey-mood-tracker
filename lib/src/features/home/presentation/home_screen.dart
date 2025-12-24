@@ -54,6 +54,7 @@ import 'package:odyssey/src/features/home/presentation/widgets/home_habits_compa
 import 'package:odyssey/src/features/home/presentation/widgets/home_empty_habits_widget.dart';
 import 'package:odyssey/src/features/home/presentation/widgets/home_empty_tasks_widget.dart';
 import 'package:odyssey/src/features/home/presentation/widgets/home_mini_stat_widget.dart';
+import 'package:odyssey/src/features/home/presentation/widgets/home_result_card_widget.dart';
 import 'package:odyssey/src/features/home/presentation/widgets/task_checkbox.dart';
 import 'package:odyssey/src/features/home/presentation/widgets/header_arrow_button.dart';
 import 'package:odyssey/src/features/onboarding/services/showcase_service.dart'
@@ -3579,8 +3580,7 @@ extension _HomeScreenStateDataInsights on _HomeScreenState {
                           Row(
                             children: [
                               Expanded(
-                                child: _buildResultCard(
-                                  context,
+                                child: HomeResultCardWidget(
                                   label: 'Hábitos Feitos',
                                   value: totalCompletions.toString(),
                                   icon: Icons.check_circle_outline_rounded,
@@ -3589,8 +3589,7 @@ extension _HomeScreenStateDataInsights on _HomeScreenState {
                               ),
                               const SizedBox(width: 12),
                               Expanded(
-                                child: _buildResultCard(
-                                  context,
+                                child: HomeResultCardWidget(
                                   label: 'Melhor Dia',
                                   value: bestDay,
                                   icon: Icons.emoji_events_outlined,
@@ -3603,8 +3602,7 @@ extension _HomeScreenStateDataInsights on _HomeScreenState {
                           Row(
                             children: [
                               Expanded(
-                                child: _buildResultCard(
-                                  context,
+                                child: HomeResultCardWidget(
                                   label: 'Tarefas Concluídas',
                                   value: tasksCompletedMonth.toString(),
                                   icon: Icons.task_alt_rounded,
@@ -3613,8 +3611,7 @@ extension _HomeScreenStateDataInsights on _HomeScreenState {
                               ),
                               const SizedBox(width: 12),
                               Expanded(
-                                child: _buildResultCard(
-                                  context,
+                                child: HomeResultCardWidget(
                                   label: 'Livros Lidos',
                                   value: booksReadMonth.toString(),
                                   icon: Icons.menu_book_rounded,
@@ -3782,55 +3779,8 @@ extension _HomeScreenStateDataInsights on _HomeScreenState {
     );
   }
 
-  Widget _buildResultCard(
-    BuildContext context, {
-    required String label,
-    required String value,
-    required IconData icon,
-    required Color color,
-  }) {
-    final theme = Theme.of(context);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: theme.colorScheme.outline.withValues(alpha: 0.05),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(6),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(icon, size: 18, color: color),
-          ),
-          const SizedBox(height: 10),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
-              color: theme.colorScheme.onSurface,
-            ),
-          ),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w500,
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  // NOTE: _buildResultCard foi extraído para HomeResultCardWidget
+  // em lib/src/features/home/presentation/widgets/home_result_card_widget.dart
 
   Color _getColorForRate(double rate, ColorScheme colors) {
     if (rate >= 1.0) return const Color(0xFF00C853);
