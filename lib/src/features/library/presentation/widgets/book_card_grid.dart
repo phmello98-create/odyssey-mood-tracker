@@ -1,6 +1,5 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:odyssey/src/constants/app_theme.dart';
 import 'package:odyssey/src/features/library/domain/book.dart';
 
 class BookCardGrid extends StatelessWidget {
@@ -17,31 +16,21 @@ class BookCardGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+
     return GestureDetector(
       onTap: onTap,
       onLongPress: onLongPress,
       child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.15),
-              blurRadius: 12,
-              offset: const Offset(0, 6),
-            ),
-          ],
-        ),
+        decoration: BoxDecoration(borderRadius: BorderRadius.circular(16)),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(16),
           child: Stack(
             fit: StackFit.expand,
             children: [
               // Cover or placeholder
-              Hero(
-                tag: 'book_cover_${book.id}',
-                child: _buildCover(context),
-              ),
-              
+              Hero(tag: 'book_cover_${book.id}', child: _buildCover(context)),
+
               // Gradient overlay for text
               Positioned(
                 bottom: 0,
@@ -61,7 +50,7 @@ class BookCardGrid extends StatelessWidget {
                   ),
                 ),
               ),
-              
+
               // Title at bottom
               Positioned(
                 bottom: 10,
@@ -78,9 +67,7 @@ class BookCardGrid extends StatelessWidget {
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
                         height: 1.2,
-                        shadows: [
-                          Shadow(color: Colors.black87, blurRadius: 4),
-                        ],
+                        shadows: [Shadow(color: Colors.black87, blurRadius: 4)],
                       ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
@@ -99,9 +86,11 @@ class BookCardGrid extends StatelessWidget {
                   ],
                 ),
               ),
-              
+
               // Progress indicator for in-progress books
-              if (book.status == BookStatus.inProgress && book.pages != null && book.pages! > 0)
+              if (book.status == BookStatus.inProgress &&
+                  book.pages != null &&
+                  book.pages! > 0)
                 Positioned(
                   bottom: 0,
                   left: 0,
@@ -109,11 +98,11 @@ class BookCardGrid extends StatelessWidget {
                   child: LinearProgressIndicator(
                     value: book.progress,
                     backgroundColor: Colors.white.withValues(alpha: 0.2),
-                    valueColor: const AlwaysStoppedAnimation(UltravioletColors.primary),
+                    valueColor: AlwaysStoppedAnimation(colors.primary),
                     minHeight: 4,
                   ),
                 ),
-              
+
               // Favourite badge
               if (book.favourite)
                 Positioned(
@@ -124,7 +113,10 @@ class BookCardGrid extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: Colors.black.withValues(alpha: 0.5),
                       shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white.withValues(alpha: 0.2), width: 1),
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.2),
+                        width: 1,
+                      ),
                     ),
                     child: const Icon(
                       Icons.favorite,
@@ -133,23 +125,33 @@ class BookCardGrid extends StatelessWidget {
                     ),
                   ),
                 ),
-              
+
               // Rating badge
               if (book.rating != null)
                 Positioned(
                   top: 8,
                   left: 8,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.black.withValues(alpha: 0.6),
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.white.withValues(alpha: 0.1), width: 1),
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.1),
+                        width: 1,
+                      ),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.star_rounded, color: Colors.amber, size: 12),
+                        const Icon(
+                          Icons.star_rounded,
+                          color: Colors.amber,
+                          size: 12,
+                        ),
                         const SizedBox(width: 4),
                         Text(
                           (book.rating! / 10).toStringAsFixed(1),
@@ -182,30 +184,28 @@ class BookCardGrid extends StatelessWidget {
         );
       }
     }
-    
+
     return _buildPlaceholderCover(context);
   }
 
   Widget _buildPlaceholderCover(BuildContext context) {
-    final color = _getStatusColor();
-    
+    final color = _getStatusColor(context);
+    final colors = Theme.of(context).colorScheme;
+
     return Container(
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        color: colors.surfaceContainerHighest,
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            color.withValues(alpha: 0.2),
-            color.withValues(alpha: 0.05),
-          ],
+          colors: [color.withValues(alpha: 0.2), color.withValues(alpha: 0.05)],
         ),
       ),
       child: LayoutBuilder(
         builder: (context, constraints) {
           final iconSize = (constraints.maxWidth * 0.4).clamp(24.0, 40.0);
           final fontSize = (constraints.maxHeight * 0.25).clamp(24.0, 48.0);
-          
+
           return Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -237,16 +237,17 @@ class BookCardGrid extends StatelessWidget {
     );
   }
 
-  Color _getStatusColor() {
+  Color _getStatusColor(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
     switch (book.status) {
       case BookStatus.inProgress:
-        return UltravioletColors.primary;
+        return colors.primary;
       case BookStatus.forLater:
-        return UltravioletColors.secondary;
+        return colors.secondary;
       case BookStatus.read:
-        return UltravioletColors.accentGreen;
+        return const Color(0xFF10B981);
       case BookStatus.unfinished:
-        return UltravioletColors.error;
+        return colors.error;
     }
   }
 }

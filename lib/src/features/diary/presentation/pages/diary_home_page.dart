@@ -8,6 +8,7 @@ import 'package:table_calendar/table_calendar.dart';
 import 'package:intl/intl.dart';
 import '../../domain/entities/diary_entry_entity.dart';
 import '../controllers/diary_providers.dart';
+import '../controllers/diary_isar_provider.dart';
 import '../widgets/diary_entry_card.dart';
 import '../widgets/diary_stats_header.dart';
 import '../widgets/diary_empty_state.dart';
@@ -64,7 +65,10 @@ class _DiaryHomePageState extends ConsumerState<DiaryHomePage>
       vsync: this,
     );
     _fabScaleAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _fabAnimationController, curve: Curves.elasticOut),
+      CurvedAnimation(
+        parent: _fabAnimationController,
+        curve: Curves.elasticOut,
+      ),
     );
     _fabAnimationController.forward();
 
@@ -78,7 +82,8 @@ class _DiaryHomePageState extends ConsumerState<DiaryHomePage>
     );
 
     // Random prompt
-    _currentPrompt = _writingPrompts[math.Random().nextInt(_writingPrompts.length)];
+    _currentPrompt =
+        _writingPrompts[math.Random().nextInt(_writingPrompts.length)];
   }
 
   @override
@@ -109,7 +114,9 @@ class _DiaryHomePageState extends ConsumerState<DiaryHomePage>
     return Scaffold(
       body: RefreshIndicator(
         onRefresh: () async {
-          await ref.read(diaryControllerProvider.notifier).loadEntries(refresh: true);
+          await ref
+              .read(diaryControllerProvider.notifier)
+              .loadEntries(refresh: true);
         },
         child: CustomScrollView(
           controller: _scrollController,
@@ -131,25 +138,26 @@ class _DiaryHomePageState extends ConsumerState<DiaryHomePage>
     DiaryState state,
     ColorScheme colorScheme,
   ) {
-    final l10n = AppLocalizations.of(context)!;
+    final l10n = AppLocalizations.of(context);
     return SliverAppBar.large(
       title: _showSearch
-          ? DiarySearchBar(
-              autoFocus: true,
-              onSearch: (query) {
-                ref.read(diaryControllerProvider.notifier).search(query);
-              },
-              onClear: () {
-                setState(() => _showSearch = false);
-              },
-            )
-          : Text(l10n.diaryMyDiary),
+          ? const DiarySearchBar(autoFocus: true)
+          : Text(l10n?.diaryMyDiary ?? 'Meu Diário'),
       actions: [
         if (!_showSearch) ...[
           IconButton(
             icon: const Icon(Icons.search_rounded),
             onPressed: () => setState(() => _showSearch = true),
             tooltip: 'Buscar',
+          ),
+        ] else ...[
+          IconButton(
+            icon: const Icon(Icons.close_rounded),
+            onPressed: () {
+              setState(() => _showSearch = false);
+              ref.read(diarySearchQueryProvider.notifier).state = '';
+            },
+            tooltip: 'Fechar busca',
           ),
         ],
         if (state is DiaryStateLoaded) ...[
@@ -239,7 +247,9 @@ class _DiaryHomePageState extends ConsumerState<DiaryHomePage>
                   const SizedBox(height: 16),
                   FilledButton.tonal(
                     onPressed: () {
-                      ref.read(diaryControllerProvider.notifier).loadEntries(refresh: true);
+                      ref
+                          .read(diaryControllerProvider.notifier)
+                          .loadEntries(refresh: true);
                     },
                     child: const Text('Tentar novamente'),
                   ),
@@ -267,41 +277,50 @@ class _DiaryHomePageState extends ConsumerState<DiaryHomePage>
         :final allTags,
         :final hasMore,
         :final isLoadingMore,
-      ) => [
-        // Writing Prompt Card
-        if (!filter.hasFilters && viewMode != DiaryViewMode.calendar)
-          SliverToBoxAdapter(
-            child: _buildWritingPromptCard(context, colorScheme),
-          ),
+      ) =>
+        [
+          // Writing Prompt Card
+          if (!filter.hasFilters && viewMode != DiaryViewMode.calendar)
+            SliverToBoxAdapter(
+              child: _buildWritingPromptCard(context, colorScheme),
+            ),
 
-        // Estatísticas
-        if (!filter.hasFilters && viewMode != DiaryViewMode.calendar)
-          const SliverToBoxAdapter(
-            child: DiaryStatsHeader(),
-          ),
+          // Estatísticas
+          if (!filter.hasFilters && viewMode != DiaryViewMode.calendar)
+            const SliverToBoxAdapter(child: DiaryStatsHeader()),
 
-        // Filtros
-        if (allTags.isNotEmpty || filter.hasFilters)
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              child: DiaryFilterChips(
-                currentFilter: filter,
-                availableTags: allTags,
-                onFilterChanged: (newFilter) {
-                  ref.read(diaryControllerProvider.notifier).applyFilter(newFilter);
-                },
+          // Filtros
+          if (allTags.isNotEmpty || filter.hasFilters)
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: DiaryFilterChips(
+                  currentFilter: filter,
+                  availableTags: allTags,
+                  onFilterChanged: (newFilter) {
+                    ref
+                        .read(diaryControllerProvider.notifier)
+                        .applyFilter(newFilter);
+                  },
+                ),
               ),
             ),
-          ),
 
-        // Conteúdo baseado no modo de visualização
-        ...switch (viewMode) {
-          DiaryViewMode.timeline => _buildTimelineView(entries, isLoadingMore, hasMore),
-          DiaryViewMode.grid => _buildGridView(entries, isLoadingMore, hasMore),
-          DiaryViewMode.calendar => _buildCalendarView(entries, context),
-        },
-      ],
+          // Conteúdo baseado no modo de visualização
+          ...switch (viewMode) {
+            DiaryViewMode.timeline => _buildTimelineView(
+              entries,
+              isLoadingMore,
+              hasMore,
+            ),
+            DiaryViewMode.grid => _buildGridView(
+              entries,
+              isLoadingMore,
+              hasMore,
+            ),
+            DiaryViewMode.calendar => _buildCalendarView(entries, context),
+          },
+        ],
     };
   }
 
@@ -334,10 +353,7 @@ class _DiaryHomePageState extends ConsumerState<DiaryHomePage>
               builder: (context, value, child) {
                 return Transform.translate(
                   offset: Offset(0, 20 * (1 - value)),
-                  child: Opacity(
-                    opacity: value,
-                    child: child,
-                  ),
+                  child: Opacity(opacity: value, child: child),
                 );
               },
               child: DiaryEntryCard(
@@ -367,35 +383,29 @@ class _DiaryHomePageState extends ConsumerState<DiaryHomePage>
             crossAxisSpacing: 16,
             childAspectRatio: 0.75,
           ),
-          delegate: SliverChildBuilderDelegate(
-            (context, index) {
-              if (index >= entries.length) {
-                return const Center(child: CircularProgressIndicator());
-              }
+          delegate: SliverChildBuilderDelegate((context, index) {
+            if (index >= entries.length) {
+              return const Center(child: CircularProgressIndicator());
+            }
 
-              final entry = entries[index];
-              // Animação escalonada para grid
-              return TweenAnimationBuilder<double>(
-                duration: Duration(milliseconds: 400 + (index * 40)),
-                tween: Tween(begin: 0.0, end: 1.0),
-                curve: Curves.easeOutBack,
-                builder: (context, value, child) {
-                  return Transform.scale(
-                    scale: value,
-                    child: Opacity(
-                      opacity: value,
-                      child: child,
-                    ),
-                  );
-                },
-                child: DiaryEntryCardCompact(
-                  entry: entry,
-                  onTap: () => _openEntry(context, entry.id),
-                ),
-              );
-            },
-            childCount: entries.length + (isLoadingMore || hasMore ? 1 : 0),
-          ),
+            final entry = entries[index];
+            // Animação escalonada para grid
+            return TweenAnimationBuilder<double>(
+              duration: Duration(milliseconds: 400 + (index * 40)),
+              tween: Tween(begin: 0.0, end: 1.0),
+              curve: Curves.easeOutBack,
+              builder: (context, value, child) {
+                return Transform.scale(
+                  scale: value,
+                  child: Opacity(opacity: value, child: child),
+                );
+              },
+              child: DiaryEntryCardCompact(
+                entry: entry,
+                onTap: () => _openEntry(context, entry.id),
+              ),
+            );
+          }, childCount: entries.length + (isLoadingMore || hasMore ? 1 : 0)),
         ),
       ),
     ];
@@ -421,10 +431,11 @@ class _DiaryHomePageState extends ConsumerState<DiaryHomePage>
 
     final selectedEntries = _selectedDay != null
         ? entriesByDay[DateTime(
-            _selectedDay!.year,
-            _selectedDay!.month,
-            _selectedDay!.day,
-          )] ?? []
+                _selectedDay!.year,
+                _selectedDay!.month,
+                _selectedDay!.day,
+              )] ??
+              []
         : <DiaryEntryEntity>[];
 
     return [
@@ -564,9 +575,7 @@ class _DiaryHomePageState extends ConsumerState<DiaryHomePage>
       ],
 
       // Espaço extra no final
-      const SliverToBoxAdapter(
-        child: SizedBox(height: 100),
-      ),
+      const SliverToBoxAdapter(child: SizedBox(height: 100)),
     ];
   }
 
@@ -591,15 +600,16 @@ class _DiaryHomePageState extends ConsumerState<DiaryHomePage>
     );
   }
 
-  Widget _buildWritingPromptCard(BuildContext context, ColorScheme colorScheme) {
+  Widget _buildWritingPromptCard(
+    BuildContext context,
+    ColorScheme colorScheme,
+  ) {
     if (!_showWritingPrompt) return const SizedBox.shrink();
 
     return AnimatedBuilder(
       animation: _pulseAnimation,
-      builder: (context, child) => Transform.scale(
-        scale: _pulseAnimation.value,
-        child: child,
-      ),
+      builder: (context, child) =>
+          Transform.scale(scale: _pulseAnimation.value, child: child),
       child: Container(
         margin: const EdgeInsets.fromLTRB(16, 8, 16, 16),
         decoration: BoxDecoration(
@@ -654,21 +664,27 @@ class _DiaryHomePageState extends ConsumerState<DiaryHomePage>
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
-                            color: colorScheme.onTertiaryContainer.withValues(alpha: 0.8),
+                            color: colorScheme.onTertiaryContainer.withValues(
+                              alpha: 0.8,
+                            ),
                           ),
                         ),
                       ),
                       IconButton(
                         icon: Icon(
                           Icons.refresh_rounded,
-                          color: colorScheme.onTertiaryContainer.withValues(alpha: 0.6),
+                          color: colorScheme.onTertiaryContainer.withValues(
+                            alpha: 0.6,
+                          ),
                           size: 20,
                         ),
                         onPressed: () {
                           HapticFeedback.selectionClick();
                           setState(() {
-                            _currentPrompt = _writingPrompts[
-                                math.Random().nextInt(_writingPrompts.length)];
+                            _currentPrompt =
+                                _writingPrompts[math.Random().nextInt(
+                                  _writingPrompts.length,
+                                )];
                           });
                         },
                         tooltip: 'Outro prompt',
@@ -676,7 +692,9 @@ class _DiaryHomePageState extends ConsumerState<DiaryHomePage>
                       IconButton(
                         icon: Icon(
                           Icons.close_rounded,
-                          color: colorScheme.onTertiaryContainer.withValues(alpha: 0.6),
+                          color: colorScheme.onTertiaryContainer.withValues(
+                            alpha: 0.6,
+                          ),
                           size: 20,
                         ),
                         onPressed: () {
@@ -703,14 +721,18 @@ class _DiaryHomePageState extends ConsumerState<DiaryHomePage>
                       Icon(
                         Icons.touch_app_rounded,
                         size: 16,
-                        color: colorScheme.onTertiaryContainer.withValues(alpha: 0.6),
+                        color: colorScheme.onTertiaryContainer.withValues(
+                          alpha: 0.6,
+                        ),
                       ),
                       const SizedBox(width: 6),
                       Text(
                         'Toque para começar a escrever',
                         style: TextStyle(
                           fontSize: 12,
-                          color: colorScheme.onTertiaryContainer.withValues(alpha: 0.6),
+                          color: colorScheme.onTertiaryContainer.withValues(
+                            alpha: 0.6,
+                          ),
                         ),
                       ),
                     ],
@@ -775,10 +797,16 @@ class _DiaryHomePageState extends ConsumerState<DiaryHomePage>
                 entry.starred ? Icons.star_rounded : Icons.star_outline_rounded,
                 color: entry.starred ? Colors.amber : null,
               ),
-              title: Text(entry.starred ? 'Remover dos favoritos' : 'Adicionar aos favoritos'),
+              title: Text(
+                entry.starred
+                    ? 'Remover dos favoritos'
+                    : 'Adicionar aos favoritos',
+              ),
               onTap: () {
                 Navigator.pop(context);
-                ref.read(diaryControllerProvider.notifier).toggleStarred(entry.id);
+                ref
+                    .read(diaryControllerProvider.notifier)
+                    .toggleStarred(entry.id);
               },
             ),
             ListTile(
@@ -790,8 +818,14 @@ class _DiaryHomePageState extends ConsumerState<DiaryHomePage>
               },
             ),
             ListTile(
-              leading: Icon(Icons.delete_outline_rounded, color: colorScheme.error),
-              title: Text('Excluir', style: TextStyle(color: colorScheme.error)),
+              leading: Icon(
+                Icons.delete_outline_rounded,
+                color: colorScheme.error,
+              ),
+              title: Text(
+                'Excluir',
+                style: TextStyle(color: colorScheme.error),
+              ),
               onTap: () {
                 Navigator.pop(context);
                 _confirmDelete(context, entry);
@@ -845,9 +879,7 @@ class _DiaryHomePageState extends ConsumerState<DiaryHomePage>
               subtitle: const Text('Formato estruturado para backup'),
               onTap: () async {
                 Navigator.pop(context);
-                await ref
-                    .read(diaryControllerProvider.notifier)
-                    .exportAsJson();
+                await ref.read(diaryControllerProvider.notifier).exportAsJson();
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('Exportado como JSON')),

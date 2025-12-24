@@ -15,9 +15,7 @@ class HomeDailyQuote extends StatelessWidget {
         HapticFeedback.mediumImpact();
         Navigator.push(
           context,
-          MaterialPageRoute(
-            builder: (_) => const LibraryScreen(initialType: 2),
-          ),
+          MaterialPageRoute(builder: (_) => const LibraryScreen()),
         );
       },
       child: Container(

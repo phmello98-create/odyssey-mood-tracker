@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
-import 'package:odyssey/src/constants/app_theme.dart';
 import 'package:odyssey/src/features/mood_records/domain/mood_log/mood_record.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:odyssey/src/features/mood_records/data/mood_log/mood_record_repository.dart';
@@ -375,8 +374,10 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                                             ),
                                             child: Text(
                                               relativeLabel,
-                                              style: const TextStyle(
-                                                color: Colors.white,
+                                              style: TextStyle(
+                                                color: Theme.of(
+                                                  context,
+                                                ).colorScheme.onPrimary,
                                                 fontSize: 10,
                                                 fontWeight: FontWeight.bold,
                                               ),
@@ -487,7 +488,9 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                                           _buildSectionHeader(
                                             'Humor',
                                             Icons.mood,
-                                            UltravioletColors.moodGood,
+                                            Theme.of(
+                                              context,
+                                            ).colorScheme.tertiary,
                                           ),
                                           ...selectedMoods.map(
                                             (m) => _buildMoodCard(m),
@@ -700,12 +703,13 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
 
+    final colors = Theme.of(context).colorScheme;
     final priorityColors = {
-      'high': Colors.red,
-      'medium': Colors.orange,
-      'low': Colors.green,
+      'high': colors.error,
+      'medium': colors.tertiary,
+      'low': colors.primary,
     };
-    final color = priorityColors[task.priority] ?? const Color(0xFF8B5CF6);
+    final color = priorityColors[task.priority] ?? colors.primary;
 
     // Calculate task tags
     List<Widget> tags = [];
@@ -727,8 +731,8 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
           tags.add(
             _buildTag(
               '🔥 ${daysOverdue}d ${isEnglish ? "late" : "atrasada"}',
-              Colors.red,
-              Colors.red.withValues(alpha: 0.15),
+              colors.error,
+              colors.error.withValues(alpha: 0.15),
             ),
           );
         } else if (difference == 0) {
@@ -745,8 +749,8 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
           tags.add(
             _buildTag(
               '⏰ ${l10n.tomorrow}',
-              Colors.blue,
-              Colors.blue.withValues(alpha: 0.15),
+              colors.secondary,
+              colors.secondary.withValues(alpha: 0.15),
             ),
           );
         } else if (difference <= 3) {
@@ -754,8 +758,8 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
           tags.add(
             _buildTag(
               '📅 ${isEnglish ? "In $difference days" : "Em $difference dias"}',
-              Colors.orange,
-              Colors.orange.withValues(alpha: 0.15),
+              colors.tertiary,
+              colors.tertiary.withValues(alpha: 0.15),
             ),
           );
         } else if (difference <= 7) {
@@ -763,8 +767,8 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
           tags.add(
             _buildTag(
               '🗓️ ${l10n.thisWeek}',
-              Colors.teal,
-              Colors.teal.withValues(alpha: 0.15),
+              colors.primary,
+              colors.primary.withValues(alpha: 0.15),
             ),
           );
         }
@@ -798,8 +802,8 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
       tags.add(
         _buildTag(
           '⚡ ${isEnglish ? "URGENT" : "URGENTE"}',
-          Colors.red,
-          Colors.red.withValues(alpha: 0.15),
+          colors.error,
+          colors.error.withValues(alpha: 0.15),
         ),
       );
     }
@@ -837,7 +841,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                 height: 44,
                 decoration: BoxDecoration(
                   color: task.completed
-                      ? const Color(0xFF07E092).withValues(alpha: 0.15)
+                      ? colors.tertiary.withValues(alpha: 0.15)
                       : color.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(12),
                 ),

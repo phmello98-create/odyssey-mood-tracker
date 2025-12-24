@@ -114,7 +114,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
-                    colorScheme.primary.withValues(alpha: 0.08),
+                    colorScheme.primary.withValues(alpha: 0.15),
                     colorScheme.surface,
                   ],
                   begin: Alignment.topCenter,
@@ -176,6 +176,58 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
                     ),
                   ),
                 ),
+
+              // Conta Section
+              _buildSectionHeader(l10n.isEnglish ? 'Account' : 'Conta'),
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: _buildSettingsCard([
+                    // Upgrade de Guest (só aparece para guests)
+                    if (ref.watch(currentUserProvider)?.isGuest ?? false) ...[
+                      _buildSettingsTile(
+                        icon: Icons.upgrade_rounded,
+                        iconBgColor: Colors.green,
+                        title: l10n.isEnglish
+                            ? 'Create Permanent Account'
+                            : 'Criar Conta Permanente',
+                        value: l10n.isEnglish
+                            ? 'Keep your data forever'
+                            : 'Mantenha seus dados para sempre',
+                        onTap: () => _showAccountUpgradeDialog(),
+                      ),
+                      _buildDivider(),
+                    ],
+                    _buildSettingsTile(
+                      icon: Icons.logout_rounded,
+                      iconBgColor: Colors.orange,
+                      title: l10n.isEnglish ? 'Logout' : 'Sair da Conta',
+                      value: l10n.isEnglish
+                          ? 'Disconnect and go to login'
+                          : 'Desconectar e ir para login',
+                      onTap: () => _showLogoutDialog(),
+                    ),
+                    _buildDivider(),
+                    _buildSettingsTile(
+                      icon: Icons.delete_forever_rounded,
+                      iconBgColor: Colors.red,
+                      title: l10n.isEnglish
+                          ? 'Delete Account'
+                          : 'Excluir Conta',
+                      value: l10n.isEnglish
+                          ? 'Permanently delete all data'
+                          : 'Apagar permanentemente todos os dados',
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const DeleteAccountScreen(),
+                        ),
+                      ),
+                      isDanger: true,
+                    ),
+                  ]),
+                ),
+              ),
 
               // Apoie Section
               _buildSectionHeader(l10n.supportTheApp),
@@ -334,20 +386,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
                       ),
                     ),
                     _buildDivider(),
-                    _buildSwitchTile(
-                      icon: Icons.web_outlined,
-                      iconBgColor: Colors.blue,
-                      title: l10n.isEnglish
-                          ? 'Use WebView fallback'
-                          : 'Usar fallback WebView',
-                      subtitle: l10n.isEnglish
-                          ? 'Render pages to extract images when needed'
-                          : 'Renderizar páginas para extrair imagens quando necessário',
-                      value: settings.newsUseWebViewFallback,
-                      onChanged: (v) => ref
-                          .read(settingsProvider.notifier)
-                          .setNewsUseWebViewFallback(v),
-                    ),
                     _buildDivider(),
                     _buildSettingsTile(
                       icon: Icons.delete_outline,
@@ -391,58 +429,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
                           ? 'How we protect your data'
                           : 'Como protegemos seus dados',
                       onTap: () => _showPrivacyInfo(),
-                    ),
-                  ]),
-                ),
-              ),
-
-              // Conta Section
-              _buildSectionHeader(l10n.isEnglish ? 'Account' : 'Conta'),
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: _buildSettingsCard([
-                    // Upgrade de Guest (só aparece para guests)
-                    if (ref.watch(currentUserProvider)?.isGuest ?? false) ...[
-                      _buildSettingsTile(
-                        icon: Icons.upgrade_rounded,
-                        iconBgColor: Colors.green,
-                        title: l10n.isEnglish
-                            ? 'Create Permanent Account'
-                            : 'Criar Conta Permanente',
-                        value: l10n.isEnglish
-                            ? 'Keep your data forever'
-                            : 'Mantenha seus dados para sempre',
-                        onTap: () => _showAccountUpgradeDialog(),
-                      ),
-                      _buildDivider(),
-                    ],
-                    _buildSettingsTile(
-                      icon: Icons.logout_rounded,
-                      iconBgColor: Colors.orange,
-                      title: l10n.isEnglish ? 'Logout' : 'Sair da Conta',
-                      value: l10n.isEnglish
-                          ? 'Disconnect and go to login'
-                          : 'Desconectar e ir para login',
-                      onTap: () => _showLogoutDialog(),
-                    ),
-                    _buildDivider(),
-                    _buildSettingsTile(
-                      icon: Icons.delete_forever_rounded,
-                      iconBgColor: Colors.red,
-                      title: l10n.isEnglish
-                          ? 'Delete Account'
-                          : 'Excluir Conta',
-                      value: l10n.isEnglish
-                          ? 'Permanently delete all data'
-                          : 'Apagar permanentemente todos os dados',
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const DeleteAccountScreen(),
-                        ),
-                      ),
-                      isDanger: true,
                     ),
                   ]),
                 ),

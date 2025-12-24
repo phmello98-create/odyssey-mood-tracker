@@ -95,6 +95,7 @@ dependencies:
   timeago: ^3.7.0
   just_audio: ^0.10.5
   just_audio_background: ^0.0.1-beta.15  # Background playback com notificação
+  google_fonts: ^6.2.1  # Fontes premium (Inter, Poppins, etc.)
   just_audio_media_kit: ^2.1.0
   media_kit_libs_linux: ^1.2.1
   flutter_soloud: ^3.4.7  # Som de baixa latência, não interfere com outros apps

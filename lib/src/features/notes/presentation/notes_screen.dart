@@ -170,15 +170,26 @@ class _NotesScreenState extends State<NotesScreen>
         width: 56,
         height: 56,
         decoration: BoxDecoration(
-          color: colors.primary,
+          gradient: LinearGradient(
+            colors: [colors.primary, colors.tertiary],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
           borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: colors.primary.withValues(alpha: 0.3),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
         child: Material(
           color: Colors.transparent,
           child: InkWell(
             onTap: _showAddDialog,
             borderRadius: BorderRadius.circular(16),
-            child: const Icon(Icons.add, color: Colors.white, size: 28),
+            child: Icon(Icons.add, color: colors.onPrimary, size: 28),
           ),
         ),
       ),
@@ -392,81 +403,81 @@ class _NotesScreenState extends State<NotesScreen>
     final color = accentColors[index % accentColors.length];
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 10),
+      margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: colors.surfaceContainerHighest.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(14),
-        border: isPinned
-            ? Border.all(color: color.withValues(alpha: 0.3))
-            : null,
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isPinned
+              ? color.withValues(alpha: 0.3)
+              : colors.outline.withValues(alpha: 0.1),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: colors.shadow.withValues(alpha: isPinned ? 0.08 : 0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
           onTap: () => _showNoteEditor(id: id, initialData: data),
           onLongPress: () => _deleteNote(id),
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(16),
           child: Padding(
-            padding: const EdgeInsets.all(14),
+            padding: const EdgeInsets.all(16),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  width: 4,
-                  height: 50,
-                  decoration: BoxDecoration(
-                    color: color,
-                    borderRadius: BorderRadius.circular(2),
+                if (isPinned)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 12, top: 2),
+                    child: Icon(Icons.push_pin, size: 16, color: color),
+                  )
+                else
+                  Padding(
+                    padding: const EdgeInsets.only(right: 12, top: 2),
+                    child: Icon(
+                      Icons.description_outlined,
+                      size: 18,
+                      color: colors.onSurfaceVariant.withValues(alpha: 0.5),
+                    ),
                   ),
-                ),
-                const SizedBox(width: 14),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
-                        children: [
-                          if (isPinned)
-                            Padding(
-                              padding: const EdgeInsets.only(right: 6),
-                              child: Icon(
-                                Icons.push_pin,
-                                size: 14,
-                                color: color,
-                              ),
-                            ),
-                          Expanded(
-                            child: Text(
-                              title ?? content.split('\n').first,
-                              style: TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w600,
-                                color: colors.onSurface,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
+                      Text(
+                        title ?? content.split('\n').first,
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: colors.onSurface,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                       if (title != null && content.isNotEmpty) ...[
                         const SizedBox(height: 4),
                         Text(
                           content,
                           style: TextStyle(
-                            fontSize: 13,
+                            fontSize: 14,
                             color: colors.onSurfaceVariant,
+                            height: 1.4,
                           ),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                         ),
                       ],
                       if (date != null) ...[
-                        const SizedBox(height: 6),
+                        const SizedBox(height: 8),
                         Text(
                           _formatDate(date),
                           style: TextStyle(
-                            fontSize: 11,
+                            fontSize: 12,
                             color: colors.onSurfaceVariant.withValues(
                               alpha: 0.6,
                             ),
@@ -475,11 +486,6 @@ class _NotesScreenState extends State<NotesScreen>
                       ],
                     ],
                   ),
-                ),
-                Icon(
-                  Icons.chevron_right,
-                  color: colors.onSurfaceVariant.withValues(alpha: 0.3),
-                  size: 20,
                 ),
               ],
             ),
@@ -505,103 +511,94 @@ class _NotesScreenState extends State<NotesScreen>
 
     return Container(
       decoration: BoxDecoration(
-        color: colors.surfaceContainerHighest.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(14),
-        border: isPinned
-            ? Border.all(color: color.withValues(alpha: 0.3))
-            : null,
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: isPinned
+              ? color.withValues(alpha: 0.3)
+              : colors.outline.withValues(alpha: 0.1),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: colors.shadow.withValues(alpha: isPinned ? 0.08 : 0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
           onTap: () => _showNoteEditor(id: id, initialData: data),
           onLongPress: () => _deleteNote(id),
-          borderRadius: BorderRadius.circular(14),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                height: 4,
-                decoration: BoxDecoration(
-                  color: color,
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(14),
+          borderRadius: BorderRadius.circular(20),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (isPinned || title != null)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        if (title != null)
+                          Expanded(
+                            child: Text(
+                              title,
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: colors.onSurface,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        if (isPinned)
+                          Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: BoxDecoration(
+                              color: color.withValues(alpha: 0.1),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(Icons.push_pin, size: 12, color: color),
+                          ),
+                      ],
+                    ),
+                  ),
+                Expanded(
+                  child: Text(
+                    content,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: title != null
+                          ? colors.onSurfaceVariant
+                          : colors.onSurface,
+                      height: 1.5,
+                    ),
+                    overflow: TextOverflow.fade,
                   ),
                 ),
-              ),
-              Padding(
-                padding: const EdgeInsets.all(14),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (isPinned || title != null)
-                      Row(
-                        children: [
-                          if (isPinned)
-                            Padding(
-                              padding: const EdgeInsets.only(right: 6),
-                              child: Icon(
-                                Icons.push_pin,
-                                size: 14,
-                                color: color,
-                              ),
-                            ),
-                          if (title != null)
-                            Expanded(
-                              child: Text(
-                                title,
-                                style: TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w600,
-                                  color: colors.onSurface,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                        ],
-                      ),
-                    if (title != null) const SizedBox(height: 6),
-                    Text(
-                      content,
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: title != null
-                            ? colors.onSurfaceVariant
-                            : colors.onSurface,
-                        height: 1.4,
-                      ),
-                      maxLines: 4,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    if (date != null) ...[
-                      const SizedBox(height: 10),
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.access_time,
-                            size: 12,
-                            color: colors.onSurfaceVariant.withValues(
-                              alpha: 0.5,
-                            ),
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            _formatDate(date),
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: colors.onSurfaceVariant.withValues(
-                                alpha: 0.6,
-                              ),
-                            ),
-                          ),
-                        ],
+                if (date != null) ...[
+                  const SizedBox(height: 12),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      Text(
+                        _formatDate(date),
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w500,
+                          color: colors.onSurfaceVariant.withValues(alpha: 0.6),
+                        ),
                       ),
                     ],
-                  ],
-                ),
-              ),
-            ],
+                  ),
+                ],
+              ],
+            ),
           ),
         ),
       ),
@@ -637,9 +634,252 @@ class _NotesScreenState extends State<NotesScreen>
   }
 
   void _showSearchSheet() {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Busca em desenvolvimento')));
+    final colors = Theme.of(context).colorScheme;
+    final searchController = TextEditingController();
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: colors.surface,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setModalState) {
+          final query = searchController.text.toLowerCase();
+          List<MapEntry<String, Map>> filteredNotes = [];
+
+          if (_notesBox != null && query.isNotEmpty) {
+            final allNotes = _notesBox!.keys.map((key) {
+              final data = Map<String, dynamic>.from(
+                _notesBox!.get(key) as Map,
+              );
+              return MapEntry(key.toString(), data);
+            }).toList();
+
+            filteredNotes = allNotes.where((entry) {
+              final title = (entry.value['title'] as String? ?? '')
+                  .toLowerCase();
+              final content = (entry.value['content'] as String? ?? '')
+                  .toLowerCase();
+              return title.contains(query) || content.contains(query);
+            }).toList();
+          }
+
+          return DraggableScrollableSheet(
+            initialChildSize: 0.7,
+            minChildSize: 0.5,
+            maxChildSize: 0.9,
+            expand: false,
+            builder: (context, scrollController) => Padding(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(context).viewInsets.bottom,
+              ),
+              child: Column(
+                children: [
+                  // Handle
+                  Container(
+                    margin: const EdgeInsets.only(top: 12, bottom: 8),
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: colors.outline.withValues(alpha: 0.3),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  // Search field
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+                    child: TextField(
+                      controller: searchController,
+                      autofocus: true,
+                      onChanged: (_) => setModalState(() {}),
+                      style: TextStyle(color: colors.onSurface),
+                      decoration: InputDecoration(
+                        hintText: 'Buscar notas...',
+                        hintStyle: TextStyle(color: colors.onSurfaceVariant),
+                        prefixIcon: Icon(Icons.search, color: colors.primary),
+                        suffixIcon: searchController.text.isNotEmpty
+                            ? IconButton(
+                                icon: Icon(
+                                  Icons.clear,
+                                  color: colors.onSurfaceVariant,
+                                ),
+                                onPressed: () {
+                                  searchController.clear();
+                                  setModalState(() {});
+                                },
+                              )
+                            : null,
+                        filled: true,
+                        fillColor: colors.surfaceContainerHighest.withValues(
+                          alpha: 0.5,
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide.none,
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 14,
+                        ),
+                      ),
+                    ),
+                  ),
+                  // Results count
+                  if (query.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Row(
+                        children: [
+                          Text(
+                            '${filteredNotes.length} ${filteredNotes.length == 1 ? 'resultado' : 'resultados'}',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: colors.onSurfaceVariant,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  const SizedBox(height: 8),
+                  // Results
+                  Expanded(
+                    child: query.isEmpty
+                        ? Center(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.search,
+                                  size: 48,
+                                  color: colors.onSurfaceVariant.withValues(
+                                    alpha: 0.3,
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+                                Text(
+                                  'Digite para buscar',
+                                  style: TextStyle(
+                                    color: colors.onSurfaceVariant,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )
+                        : filteredNotes.isEmpty
+                        ? Center(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.search_off,
+                                  size: 48,
+                                  color: colors.onSurfaceVariant.withValues(
+                                    alpha: 0.3,
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+                                Text(
+                                  'Nenhuma nota encontrada',
+                                  style: TextStyle(
+                                    color: colors.onSurfaceVariant,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )
+                        : ListView.builder(
+                            controller: scrollController,
+                            padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                            itemCount: filteredNotes.length,
+                            itemBuilder: (context, index) {
+                              final entry = filteredNotes[index];
+                              final data = Map<String, dynamic>.from(
+                                entry.value,
+                              );
+                              final title = data['title'] as String?;
+                              final content = data['content'] as String? ?? '';
+                              final isPinned =
+                                  data['isPinned'] as bool? ?? false;
+
+                              return Container(
+                                margin: const EdgeInsets.only(bottom: 8),
+                                decoration: BoxDecoration(
+                                  color: colors.surfaceContainerHighest
+                                      .withValues(alpha: 0.5),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: ListTile(
+                                  leading: Container(
+                                    width: 40,
+                                    height: 40,
+                                    decoration: BoxDecoration(
+                                      color: colors.primary.withValues(
+                                        alpha: 0.1,
+                                      ),
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: Icon(
+                                      isPinned
+                                          ? Icons.push_pin
+                                          : Icons.sticky_note_2,
+                                      color: colors.primary,
+                                      size: 20,
+                                    ),
+                                  ),
+                                  title: Text(
+                                    title ?? content.split('\n').first,
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      color: colors.onSurface,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  subtitle: title != null && content.isNotEmpty
+                                      ? Text(
+                                          content,
+                                          style: TextStyle(
+                                            color: colors.onSurfaceVariant,
+                                            fontSize: 13,
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        )
+                                      : null,
+                                  trailing: Icon(
+                                    Icons.arrow_forward_ios,
+                                    size: 14,
+                                    color: colors.onSurfaceVariant.withValues(
+                                      alpha: 0.5,
+                                    ),
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  onTap: () {
+                                    Navigator.pop(context);
+                                    _showNoteEditor(
+                                      id: entry.key,
+                                      initialData: data,
+                                    );
+                                  },
+                                ),
+                              );
+                            },
+                          ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
   }
 
   Widget _buildEmptyState({

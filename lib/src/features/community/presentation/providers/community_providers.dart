@@ -311,17 +311,30 @@ final searchPostsProvider = FutureProvider.family<List<Post>, String>((
   if (isOffline) {
     return MockCommunityData.searchPosts(query);
   }
-  final repo = ref.watch(communityRepositoryProvider);
-  if (repo == null) return MockCommunityData.searchPosts(query);
-  final allPosts = await repo.getFeed(limit: 100);
-  final lowerQuery = query.toLowerCase();
-  return allPosts
-      .where(
-        (p) =>
-            p.content.toLowerCase().contains(lowerQuery) ||
-            p.userName.toLowerCase().contains(lowerQuery),
-      )
-      .toList();
+
+  try {
+    final repo = ref.watch(communityRepositoryProvider);
+    if (repo == null) return MockCommunityData.searchPosts(query);
+    final allPosts = await repo
+        .getFeed(limit: 100)
+        .timeout(const Duration(seconds: 5), onTimeout: () => <Post>[]);
+    if (allPosts.isEmpty) {
+      // Fallback para mock data se Firestore retornou vazio
+      return MockCommunityData.searchPosts(query);
+    }
+    final lowerQuery = query.toLowerCase();
+    return allPosts
+        .where(
+          (p) =>
+              p.content.toLowerCase().contains(lowerQuery) ||
+              p.userName.toLowerCase().contains(lowerQuery),
+        )
+        .toList();
+  } catch (e) {
+    debugPrint('searchPostsProvider error: $e');
+    // Fallback para mock data se Firestore falhar
+    return MockCommunityData.searchPosts(query);
+  }
 });
 
 /// Provider para busca de usuários

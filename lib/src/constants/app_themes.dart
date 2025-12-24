@@ -1,21 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flex_color_scheme/flex_color_scheme.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 /// Enum com os temas disponíveis no app
 enum AppThemeType {
   // Temas escuros
-  ultraviolet,     // Tema atual (compatibilidade)
-  midnight,        // Azul profundo
-  sakura,          // Rosa/Roxo
-  emerald,         // Verde esmeralda
-  sunset,          // Laranja/Vermelho
-  ocean,           // Azul oceano
-  
-  // Temas claros  
+  ultraviolet, // Tema atual (compatibilidade)
+  midnight, // Azul profundo
+  sakura, // Rosa/Roxo
+  emerald, // Verde esmeralda
+  sunset, // Laranja/Vermelho
+  ocean, // Azul oceano
+  // Temas claros
   lightUltraviolet, // Versão clara do tema atual
-  lightMint,        // Verde menta suave
-  lightPeach,       // Pêssego suave
-  lightSky,         // Azul céu
+  lightMint, // Verde menta suave
+  lightPeach, // Pêssego suave
+  lightSky, // Azul céu
 }
 
 /// Modelo de tema com metadados
@@ -42,34 +42,56 @@ class AppThemes {
   // ============================================================
   // CORES CUSTOMIZADAS - Mantendo compatibilidade com UltravioletColors
   // ============================================================
-  
+
   static const _ultravioletPrimary = Color(0xFFA78BFA);
   static const _ultravioletSecondary = Color(0xFF22D3EE);
   static const _ultravioletTertiary = Color(0xFFFBBF24);
   static const _ultravioletBackground = Color(0xFF0A0A0F);
   static const _ultravioletSurface = Color(0xFF111118);
-  
+
+  // ============================================================
+  // TIPOGRAFIA - Fonte Inter (Premium)
+  // ============================================================
+
+  /// Retorna o TextTheme com a fonte Inter aplicada
+  static TextTheme _getTextTheme({required bool isDark}) {
+    final baseTextTheme = isDark
+        ? ThemeData.dark().textTheme
+        : ThemeData.light().textTheme;
+    return GoogleFonts.interTextTheme(baseTextTheme);
+  }
+
+  /// Fonte padrão do app
+  static String get fontFamily => GoogleFonts.inter().fontFamily ?? 'Inter';
+
   // ============================================================
   // MAPA DE TEMAS DISPONÍVEIS
   // ============================================================
-  
+
   static final Map<AppThemeType, AppThemeData> themes = {
     // ==================== TEMAS ESCUROS ====================
-    
     AppThemeType.ultraviolet: AppThemeData(
       name: 'Ultravioleta',
       description: 'Roxo vibrante com cyan',
       icon: Icons.auto_awesome,
-      previewColors: [_ultravioletPrimary, _ultravioletSecondary, _ultravioletTertiary],
+      previewColors: [
+        _ultravioletPrimary,
+        _ultravioletSecondary,
+        _ultravioletTertiary,
+      ],
       isDark: true,
       themeBuilder: () => _buildUltravioletDark(),
     ),
-    
+
     AppThemeType.midnight: AppThemeData(
       name: 'Meia-Noite',
       description: 'Azul profundo elegante',
       icon: Icons.nightlight_round,
-      previewColors: [const Color(0xFF60A5FA), const Color(0xFF818CF8), const Color(0xFFA78BFA)],
+      previewColors: [
+        const Color(0xFF60A5FA),
+        const Color(0xFF818CF8),
+        const Color(0xFFA78BFA),
+      ],
       isDark: true,
       themeBuilder: () => FlexThemeData.dark(
         scheme: FlexScheme.indigoM3,
@@ -78,14 +100,20 @@ class AppThemes {
         subThemesData: _subThemesData,
         useMaterial3: true,
         scaffoldBackground: const Color(0xFF0D0D14),
+        textTheme: _getTextTheme(isDark: true),
+        primaryTextTheme: _getTextTheme(isDark: true),
       ),
     ),
-    
+
     AppThemeType.sakura: AppThemeData(
       name: 'Sakura',
       description: 'Rosa suave com roxo',
       icon: Icons.local_florist,
-      previewColors: [const Color(0xFFF472B6), const Color(0xFFA78BFA), const Color(0xFFE879F9)],
+      previewColors: [
+        const Color(0xFFF472B6),
+        const Color(0xFFA78BFA),
+        const Color(0xFFE879F9),
+      ],
       isDark: true,
       themeBuilder: () => FlexThemeData.dark(
         scheme: FlexScheme.sakura,
@@ -94,14 +122,20 @@ class AppThemes {
         subThemesData: _subThemesData,
         useMaterial3: true,
         scaffoldBackground: const Color(0xFF100D12),
+        textTheme: _getTextTheme(isDark: true),
+        primaryTextTheme: _getTextTheme(isDark: true),
       ),
     ),
-    
+
     AppThemeType.emerald: AppThemeData(
       name: 'Esmeralda',
       description: 'Verde natureza',
       icon: Icons.eco,
-      previewColors: [const Color(0xFF34D399), const Color(0xFF10B981), const Color(0xFF6EE7B7)],
+      previewColors: [
+        const Color(0xFF34D399),
+        const Color(0xFF10B981),
+        const Color(0xFF6EE7B7),
+      ],
       isDark: true,
       themeBuilder: () => FlexThemeData.dark(
         scheme: FlexScheme.jungle,
@@ -110,14 +144,20 @@ class AppThemes {
         subThemesData: _subThemesData,
         useMaterial3: true,
         scaffoldBackground: const Color(0xFF0A0F0D),
+        textTheme: _getTextTheme(isDark: true),
+        primaryTextTheme: _getTextTheme(isDark: true),
       ),
     ),
-    
+
     AppThemeType.sunset: AppThemeData(
       name: 'Pôr do Sol',
       description: 'Laranja quente',
       icon: Icons.wb_twilight,
-      previewColors: [const Color(0xFFF97316), const Color(0xFFFB923C), const Color(0xFFEF4444)],
+      previewColors: [
+        const Color(0xFFF97316),
+        const Color(0xFFFB923C),
+        const Color(0xFFEF4444),
+      ],
       isDark: true,
       themeBuilder: () => FlexThemeData.dark(
         scheme: FlexScheme.mandyRed,
@@ -126,14 +166,20 @@ class AppThemes {
         subThemesData: _subThemesData,
         useMaterial3: true,
         scaffoldBackground: const Color(0xFF0F0A0A),
+        textTheme: _getTextTheme(isDark: true),
+        primaryTextTheme: _getTextTheme(isDark: true),
       ),
     ),
-    
+
     AppThemeType.ocean: AppThemeData(
       name: 'Oceano',
       description: 'Azul água profunda',
       icon: Icons.water,
-      previewColors: [const Color(0xFF06B6D4), const Color(0xFF0891B2), const Color(0xFF22D3EE)],
+      previewColors: [
+        const Color(0xFF06B6D4),
+        const Color(0xFF0891B2),
+        const Color(0xFF22D3EE),
+      ],
       isDark: true,
       themeBuilder: () => FlexThemeData.dark(
         scheme: FlexScheme.cyanM3,
@@ -142,25 +188,34 @@ class AppThemes {
         subThemesData: _subThemesData,
         useMaterial3: true,
         scaffoldBackground: const Color(0xFF0A0D0F),
+        textTheme: _getTextTheme(isDark: true),
+        primaryTextTheme: _getTextTheme(isDark: true),
       ),
     ),
-    
+
     // ==================== TEMAS CLAROS ====================
-    
     AppThemeType.lightUltraviolet: AppThemeData(
       name: 'Ultravioleta Claro',
       description: 'Versão clara do tema padrão',
       icon: Icons.auto_awesome_outlined,
-      previewColors: [const Color(0xFF7C3AED), const Color(0xFF06B6D4), const Color(0xFFF59E0B)],
+      previewColors: [
+        const Color(0xFF7C3AED),
+        const Color(0xFF06B6D4),
+        const Color(0xFFF59E0B),
+      ],
       isDark: false,
       themeBuilder: () => _buildUltravioletLight(),
     ),
-    
+
     AppThemeType.lightMint: AppThemeData(
       name: 'Menta',
       description: 'Verde refrescante',
       icon: Icons.spa,
-      previewColors: [const Color(0xFF10B981), const Color(0xFF34D399), const Color(0xFF6EE7B7)],
+      previewColors: [
+        const Color(0xFF10B981),
+        const Color(0xFF34D399),
+        const Color(0xFF6EE7B7),
+      ],
       isDark: false,
       themeBuilder: () => FlexThemeData.light(
         scheme: FlexScheme.jungle,
@@ -168,14 +223,20 @@ class AppThemes {
         blendLevel: 10,
         subThemesData: _subThemesData,
         useMaterial3: true,
+        textTheme: _getTextTheme(isDark: false),
+        primaryTextTheme: _getTextTheme(isDark: false),
       ),
     ),
-    
+
     AppThemeType.lightPeach: AppThemeData(
       name: 'Pêssego',
       description: 'Tom quente acolhedor',
       icon: Icons.brightness_5,
-      previewColors: [const Color(0xFFF97316), const Color(0xFFFB923C), const Color(0xFFFED7AA)],
+      previewColors: [
+        const Color(0xFFF97316),
+        const Color(0xFFFB923C),
+        const Color(0xFFFED7AA),
+      ],
       isDark: false,
       themeBuilder: () => FlexThemeData.light(
         scheme: FlexScheme.mandyRed,
@@ -183,14 +244,20 @@ class AppThemes {
         blendLevel: 10,
         subThemesData: _subThemesData,
         useMaterial3: true,
+        textTheme: _getTextTheme(isDark: false),
+        primaryTextTheme: _getTextTheme(isDark: false),
       ),
     ),
-    
+
     AppThemeType.lightSky: AppThemeData(
       name: 'Céu',
       description: 'Azul sereno',
       icon: Icons.cloud,
-      previewColors: [const Color(0xFF3B82F6), const Color(0xFF60A5FA), const Color(0xFF93C5FD)],
+      previewColors: [
+        const Color(0xFF3B82F6),
+        const Color(0xFF60A5FA),
+        const Color(0xFF93C5FD),
+      ],
       isDark: false,
       themeBuilder: () => FlexThemeData.light(
         scheme: FlexScheme.indigoM3,
@@ -198,62 +265,65 @@ class AppThemes {
         blendLevel: 10,
         subThemesData: _subThemesData,
         useMaterial3: true,
+        textTheme: _getTextTheme(isDark: false),
+        primaryTextTheme: _getTextTheme(isDark: false),
       ),
     ),
   };
-  
+
   // ============================================================
   // CONFIGURAÇÃO DE SUB-TEMAS (componentes)
   // ============================================================
-  
+
   static const FlexSubThemesData _subThemesData = FlexSubThemesData(
     // Botões
     elevatedButtonSchemeColor: SchemeColor.primary,
     elevatedButtonRadius: 16.0,
     outlinedButtonRadius: 16.0,
     textButtonRadius: 12.0,
-    
+
     // Cards
     cardRadius: 20.0,
-    
+
     // Inputs
     inputDecoratorRadius: 16.0,
     inputDecoratorBorderType: FlexInputBorderType.outline,
     inputDecoratorUnfocusedHasBorder: true,
     inputDecoratorFocusedHasBorder: true,
     inputDecoratorIsFilled: true,
-    
+
     // Dialogs & Bottom Sheets
     dialogRadius: 24.0,
     bottomSheetRadius: 24.0,
-    
+
     // Navigation
     navigationBarSelectedLabelSchemeColor: SchemeColor.primary,
     navigationBarSelectedIconSchemeColor: SchemeColor.primary,
     navigationBarIndicatorSchemeColor: SchemeColor.primary,
     navigationBarIndicatorOpacity: 0.15,
     navigationBarHeight: 70,
-    
+
     // FAB
     fabRadius: 16.0,
     fabSchemeColor: SchemeColor.primary,
-    
+
     // Chips
     chipRadius: 12.0,
-    
+
     // App Bar
     appBarScrolledUnderElevation: 0,
     appBarCenterTitle: false,
-    
+
     // Switches, Checkboxes, etc
     unselectedToggleIsColored: true,
   );
-  
+
   // ============================================================
   // TEMA ULTRAVIOLET CUSTOMIZADO (compatibilidade com código existente)
   // ============================================================
-  
+
   static ThemeData _buildUltravioletDark() {
+    final textTheme = _getTextTheme(isDark: true);
     return FlexThemeData.dark(
       colors: const FlexSchemeColor(
         primary: _ultravioletPrimary,
@@ -270,6 +340,8 @@ class AppThemes {
       useMaterial3: true,
       scaffoldBackground: _ultravioletBackground,
       surface: _ultravioletSurface,
+      textTheme: textTheme,
+      primaryTextTheme: textTheme,
     ).copyWith(
       // Extensões customizadas para manter compatibilidade
       extensions: [
@@ -291,8 +363,9 @@ class AppThemes {
       ],
     );
   }
-  
+
   static ThemeData _buildUltravioletLight() {
+    final textTheme = _getTextTheme(isDark: false);
     final baseTheme = FlexThemeData.light(
       colors: const FlexSchemeColor(
         primary: Color(0xFF7C3AED),
@@ -307,10 +380,14 @@ class AppThemes {
       blendLevel: 5,
       subThemesData: _subThemesData,
       useMaterial3: true,
+      textTheme: textTheme,
+      primaryTextTheme: textTheme,
     );
 
     // Corrigir explicitamente as cores de surface e onSurface para tema claro
     return baseTheme.copyWith(
+      textTheme: textTheme,
+      primaryTextTheme: textTheme,
       scaffoldBackgroundColor: const Color(0xFFF5F5F7),
       colorScheme: baseTheme.colorScheme.copyWith(
         surface: const Color(0xFFFFFFFF),
@@ -352,33 +429,33 @@ class AppThemes {
       ],
     );
   }
-  
+
   // ============================================================
   // MÉTODOS AUXILIARES
   // ============================================================
-  
+
   /// Obtém o tema pelo tipo
   static ThemeData getTheme(AppThemeType type) {
     return themes[type]!.themeBuilder();
   }
-  
+
   /// Obtém os metadados do tema
   static AppThemeData getThemeData(AppThemeType type) {
     return themes[type]!;
   }
-  
+
   /// Lista apenas os temas escuros
-  static List<AppThemeType> get darkThemes => 
+  static List<AppThemeType> get darkThemes =>
       themes.entries.where((e) => e.value.isDark).map((e) => e.key).toList();
-  
+
   /// Lista apenas os temas claros
-  static List<AppThemeType> get lightThemes => 
+  static List<AppThemeType> get lightThemes =>
       themes.entries.where((e) => !e.value.isDark).map((e) => e.key).toList();
-  
+
   // ============================================================
   // TEMAS PADRÃO (para ThemeMode.system)
   // ============================================================
-  
+
   static ThemeData get defaultLightTheme => _buildUltravioletLight();
   static ThemeData get defaultDarkTheme => _buildUltravioletDark();
 }
@@ -437,7 +514,8 @@ class OdysseyColorsExtension extends ThemeExtension<OdysseyColorsExtension> {
   }) {
     return OdysseyColorsExtension(
       cardBackground: cardBackground ?? this.cardBackground,
-      cardBackgroundElevated: cardBackgroundElevated ?? this.cardBackgroundElevated,
+      cardBackgroundElevated:
+          cardBackgroundElevated ?? this.cardBackgroundElevated,
       divider: divider ?? this.divider,
       accent: accent ?? this.accent,
       glow: glow ?? this.glow,
@@ -460,7 +538,11 @@ class OdysseyColorsExtension extends ThemeExtension<OdysseyColorsExtension> {
     if (other is! OdysseyColorsExtension) return this;
     return OdysseyColorsExtension(
       cardBackground: Color.lerp(cardBackground, other.cardBackground, t)!,
-      cardBackgroundElevated: Color.lerp(cardBackgroundElevated, other.cardBackgroundElevated, t)!,
+      cardBackgroundElevated: Color.lerp(
+        cardBackgroundElevated,
+        other.cardBackgroundElevated,
+        t,
+      )!,
       divider: Color.lerp(divider, other.divider, t)!,
       accent: Color.lerp(accent, other.accent, t)!,
       glow: Color.lerp(glow, other.glow, t)!,
@@ -500,10 +582,10 @@ extension OdysseyColorsContext on BuildContext {
           moodTerrible: Color(0xFFF87171),
         );
   }
-  
+
   /// Atalho para ColorScheme
   ColorScheme get colorScheme => Theme.of(this).colorScheme;
-  
+
   /// Verifica se o tema atual é escuro
   bool get isDarkTheme => Theme.of(this).brightness == Brightness.dark;
 }

@@ -23,6 +23,26 @@ class CommunityRepository {
   CollectionReference<Map<String, dynamic>> get _profilesRef =>
       _firestore.collection('users_public');
 
+  /// Helper para converter documento Firestore em Post
+  Post _mapDocToPost(DocumentSnapshot<Map<String, dynamic>> doc) {
+    final data = Map<String, dynamic>.from(doc.data()!);
+
+    // Converter Timestamps do Firestore para String ISO 8601
+    // Isso é necessário porque o domain/Post espera String, mas o Firestore salva como Timestamp
+    if (data['createdAt'] is Timestamp) {
+      data['createdAt'] = (data['createdAt'] as Timestamp)
+          .toDate()
+          .toIso8601String();
+    }
+    if (data['updatedAt'] is Timestamp) {
+      data['updatedAt'] = (data['updatedAt'] as Timestamp)
+          .toDate()
+          .toIso8601String();
+    }
+
+    return Post.fromJson({...data, 'id': doc.id});
+  }
+
   /// Busca o feed de posts com paginação
   Future<List<Post>> getFeed({
     int limit = 20,
@@ -38,9 +58,7 @@ class CommunityRepository {
       }
 
       final snapshot = await query.get();
-      return snapshot.docs
-          .map((doc) => Post.fromJson({...doc.data(), 'id': doc.id}))
-          .toList();
+      return snapshot.docs.map(_mapDocToPost).toList();
     } catch (e) {
       throw Exception('Erro ao buscar feed: $e');
     }
@@ -52,11 +70,7 @@ class CommunityRepository {
         .orderBy('createdAt', descending: true)
         .limit(limit)
         .snapshots()
-        .map(
-          (snapshot) => snapshot.docs
-              .map((doc) => Post.fromJson({...doc.data(), 'id': doc.id}))
-              .toList(),
-        );
+        .map((snapshot) => snapshot.docs.map(_mapDocToPost).toList());
   }
 
   /// Cria um novo post
@@ -110,7 +124,14 @@ class CommunityRepository {
       };
 
       final docRef = await _postsRef.add(postData);
-      return Post.fromJson({...postData, 'id': docRef.id});
+
+      // Retorna o objeto Post usando o helper para consistência (embora aqui tenhamos os dados frescos)
+      // Mas para evitar erro de cast no fromJson se usarmos o map original com Timestamp:
+      final savedData = Map<String, dynamic>.from(postData);
+      savedData['createdAt'] = now.toIso8601String();
+      savedData['updatedAt'] = now.toIso8601String();
+
+      return Post.fromJson({...savedData, 'id': docRef.id});
     } catch (e) {
       throw Exception('Erro ao criar post: $e');
     }
@@ -121,7 +142,7 @@ class CommunityRepository {
     try {
       final doc = await _postsRef.doc(postId).get();
       if (!doc.exists) return null;
-      return Post.fromJson({...doc.data()!, 'id': doc.id});
+      return _mapDocToPost(doc);
     } catch (e) {
       throw Exception('Erro ao buscar post: $e');
     }
@@ -268,6 +289,27 @@ class CommunityRepository {
     }
   }
 
+  /// Helper para converter documento Firestore em PublicUserProfile
+  PublicUserProfile _mapDocToProfile(
+    DocumentSnapshot<Map<String, dynamic>> doc,
+  ) {
+    final data = Map<String, dynamic>.from(doc.data()!);
+
+    // Converter Timestamps
+    if (data['createdAt'] is Timestamp) {
+      data['createdAt'] = (data['createdAt'] as Timestamp)
+          .toDate()
+          .toIso8601String();
+    }
+    if (data['lastActive'] is Timestamp) {
+      data['lastActive'] = (data['lastActive'] as Timestamp)
+          .toDate()
+          .toIso8601String();
+    }
+
+    return PublicUserProfile.fromJson({...data, 'userId': doc.id});
+  }
+
   /// Busca perfil público de um usuário
   Future<PublicUserProfile> getProfile(String userId) async {
     try {
@@ -285,7 +327,7 @@ class CommunityRepository {
         await _profilesRef.doc(userId).set(defaultProfile.toJson());
         return defaultProfile;
       }
-      return PublicUserProfile.fromJson({...doc.data()!, 'userId': doc.id});
+      return _mapDocToProfile(doc);
     } catch (e) {
       throw Exception('Erro ao buscar perfil: $e');
     }
@@ -345,16 +387,16 @@ class CommunityRepository {
     try {
       // Busca case-insensitive usando query range
       final lowerQuery = query.toLowerCase();
+
+      // NOTA: Isso requer um índice composto se usarmos outros filtros
+      // E orderBy('displayName') pode falhar se o campo não existir em todos os docs
       final snapshot = await _profilesRef
           .orderBy('displayName')
           .limit(20)
           .get();
 
       return snapshot.docs
-          .map(
-            (doc) =>
-                PublicUserProfile.fromJson({...doc.data(), 'userId': doc.id}),
-          )
+          .map(_mapDocToProfile)
           .where(
             (profile) => profile.displayName.toLowerCase().contains(lowerQuery),
           )

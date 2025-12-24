@@ -143,3 +143,4 @@ app.*.symbols
 .codemachine/prompts
 .codemachine/agents
 .codemachine/template.json.worktrees/
+*.zip

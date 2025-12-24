@@ -61,6 +61,7 @@ class HomeWidgetConfig {
 class DefaultHomeWidgets {
   static List<HomeWidgetConfig> getDefaults() {
     return [
+      // === WIDGETS ATIVOS POR PADRÃO ===
       const HomeWidgetConfig(
         type: HomeWidgetType.quickNotes,
         id: 'quick_notes',
@@ -81,25 +82,23 @@ class DefaultHomeWidgets {
         isEnabled: true,
         order: 1,
       ),
-      // Movido para cima: Tarefas de Hoje
       const HomeWidgetConfig(
-        type: HomeWidgetType.todayTasks,
-        id: 'today_tasks',
-        name: 'Tarefas de Hoje',
-        description: 'Suas tarefas para hoje',
-        icon: Icons.task_alt_rounded,
-        color: Color(0xFF2196F3),
+        type: HomeWidgetType.waterTracker,
+        id: 'water_tracker',
+        name: 'Hidratação',
+        description: 'Acompanhe seu consumo de água',
+        icon: Icons.water_drop_rounded,
+        color: Color(0xFF42A5F5),
         isEnabled: true,
         order: 2,
       ),
-      // Movido para cima: Hábitos
       const HomeWidgetConfig(
-        type: HomeWidgetType.habits,
-        id: 'habits_compact',
-        name: 'Hábitos',
-        description: 'Seus hábitos do dia',
-        icon: Icons.repeat_rounded,
-        color: Color(0xFF66BB6A),
+        type: HomeWidgetType.activityGrid,
+        id: 'activity_grid',
+        name: 'Contribuições',
+        description: 'Grid de atividade estilo GitHub',
+        icon: Icons.grid_view_rounded,
+        color: Color(0xFF9C27B0),
         isEnabled: true,
         order: 3,
       ),
@@ -114,14 +113,37 @@ class DefaultHomeWidgets {
         order: 4,
       ),
       const HomeWidgetConfig(
-        type: HomeWidgetType.activityGrid,
-        id: 'activity_grid',
-        name: 'Contribuições',
-        description: 'Grid de atividade estilo GitHub',
-        icon: Icons.grid_view_rounded,
-        color: Color(0xFF9C27B0),
-        isEnabled: false,
+        type: HomeWidgetType.currentReading,
+        id: 'current_reading',
+        name: 'Leitura Atual',
+        description: 'Seu livro atual',
+        icon: Icons.auto_stories_rounded,
+        color: Color(0xFF8D6E63),
+        isEnabled: true,
         order: 5,
+      ),
+
+      // === WIDGETS DESABILITADOS POR PADRÃO ===
+      // Hábitos e Tarefas já têm seções dedicadas na home
+      const HomeWidgetConfig(
+        type: HomeWidgetType.todayTasks,
+        id: 'today_tasks',
+        name: 'Tarefas de Hoje',
+        description: 'Suas tarefas para hoje',
+        icon: Icons.task_alt_rounded,
+        color: Color(0xFF2196F3),
+        isEnabled: false, // Desabilitado - já existe seção na home
+        order: 6,
+      ),
+      const HomeWidgetConfig(
+        type: HomeWidgetType.habits,
+        id: 'habits_compact',
+        name: 'Hábitos',
+        description: 'Seus hábitos do dia',
+        icon: Icons.repeat_rounded,
+        color: Color(0xFF66BB6A),
+        isEnabled: false, // Desabilitado - já existe seção na home
+        order: 7,
       ),
       const HomeWidgetConfig(
         type: HomeWidgetType.streak,
@@ -131,7 +153,7 @@ class DefaultHomeWidgets {
         icon: Icons.local_fire_department_rounded,
         color: Color(0xFFFF5722),
         isEnabled: false,
-        order: 6,
+        order: 8,
       ),
       const HomeWidgetConfig(
         type: HomeWidgetType.dailyQuote,
@@ -141,7 +163,7 @@ class DefaultHomeWidgets {
         icon: Icons.format_quote_rounded,
         color: Color(0xFF9575CD),
         isEnabled: false,
-        order: 7,
+        order: 9,
       ),
       const HomeWidgetConfig(
         type: HomeWidgetType.weeklyChart,
@@ -151,17 +173,7 @@ class DefaultHomeWidgets {
         icon: Icons.bar_chart_rounded,
         color: Color(0xFF26A69A),
         isEnabled: false,
-        order: 8,
-      ),
-      const HomeWidgetConfig(
-        type: HomeWidgetType.currentReading,
-        id: 'current_reading',
-        name: 'Leitura Atual',
-        description: 'Seu livro atual',
-        icon: Icons.auto_stories_rounded,
-        color: Color(0xFF8D6E63),
-        isEnabled: false,
-        order: 9,
+        order: 10,
       ),
       const HomeWidgetConfig(
         type: HomeWidgetType.quickMood,
@@ -171,7 +183,7 @@ class DefaultHomeWidgets {
         icon: Icons.mood_rounded,
         color: Color(0xFFFFCA28),
         isEnabled: false,
-        order: 10,
+        order: 11,
       ),
       const HomeWidgetConfig(
         type: HomeWidgetType.weekCalendar,
@@ -181,7 +193,7 @@ class DefaultHomeWidgets {
         icon: Icons.calendar_view_week_rounded,
         color: Color(0xFF42A5F5),
         isEnabled: false,
-        order: 11,
+        order: 12,
       ),
       const HomeWidgetConfig(
         type: HomeWidgetType.monthlyOverview,
@@ -191,16 +203,6 @@ class DefaultHomeWidgets {
         icon: Icons.calendar_month_rounded,
         color: Color(0xFF7E57C2),
         isEnabled: false,
-        order: 12,
-      ),
-      const HomeWidgetConfig(
-        type: HomeWidgetType.waterTracker,
-        id: 'water_tracker',
-        name: 'Hidratação',
-        description: 'Acompanhe seu consumo de água',
-        icon: Icons.water_drop_rounded,
-        color: Color(0xFF42A5F5),
-        isEnabled: true,
         order: 13,
       ),
     ];

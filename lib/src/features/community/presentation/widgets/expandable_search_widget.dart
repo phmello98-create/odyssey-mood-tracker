@@ -146,6 +146,7 @@ class _ExpandableSearchWidgetState
                     ),
                   ),
                 ),
+                // Apenas um botão: limpar texto OU fechar painel
                 if (query.isNotEmpty)
                   IconButton(
                     icon: Icon(
@@ -157,8 +158,8 @@ class _ExpandableSearchWidgetState
                       _controller.clear();
                       ref.read(inlineSearchQueryProvider.notifier).state = '';
                     },
-                  ),
-                if (_isExpanded)
+                  )
+                else if (_isExpanded)
                   IconButton(
                     icon: Icon(
                       Icons.close_rounded,

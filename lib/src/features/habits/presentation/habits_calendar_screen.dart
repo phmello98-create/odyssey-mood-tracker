@@ -3,34 +3,34 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:table_calendar/table_calendar.dart';
-import 'package:odyssey/src/constants/app_theme.dart';
 import 'package:odyssey/src/features/habits/data/habit_repository.dart';
 import 'package:odyssey/src/features/habits/domain/habit.dart';
 import 'package:odyssey/src/utils/widgets/odyssey_card.dart';
-import 'package:odyssey/src/features/onboarding/services/showcase_service.dart' as showcase;
+import 'package:odyssey/src/features/onboarding/services/showcase_service.dart'
+    as showcase;
 
 class HabitsCalendarScreen extends ConsumerStatefulWidget {
   const HabitsCalendarScreen({super.key});
 
   @override
-  ConsumerState<HabitsCalendarScreen> createState() => _HabitsCalendarScreenState();
+  ConsumerState<HabitsCalendarScreen> createState() =>
+      _HabitsCalendarScreenState();
 }
 
 class _HabitsCalendarScreenState extends ConsumerState<HabitsCalendarScreen> {
   // Showcase keys
   final GlobalKey _showcaseAdd = GlobalKey();
-  // Showcase keys
   final GlobalKey _showcaseCalendar = GlobalKey();
-  // Showcase keys
   final GlobalKey _showcaseStreak = GlobalKey();
+
   late HabitRepository _habitRepo;
   bool _isLoading = true;
   List<Habit> _habits = [];
-  
+
   DateTime _focusedDay = DateTime.now();
   DateTime _selectedDay = DateTime.now();
   CalendarFormat _calendarFormat = CalendarFormat.month;
-  
+
   // Track completions per day
   final Map<DateTime, List<Habit>> _completedHabitsPerDay = {};
   final Map<DateTime, int> _completionCountPerDay = {};
@@ -62,13 +62,14 @@ class _HabitsCalendarScreenState extends ConsumerState<HabitsCalendarScreen> {
   void _calculateCompletions() {
     _completedHabitsPerDay.clear();
     _completionCountPerDay.clear();
-    
+
     for (final habit in _habits) {
       for (final date in habit.completedDates) {
         final normalizedDate = DateTime(date.year, date.month, date.day);
         _completedHabitsPerDay.putIfAbsent(normalizedDate, () => []);
         _completedHabitsPerDay[normalizedDate]!.add(habit);
-        _completionCountPerDay[normalizedDate] = (_completionCountPerDay[normalizedDate] ?? 0) + 1;
+        _completionCountPerDay[normalizedDate] =
+            (_completionCountPerDay[normalizedDate] ?? 0) + 1;
       }
     }
   }
@@ -86,14 +87,18 @@ class _HabitsCalendarScreenState extends ConsumerState<HabitsCalendarScreen> {
   // Calculate streak
   int _calculateStreak() {
     if (_habits.isEmpty) return 0;
-    
+
     int streak = 0;
     DateTime checkDate = DateTime.now();
-    
+
     while (true) {
-      final normalizedDate = DateTime(checkDate.year, checkDate.month, checkDate.day);
+      final normalizedDate = DateTime(
+        checkDate.year,
+        checkDate.month,
+        checkDate.day,
+      );
       final count = _completionCountPerDay[normalizedDate] ?? 0;
-      
+
       if (count > 0) {
         streak++;
         checkDate = checkDate.subtract(const Duration(days: 1));
@@ -101,7 +106,7 @@ class _HabitsCalendarScreenState extends ConsumerState<HabitsCalendarScreen> {
         break;
       }
     }
-    
+
     return streak;
   }
 
@@ -109,15 +114,16 @@ class _HabitsCalendarScreenState extends ConsumerState<HabitsCalendarScreen> {
   int _getMonthCompletions() {
     int total = 0;
     final now = DateTime.now();
-    
+
     _completionCountPerDay.forEach((date, count) {
       if (date.year == now.year && date.month == now.month) {
         total += count;
       }
     });
-    
+
     return total;
   }
+
   void _initShowcase() {
     final keys = [_showcaseStreak, _showcaseCalendar, _showcaseAdd];
     showcase.ShowcaseService.registerForScreen(
@@ -126,7 +132,7 @@ class _HabitsCalendarScreenState extends ConsumerState<HabitsCalendarScreen> {
     );
     showcase.ShowcaseService.startIfNeeded(showcase.ShowcaseTour.habits, keys);
   }
-  
+
   void _startTour() {
     final keys = [_showcaseStreak, _showcaseCalendar, _showcaseAdd];
     showcase.ShowcaseService.start(showcase.ShowcaseTour.habits, keys);
@@ -140,10 +146,13 @@ class _HabitsCalendarScreenState extends ConsumerState<HabitsCalendarScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     if (_isLoading) {
-      return const Scaffold(
-        backgroundColor: UltravioletColors.background,
-        body: Center(child: CircularProgressIndicator()),
+      return Scaffold(
+        backgroundColor: colors.surface,
+        body: Center(child: CircularProgressIndicator(color: colors.primary)),
       );
     }
 
@@ -152,21 +161,30 @@ class _HabitsCalendarScreenState extends ConsumerState<HabitsCalendarScreen> {
     final selectedDayHabits = _getHabitsForDay(_selectedDay);
 
     return Scaffold(
-      backgroundColor: UltravioletColors.background,
+      backgroundColor: colors.surface,
       appBar: AppBar(
-        backgroundColor: UltravioletColors.surface,
+        backgroundColor: colors.surface,
+        surfaceTintColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, size: 20),
+          icon: Icon(
+            Icons.arrow_back_ios_new,
+            size: 20,
+            color: colors.onSurface,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
+        title: Text(
           'Calendário de Hábitos',
-          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 18),
+          style: TextStyle(
+            fontWeight: FontWeight.w600,
+            fontSize: 18,
+            color: colors.onSurface,
+          ),
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.today),
+            icon: Icon(Icons.today, color: colors.primary),
             onPressed: () {
               setState(() {
                 _focusedDay = DateTime.now();
@@ -188,28 +206,31 @@ class _HabitsCalendarScreenState extends ConsumerState<HabitsCalendarScreen> {
                 children: [
                   Expanded(
                     child: _buildStatCard(
+                      context: context,
                       icon: Icons.local_fire_department,
                       value: '$streak',
                       label: 'Dias seguidos',
-                      color: Colors.orange,
+                      color: colors.error, // Orange-like color in themes
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: _buildStatCard(
+                      context: context,
                       icon: Icons.check_circle_outline,
                       value: '$monthCompletions',
                       label: 'Este mês',
-                      color: UltravioletColors.accentGreen,
+                      color: colors.tertiary,
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: _buildStatCard(
+                      context: context,
                       icon: Icons.repeat,
                       value: '${_habits.length}',
                       label: 'Hábitos',
-                      color: UltravioletColors.primary,
+                      color: colors.primary,
                     ),
                   ),
                 ],
@@ -230,76 +251,117 @@ class _HabitsCalendarScreenState extends ConsumerState<HabitsCalendarScreen> {
                 startingDayOfWeek: StartingDayOfWeek.monday,
                 locale: 'pt_BR',
                 headerStyle: HeaderStyle(
-                  formatButtonVisible: true,
+                  formatButtonVisible: false,
                   titleCentered: true,
-                  formatButtonShowsNext: false,
-                  formatButtonDecoration: BoxDecoration(
-                    color: UltravioletColors.primary.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
+                  titleTextStyle: TextStyle(
+                    color: colors.onSurface,
+                    fontSize: 17,
+                    fontWeight: FontWeight.w700,
                   ),
-                  formatButtonTextStyle: const TextStyle(
-                    color: UltravioletColors.primary,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
+                  leftChevronIcon: Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: colors.surfaceContainerHighest.withValues(
+                        alpha: 0.5,
+                      ),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(
+                      Icons.chevron_left,
+                      color: colors.onSurface,
+                      size: 18,
+                    ),
                   ),
-                  titleTextStyle: const TextStyle(
-                    color: UltravioletColors.onSurface,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
+                  rightChevronIcon: Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: colors.surfaceContainerHighest.withValues(
+                        alpha: 0.5,
+                      ),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(
+                      Icons.chevron_right,
+                      color: colors.onSurface,
+                      size: 18,
+                    ),
                   ),
-                  leftChevronIcon: const Icon(Icons.chevron_left, color: UltravioletColors.onSurfaceVariant),
-                  rightChevronIcon: const Icon(Icons.chevron_right, color: UltravioletColors.onSurfaceVariant),
+                  headerMargin: const EdgeInsets.only(bottom: 16),
                 ),
                 daysOfWeekStyle: DaysOfWeekStyle(
-                  weekdayStyle: const TextStyle(color: UltravioletColors.onSurfaceVariant, fontSize: 12, fontWeight: FontWeight.w500),
-                  weekendStyle: TextStyle(color: UltravioletColors.onSurfaceVariant.withOpacity(0.6), fontSize: 12, fontWeight: FontWeight.w500),
+                  weekdayStyle: TextStyle(
+                    color: colors.onSurfaceVariant,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  weekendStyle: TextStyle(
+                    color: colors.error.withValues(alpha: 0.7),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
                 calendarStyle: CalendarStyle(
                   outsideDaysVisible: false,
-                  weekendTextStyle: TextStyle(color: UltravioletColors.onSurface.withOpacity(0.6)),
-                  defaultTextStyle: const TextStyle(color: UltravioletColors.onSurface),
+                  weekendTextStyle: TextStyle(
+                    color: colors.onSurface.withValues(alpha: 0.8),
+                  ),
+                  defaultTextStyle: TextStyle(
+                    color: colors.onSurface,
+                    fontWeight: FontWeight.w500,
+                  ),
                   todayDecoration: BoxDecoration(
-                    color: UltravioletColors.primary.withOpacity(0.3),
-                    shape: BoxShape.circle,
+                    color: colors.primary.withValues(alpha: 0.15),
+                    shape: BoxShape.rectangle,
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                  todayTextStyle: const TextStyle(color: UltravioletColors.onSurface, fontWeight: FontWeight.w600),
-                  selectedDecoration: const BoxDecoration(
-                    color: UltravioletColors.primary,
-                    shape: BoxShape.circle,
+                  todayTextStyle: TextStyle(
+                    color: colors.primary,
+                    fontWeight: FontWeight.w700,
                   ),
-                  selectedTextStyle: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
-                  markerDecoration: const BoxDecoration(
-                    color: UltravioletColors.accentGreen,
+                  selectedDecoration: BoxDecoration(
+                    color: colors.primary,
+                    shape: BoxShape.rectangle,
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: colors.primary.withValues(alpha: 0.3),
+                        blurRadius: 8,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  selectedTextStyle: TextStyle(
+                    color: colors.onPrimary,
+                    fontWeight: FontWeight.w700,
+                  ),
+                  markerDecoration: BoxDecoration(
+                    color: colors.tertiary,
                     shape: BoxShape.circle,
                   ),
                   markersMaxCount: 3,
-                  markerSize: 6,
-                  markerMargin: const EdgeInsets.symmetric(horizontal: 1),
+                  markerSize: 5,
+                  markerMargin: const EdgeInsets.symmetric(horizontal: 1.5),
+                  cellMargin: const EdgeInsets.all(6),
                 ),
                 calendarBuilders: CalendarBuilders(
                   markerBuilder: (context, date, events) {
                     if (events.isEmpty) return null;
-                    final count = events.length;
                     return Positioned(
-                      bottom: 4,
+                      bottom: 8,
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
-                        children: List.generate(
-                          count > 3 ? 3 : count,
-                          (index) => Container(
-                            margin: const EdgeInsets.symmetric(horizontal: 1),
-                            width: 6,
-                            height: 6,
+                        children: events.take(3).map((e) {
+                          final habit = e as Habit;
+                          return Container(
+                            margin: const EdgeInsets.symmetric(horizontal: 1.5),
+                            width: 5,
+                            height: 5,
                             decoration: BoxDecoration(
-                              color: index == 0
-                                  ? UltravioletColors.accentGreen
-                                  : index == 1
-                                      ? UltravioletColors.primary
-                                      : UltravioletColors.tertiary,
+                              color: Color(habit.colorValue),
                               shape: BoxShape.circle,
                             ),
-                          ),
-                        ),
+                          );
+                        }).toList(),
                       ),
                     );
                   },
@@ -326,42 +388,76 @@ class _HabitsCalendarScreenState extends ConsumerState<HabitsCalendarScreen> {
 
             // Selected Day Details
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
+              padding: const EdgeInsets.symmetric(horizontal: 24),
               child: Row(
                 children: [
-                  const Icon(Icons.event_note, color: UltravioletColors.primary, size: 20),
-                  const SizedBox(width: 8),
-                  Text(
-                    DateFormat('EEEE, d MMMM', 'pt_BR').format(_selectedDay),
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: colors.primary.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
                     ),
+                    child: Icon(
+                      Icons.event_note,
+                      color: colors.primary,
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Hábitos Completados',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: colors.onSurfaceVariant,
+                        ),
+                      ),
+                      Text(
+                        DateFormat('d MMMM', 'pt_BR').format(_selectedDay),
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: colors.onSurface,
+                            ),
+                      ),
+                    ],
                   ),
                 ],
               ),
             ),
 
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
 
             // Habits completed on selected day
             if (selectedDayHabits.isEmpty)
-              Padding(
-                padding: const EdgeInsets.all(20),
-                child: OdysseyCard(
-                  padding: const EdgeInsets.all(24),
+              Container(
+                margin: const EdgeInsets.symmetric(horizontal: 20),
+                padding: const EdgeInsets.symmetric(vertical: 40),
+                decoration: BoxDecoration(
+                  color: colors.surfaceContainerHighest.withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: colors.outline.withValues(alpha: 0.1),
+                  ),
+                ),
+                child: Center(
                   child: Column(
                     children: [
                       Icon(
-                        Icons.sentiment_neutral,
+                        Icons.check_circle_outline_rounded,
                         size: 48,
-                        color: UltravioletColors.onSurfaceVariant.withOpacity(0.4),
+                        color: colors.outline.withValues(alpha: 0.3),
                       ),
                       const SizedBox(height: 12),
-                      const Text(
-                        'Nenhum hábito completado',
+                      Text(
+                        'Nenhum hábito neste dia',
                         style: TextStyle(
-                          color: UltravioletColors.onSurfaceVariant,
-                          fontSize: 14,
+                          color: colors.onSurfaceVariant,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
                     ],
@@ -376,7 +472,7 @@ class _HabitsCalendarScreenState extends ConsumerState<HabitsCalendarScreen> {
                 itemCount: selectedDayHabits.length,
                 itemBuilder: (context, index) {
                   final habit = selectedDayHabits[index];
-                  return _buildHabitCompletedCard(habit);
+                  return _buildHabitCompletedCard(context, habit);
                 },
               ),
 
@@ -388,34 +484,54 @@ class _HabitsCalendarScreenState extends ConsumerState<HabitsCalendarScreen> {
   }
 
   Widget _buildStatCard({
+    required BuildContext context,
     required IconData icon,
     required String value,
     required String label,
     required Color color,
   }) {
-    return OdysseyCard(
-      padding: const EdgeInsets.all(16),
-      margin: EdgeInsets.zero,
-      backgroundColor: color.withOpacity(0.1),
-      borderColor: color.withOpacity(0.2),
+    final colors = Theme.of(context).colorScheme;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: colors.outline.withValues(alpha: 0.1)),
+        boxShadow: [
+          BoxShadow(
+            color: colors.shadow.withValues(alpha: 0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
       child: Column(
         children: [
-          Icon(icon, color: color, size: 24),
-          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: color, size: 20),
+          ),
+          const SizedBox(height: 12),
           Text(
             value,
             style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.w700,
-              color: color,
+              fontSize: 22,
+              fontWeight: FontWeight.w800,
+              color: colors.onSurface,
             ),
           ),
           const SizedBox(height: 4),
           Text(
             label,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 11,
-              color: UltravioletColors.onSurfaceVariant,
+              fontWeight: FontWeight.w500,
+              color: colors.onSurfaceVariant,
             ),
             textAlign: TextAlign.center,
           ),
@@ -424,25 +540,37 @@ class _HabitsCalendarScreenState extends ConsumerState<HabitsCalendarScreen> {
     );
   }
 
-  Widget _buildHabitCompletedCard(Habit habit) {
-    return OdysseyCard(
-      padding: const EdgeInsets.all(16),
+  Widget _buildHabitCompletedCard(BuildContext context, Habit habit) {
+    final colors = Theme.of(context).colorScheme;
+    final habitColor = Color(habit.colorValue);
+
+    return Container(
       margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: habitColor.withValues(alpha: 0.2), width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: colors.shadow.withValues(alpha: 0.02),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
       child: Row(
         children: [
           Container(
-            width: 44,
-            height: 44,
+            padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: UltravioletColors.accentGreen.withOpacity(0.15),
+              color: habitColor.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Center(
-              child: Icon(
-                IconData(habit.iconCode, fontFamily: 'MaterialIcons'),
-                color: Color(habit.colorValue),
-                size: 22,
-              ),
+            child: Icon(
+              IconData(habit.iconCode, fontFamily: 'MaterialIcons'),
+              color: habitColor,
+              size: 24,
             ),
           ),
           const SizedBox(width: 14),
@@ -454,25 +582,22 @@ class _HabitsCalendarScreenState extends ConsumerState<HabitsCalendarScreen> {
                   habit.name,
                   style: Theme.of(context).textTheme.titleSmall?.copyWith(
                     fontWeight: FontWeight.w600,
+                    color: colors.onSurface,
                   ),
                 ),
                 const SizedBox(height: 2),
-                const Text(
+                Text(
                   'Concluído',
                   style: TextStyle(
                     fontSize: 12,
-                    color: UltravioletColors.accentGreen,
+                    color: colors.tertiary,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
               ],
             ),
           ),
-          const Icon(
-            Icons.check_circle,
-            color: UltravioletColors.accentGreen,
-            size: 24,
-          ),
+          Icon(Icons.check_circle, color: colors.tertiary, size: 24),
         ],
       ),
     );

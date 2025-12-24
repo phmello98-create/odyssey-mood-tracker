@@ -8,6 +8,7 @@ import 'package:odyssey/src/features/home/presentation/widgets/daily_goals_widge
 import 'package:odyssey/src/features/home/presentation/widgets/activity_grid_widget.dart';
 import 'package:odyssey/src/features/home/presentation/widgets/streak_widget.dart';
 import 'package:odyssey/src/features/home/presentation/widgets/today_tasks_widget.dart';
+import 'package:odyssey/src/features/home/presentation/widgets/today_habits_widget.dart';
 import 'package:odyssey/src/features/home/presentation/widgets/current_reading_widget.dart';
 import 'package:odyssey/src/features/home/presentation/widgets/quick_mood_widget.dart';
 import 'package:odyssey/src/features/home/presentation/widgets/water_tracker_widget.dart';
@@ -55,7 +56,7 @@ class HomeWidgetRenderer extends ConsumerWidget {
       case HomeWidgetType.currentReading:
         return const CurrentReadingWidget();
       case HomeWidgetType.habits:
-        return const _HabitsWidget();
+        return const TodayHabitsWidget();
       case HomeWidgetType.quickMood:
         return const QuickMoodWidget();
       case HomeWidgetType.weekCalendar:

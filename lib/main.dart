@@ -47,7 +47,7 @@ void main() async {
     }
   }
 
-  // Inicializar MediaKit Apenas para Linux/Windows (suporte a streaming de áudio)
+  // Inicializar MediaKit para Linux/Windows (suporte a streaming de áudio)
   // No Android/iOS, o just_audio usa implementações nativas (ExoPlayer/AVPlayer)
   if (!Platform.isAndroid && !Platform.isIOS) {
     try {
@@ -61,12 +61,20 @@ void main() async {
         'rtmp',
       ];
       JustAudioMediaKit.bufferSize = 8 * 1024 * 1024; // 8MB buffer para streams
-      JustAudioMediaKit.ensureInitialized();
+
+      // Inicializar MediaKit primeiro (requerido pelo just_audio_media_kit)
+      JustAudioMediaKit.ensureInitialized(
+        linux: true,
+        windows: true,
+        macOS: false,
+        iOS: false,
+        android: false,
+      );
       debugPrint('🎵 JustAudioMediaKit inicializado (Linux/Desktop)');
     } catch (e) {
       // libmpv não está instalada - áudio não funcionará no desktop
       debugPrint('⚠️ JustAudioMediaKit não disponível: $e');
-      debugPrint('💡 Instale libmpv-devel para habilitar áudio no Linux');
+      debugPrint('💡 Instale libmpv-dev para habilitar áudio no Linux');
     }
   }
 

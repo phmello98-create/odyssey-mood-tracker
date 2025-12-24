@@ -9,6 +9,8 @@ import '../../domain/post.dart';
 import '../../domain/post_dto.dart';
 import '../../domain/topic.dart';
 import '../../domain/tag.dart';
+import '../../../auth/presentation/providers/auth_providers.dart';
+import '../../../auth/presentation/widgets/sign_in_dialog.dart';
 
 /// Tela para criar um novo post - Versão Rica
 /// Com título, imagens, tags e seleção de tópico
@@ -210,7 +212,34 @@ class _CreatePostScreenState extends ConsumerState<CreatePostScreen> {
     );
   }
 
+  void _showGuestRestrictionDialog() {
+    showGeneralDialog(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: 'Sign In',
+      pageBuilder: (context, _, __) =>
+          SignInDialog(closeModal: () => Navigator.pop(context)),
+      transitionBuilder: (context, anim, secondaryAnim, child) {
+        return FadeTransition(
+          opacity: anim,
+          child: ScaleTransition(
+            scale: CurvedAnimation(parent: anim, curve: Curves.easeOutBack),
+            child: child,
+          ),
+        );
+      },
+      transitionDuration: const Duration(milliseconds: 400),
+    );
+  }
+
   Future<void> _createPost() async {
+    // Verificar se é usuário convidado
+    final isGuest = ref.read(isGuestProvider);
+    if (isGuest) {
+      _showGuestRestrictionDialog();
+      return;
+    }
+
     if (_contentController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Digite algo para compartilhar')),

@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../../data/models/diary_entry_isar.dart';
 import '../controllers/diary_isar_provider.dart';
 import '../widgets/diary_calendar_strip.dart';
+import '../widgets/diary_search_bar.dart';
 import 'diary_editor_page.dart';
 
 class DiaryPage extends ConsumerStatefulWidget {
@@ -29,8 +30,12 @@ class _DiaryPageState extends ConsumerState<DiaryPage> {
 
   @override
   Widget build(BuildContext context) {
-    final diaryStream = ref.watch(diaryIsarStreamProvider);
     final theme = Theme.of(context);
+    final searchQuery = ref.watch(diarySearchQueryProvider);
+    final isSearchActive = searchQuery.isNotEmpty && searchQuery.length >= 2;
+
+    // Usar provider filtrado quando busca está ativa
+    final entriesAsync = ref.watch(diaryFilteredEntriesProvider);
 
     return Scaffold(
       backgroundColor: theme.colorScheme.surface,
@@ -68,17 +73,47 @@ class _DiaryPageState extends ConsumerState<DiaryPage> {
             ],
           ),
 
-          // Calendário Horizontal
-          SliverToBoxAdapter(
-            child: DiaryCalendarStrip(
-              selectedDate: _selectedDate,
-              onDateSelected: (date) => setState(() => _selectedDate = date),
+          // ==========================================
+          // BARRA DE BUSCA INTELIGENTE
+          // ==========================================
+          const SliverToBoxAdapter(
+            child: Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: DiarySearchBar(),
             ),
           ),
 
+          // Sugestões de busca rápida (quando não há busca ativa)
+          if (!isSearchActive)
+            const SliverToBoxAdapter(child: DiarySearchSuggestions()),
+
+          // Contador de resultados (quando busca está ativa)
+          if (isSearchActive)
+            SliverToBoxAdapter(
+              child: entriesAsync.when(
+                data: (entries) => DiarySearchResultsCount(
+                  count: entries.length,
+                  query: searchQuery,
+                ),
+                loading: () => const SizedBox.shrink(),
+                error: (_, __) => const SizedBox.shrink(),
+              ),
+            ),
+
           const SliverToBoxAdapter(child: SizedBox(height: 8)),
 
-          diaryStream.when(
+          // Calendário Horizontal (apenas quando não há busca)
+          if (!isSearchActive)
+            SliverToBoxAdapter(
+              child: DiaryCalendarStrip(
+                selectedDate: _selectedDate,
+                onDateSelected: (date) => setState(() => _selectedDate = date),
+              ),
+            ),
+
+          const SliverToBoxAdapter(child: SizedBox(height: 8)),
+
+          entriesAsync.when(
             data: (entries) {
               var displayedEntries = entries;
 
@@ -89,8 +124,8 @@ class _DiaryPageState extends ConsumerState<DiaryPage> {
                     .toList();
               }
 
-              // Filtro por data
-              if (_selectedDate != null) {
+              // Filtro por data (apenas quando não há busca)
+              if (_selectedDate != null && !isSearchActive) {
                 displayedEntries = displayedEntries.where((e) {
                   return e.entryDate.year == _selectedDate!.year &&
                       e.entryDate.month == _selectedDate!.month &&
@@ -99,6 +134,15 @@ class _DiaryPageState extends ConsumerState<DiaryPage> {
               }
 
               if (displayedEntries.isEmpty) {
+                // Estado vazio específico para busca
+                if (isSearchActive) {
+                  return SliverFillRemaining(
+                    hasScrollBody: false,
+                    child: DiarySearchEmptyState(query: searchQuery),
+                  );
+                }
+
+                // Estado vazio normal (sem busca)
                 return SliverFillRemaining(
                   hasScrollBody: false,
                   child: Center(
@@ -144,8 +188,14 @@ class _DiaryPageState extends ConsumerState<DiaryPage> {
                   delegate: SliverChildBuilderDelegate((context, index) {
                     final entry = displayedEntries[index];
                     return _isCardView
-                        ? _DiaryEntryCard(entry: entry)
-                        : _DiaryEntryListItem(entry: entry);
+                        ? _DiaryEntryCard(
+                            entry: entry,
+                            searchQuery: searchQuery,
+                          )
+                        : _DiaryEntryListItem(
+                            entry: entry,
+                            searchQuery: searchQuery,
+                          );
                   }, childCount: displayedEntries.length),
                 ),
               );
@@ -175,8 +225,9 @@ class _DiaryPageState extends ConsumerState<DiaryPage> {
 
 class _DiaryEntryCard extends StatelessWidget {
   final DiaryEntryIsar entry;
+  final String searchQuery;
 
-  const _DiaryEntryCard({required this.entry});
+  const _DiaryEntryCard({required this.entry, this.searchQuery = ''});
 
   @override
   Widget build(BuildContext context) {
@@ -281,8 +332,9 @@ class _DiaryEntryCard extends StatelessWidget {
                         ],
                       ),
                       const SizedBox(height: 4),
-                      Text(
-                        entry.title ?? 'Sem título',
+                      SearchHighlightText(
+                        text: entry.title ?? 'Sem título',
+                        query: searchQuery,
                         style: theme.textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.bold,
                         ),
@@ -290,8 +342,9 @@ class _DiaryEntryCard extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 4),
-                      Text(
-                        entry.searchableText ?? 'Sem conteúdo...',
+                      SearchHighlightText(
+                        text: entry.searchableText ?? 'Sem conteúdo...',
+                        query: searchQuery,
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: theme.colorScheme.onSurfaceVariant,
                         ),
@@ -389,8 +442,9 @@ class _DiaryEntryCard extends StatelessWidget {
 // ============================================
 class _DiaryEntryListItem extends StatelessWidget {
   final DiaryEntryIsar entry;
+  final String searchQuery;
 
-  const _DiaryEntryListItem({required this.entry});
+  const _DiaryEntryListItem({required this.entry, this.searchQuery = ''});
 
   @override
   Widget build(BuildContext context) {
@@ -425,8 +479,9 @@ class _DiaryEntryListItem extends StatelessWidget {
               ),
             )
           : _buildDateBadge(dateFormat, moodColor),
-      title: Text(
-        entry.title ?? 'Sem título',
+      title: SearchHighlightText(
+        text: entry.title ?? 'Sem título',
+        query: searchQuery,
         style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
         maxLines: 1,
         overflow: TextOverflow.ellipsis,

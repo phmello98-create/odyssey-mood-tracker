@@ -1,6 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:odyssey/src/constants/app_theme.dart';
+import 'package:flutter/services.dart';
 import 'package:odyssey/src/features/library/domain/book.dart';
 import 'package:odyssey/src/utils/widgets/odyssey_card.dart';
 import 'package:odyssey/src/localization/app_localizations.dart';
@@ -9,17 +9,20 @@ class BookCardList extends StatelessWidget {
   final Book book;
   final VoidCallback onTap;
   final VoidCallback? onLongPress;
+  final VoidCallback? onToggleFavourite;
 
   const BookCardList({
     super.key,
     required this.book,
     required this.onTap,
     this.onLongPress,
+    this.onToggleFavourite,
   });
 
   @override
   Widget build(BuildContext context) {
-    final statusColor = _getStatusColor();
+    final colors = Theme.of(context).colorScheme;
+    final statusColor = _getStatusColor(context);
     final statusLabel = _getStatusLabel(context);
     final formatLabel = _getFormatLabel();
 
@@ -28,7 +31,7 @@ class BookCardList extends StatelessWidget {
       onLongPress: onLongPress,
       padding: const EdgeInsets.all(12),
       margin: EdgeInsets.zero,
-      backgroundColor: Theme.of(context).colorScheme.surface,
+      backgroundColor: colors.surface,
       borderRadius: 16,
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -39,7 +42,7 @@ class BookCardList extends StatelessWidget {
             child: _buildCover(context, statusColor),
           ),
           const SizedBox(width: 14),
-          
+
           // Book Info
           Expanded(
             child: Column(
@@ -55,17 +58,20 @@ class BookCardList extends StatelessWidget {
                         children: [
                           Text(
                             book.title,
-                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.w600,
-                            ),
+                            style: Theme.of(context).textTheme.titleMedium
+                                ?.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                  color: colors.onSurface,
+                                ),
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                           ),
-                          if (book.subtitle != null && book.subtitle!.isNotEmpty)
+                          if (book.subtitle != null &&
+                              book.subtitle!.isNotEmpty)
                             Text(
                               book.subtitle!,
-                              style: const TextStyle(
-                                color: UltravioletColors.onSurfaceVariant,
+                              style: TextStyle(
+                                color: colors.onSurfaceVariant,
                                 fontSize: 12,
                               ),
                               maxLines: 1,
@@ -74,61 +80,93 @@ class BookCardList extends StatelessWidget {
                         ],
                       ),
                     ),
-                    if (book.favourite)
-                      Padding(
-                        padding: const EdgeInsets.only(left: 8),
-                        child: Container(
-                          padding: const EdgeInsets.all(6),
-                          decoration: BoxDecoration(
-                            color: Colors.red.withValues(alpha: 0.15),
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(
-                            Icons.favorite,
-                            color: Colors.red,
-                            size: 14,
+                    if (onToggleFavourite != null)
+                      GestureDetector(
+                        onTap: () {
+                          HapticFeedback.selectionClick();
+                          onToggleFavourite!();
+                        },
+                        child: Padding(
+                          padding: const EdgeInsets.only(left: 8),
+                          child: Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: book.favourite
+                                  ? colors.error.withValues(alpha: 0.15)
+                                  : colors.surfaceContainerHighest.withValues(
+                                      alpha: 0.3,
+                                    ),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              book.favourite
+                                  ? Icons.favorite
+                                  : Icons.favorite_border,
+                              color: book.favourite
+                                  ? colors.error
+                                  : colors.onSurfaceVariant,
+                              size: 16,
+                            ),
                           ),
                         ),
                       ),
                   ],
                 ),
                 const SizedBox(height: 4),
-                
+
                 // Author
                 Text(
                   book.author,
-                  style: const TextStyle(
-                    color: UltravioletColors.onSurfaceVariant,
+                  style: TextStyle(
+                    color: colors.onSurfaceVariant,
                     fontSize: 13,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 10),
-                
+
                 // Tags row
                 Wrap(
                   spacing: 6,
                   runSpacing: 6,
                   children: [
                     // Status chip
-                    _buildChip(statusLabel, statusColor.withValues(alpha: 0.15), statusColor),
-                    
+                    _buildChip(
+                      statusLabel,
+                      statusColor.withValues(alpha: 0.15),
+                      statusColor,
+                    ),
+
                     // Format chip
-                    _buildChip(formatLabel, UltravioletColors.surfaceVariant.withValues(alpha: 0.5), UltravioletColors.onSurfaceVariant),
-                    
+                    _buildChip(
+                      formatLabel,
+                      colors.surfaceContainerHighest,
+                      colors.onSurfaceVariant,
+                    ),
+
                     // Genre chip
                     if (book.genre != null && book.genre!.isNotEmpty)
-                      _buildChip(book.genre!, UltravioletColors.tertiary.withValues(alpha: 0.15), UltravioletColors.tertiary),
-                    
+                      _buildChip(
+                        book.genre!,
+                        colors.tertiary.withValues(alpha: 0.15),
+                        colors.tertiary,
+                      ),
+
                     // Pages
                     if (book.pages != null)
-                      _buildChip('${book.pages} pág', Colors.transparent, UltravioletColors.onSurfaceVariant),
+                      _buildChip(
+                        '${book.pages} pág',
+                        Colors.transparent,
+                        colors.onSurfaceVariant,
+                      ),
                   ],
                 ),
-                
+
                 // Progress bar for in-progress books
-                if (book.status == BookStatus.inProgress && book.pages != null && book.pages! > 0) ...[
+                if (book.status == BookStatus.inProgress &&
+                    book.pages != null &&
+                    book.pages! > 0) ...[
                   const SizedBox(height: 12),
                   Row(
                     children: [
@@ -137,7 +175,7 @@ class BookCardList extends StatelessWidget {
                           borderRadius: BorderRadius.circular(4),
                           child: LinearProgressIndicator(
                             value: book.progress,
-                            backgroundColor: UltravioletColors.surfaceVariant,
+                            backgroundColor: colors.surfaceContainerHighest,
                             valueColor: AlwaysStoppedAnimation(statusColor),
                             minHeight: 6,
                           ),
@@ -146,8 +184,8 @@ class BookCardList extends StatelessWidget {
                       const SizedBox(width: 10),
                       Text(
                         '${book.currentPage}/${book.pages}',
-                        style: const TextStyle(
-                          color: UltravioletColors.onSurfaceVariant,
+                        style: TextStyle(
+                          color: colors.onSurfaceVariant,
                           fontSize: 11,
                           fontWeight: FontWeight.w500,
                         ),
@@ -155,7 +193,7 @@ class BookCardList extends StatelessWidget {
                     ],
                   ),
                 ],
-                
+
                 // Rating
                 if (book.rating != null) ...[
                   const SizedBox(height: 8),
@@ -163,19 +201,24 @@ class BookCardList extends StatelessWidget {
                     children: [
                       ...List.generate(5, (index) {
                         final starValue = (index + 1) * 10;
+                        final color = const Color(0xFFFFB800);
                         if (book.rating! >= starValue) {
-                          return const Icon(Icons.star, color: Colors.amber, size: 16);
+                          return Icon(Icons.star, color: color, size: 16);
                         } else if (book.rating! >= starValue - 5) {
-                          return const Icon(Icons.star_half, color: Colors.amber, size: 16);
+                          return Icon(Icons.star_half, color: color, size: 16);
                         } else {
-                          return Icon(Icons.star_border, color: Colors.amber.withValues(alpha: 0.5), size: 16);
+                          return Icon(
+                            Icons.star_border,
+                            color: color.withValues(alpha: 0.5),
+                            size: 16,
+                          );
                         }
                       }),
                       const SizedBox(width: 6),
                       Text(
                         (book.rating! / 10).toStringAsFixed(1),
-                        style: const TextStyle(
-                          color: UltravioletColors.onSurfaceVariant,
+                        style: TextStyle(
+                          color: colors.onSurfaceVariant,
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
                         ),
@@ -223,7 +266,7 @@ class BookCardList extends StatelessWidget {
         );
       }
     }
-    
+
     return _buildPlaceholderCover(statusColor);
   }
 
@@ -233,19 +276,10 @@ class BookCardList extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            color.withValues(alpha: 0.3),
-            color.withValues(alpha: 0.1),
-          ],
+          colors: [color.withValues(alpha: 0.3), color.withValues(alpha: 0.1)],
         ),
       ),
-      child: Center(
-        child: Icon(
-          Icons.menu_book,
-          color: color,
-          size: 28,
-        ),
-      ),
+      child: Center(child: Icon(Icons.menu_book, color: color, size: 28)),
     );
   }
 
@@ -267,16 +301,17 @@ class BookCardList extends StatelessWidget {
     );
   }
 
-  Color _getStatusColor() {
+  Color _getStatusColor(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
     switch (book.status) {
       case BookStatus.inProgress:
-        return UltravioletColors.primary;
+        return colors.primary;
       case BookStatus.forLater:
-        return UltravioletColors.secondary;
+        return colors.secondary;
       case BookStatus.read:
-        return UltravioletColors.accentGreen;
+        return const Color(0xFF10B981); // Success Green
       case BookStatus.unfinished:
-        return UltravioletColors.error;
+        return colors.error;
     }
   }
 
