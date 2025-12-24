@@ -66,6 +66,9 @@ class _FakeAuthRepository implements AuthRepository {
   @override
   Future<AuthResult> resendVerificationEmail() =>
       Future.value(const AuthResult.failure(message: 'not implemented'));
+  @override
+  Future<AuthResult> upgradeGuestWithGoogle() =>
+      Future.value(const AuthResult.failure(message: 'not implemented'));
 }
 
 class _FakeAppInitializer extends AppInitializer {
@@ -73,6 +76,7 @@ class _FakeAppInitializer extends AppInitializer {
     state = const AppInitState(status: AppInitStatus.success);
   }
 
+  @override
   Future<void> initialize() async {
     state = const AppInitState(status: AppInitStatus.success);
   }

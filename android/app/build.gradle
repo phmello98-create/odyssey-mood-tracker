@@ -73,6 +73,26 @@ android {
         multiDexEnabled true
     }
 
+    // Dimensão de flavors (obrigatório quando há múltiplos flavors)
+    flavorDimensions "default"
+
+    // Flavors: Dev e Prod
+    productFlavors {
+        dev {
+            dimension "default"
+            applicationIdSuffix ".dev"
+            // Nome do app diferente para identificar facilmente
+            resValue "string", "app_name", "Odyssey Dev"
+            // Adiciona versionName suffix para builds dev
+            versionNameSuffix "-dev"
+        }
+        prod {
+            dimension "default"
+            // Sem suffix - usa o applicationId padrão
+            resValue "string", "app_name", "Odyssey"
+        }
+    }
+
     buildTypes {
         debug {
             signingConfig signingConfigs.debug

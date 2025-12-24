@@ -63,10 +63,10 @@ class _RiveBottomBarState extends State<RiveBottomBar> {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    // Glassmorphism colors - more transparent for blur effect
+    // Glassmorphism colors - adjusted for better visibility
     final bgColor = isDark
-        ? Colors.black.withValues(alpha: 0.3)
-        : Colors.white.withValues(alpha: 0.4);
+        ? theme.colorScheme.surface.withValues(alpha: 0.6)
+        : theme.colorScheme.surface.withValues(alpha: 0.75);
 
     final borderColor = isDark
         ? Colors.white.withValues(alpha: 0.1)
@@ -79,61 +79,73 @@ class _RiveBottomBarState extends State<RiveBottomBar> {
         24,
         MediaQuery.of(context).padding.bottom + 12,
       ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(24),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-          child: Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: bgColor,
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: borderColor, width: 1),
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.1),
+              blurRadius: 20,
+              offset: const Offset(0, 10),
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: List.generate(_icons.length, (index) {
-                final icon = _icons[index];
-                final isSelected = widget.currentIndex == index;
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(24),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: bgColor,
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(color: borderColor, width: 1),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: List.generate(_icons.length, (index) {
+                  final icon = _icons[index];
+                  final isSelected = widget.currentIndex == index;
 
-                return Expanded(
-                  key: icon.id,
-                  child: GestureDetector(
-                    onTap: () => onTabPress(index),
-                    behavior: HitTestBehavior.opaque,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
-                          margin: const EdgeInsets.only(bottom: 2),
-                          height: 4,
-                          width: isSelected ? 20 : 0,
-                          decoration: BoxDecoration(
-                            color: theme.colorScheme.primary,
-                            borderRadius: BorderRadius.circular(2),
-                          ),
-                        ),
-                        SizedBox(
-                          height: 36,
-                          width: 36,
-                          child: Opacity(
-                            opacity: isSelected ? 1 : 0.5,
-                            child: RiveAnimation.asset(
-                              'assets/rive/icons.riv',
-                              stateMachines: [icon.stateMachine],
-                              artboard: icon.artboard,
-                              onInit: (artboard) {
-                                _onRiveIconInit(artboard, index);
-                              },
+                  return Expanded(
+                    key: icon.id,
+                    child: GestureDetector(
+                      onTap: () => onTabPress(index),
+                      behavior: HitTestBehavior.opaque,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            margin: const EdgeInsets.only(bottom: 2),
+                            height: 4,
+                            width: isSelected ? 20 : 0,
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.primary,
+                              borderRadius: BorderRadius.circular(2),
                             ),
                           ),
-                        ),
-                      ],
+                          SizedBox(
+                            height: 36,
+                            width: 36,
+                            child: Opacity(
+                              opacity: isSelected ? 1 : 0.6,
+                              child: RiveAnimation.asset(
+                                'assets/rive/icons.riv',
+                                stateMachines: [icon.stateMachine],
+                                artboard: icon.artboard,
+                                onInit: (artboard) {
+                                  _onRiveIconInit(artboard, index);
+                                },
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                );
-              }),
+                  );
+                }),
+              ),
             ),
           ),
         ),

@@ -122,8 +122,8 @@ class _OdysseyHomeState extends ConsumerState<OdysseyHome>
   void _performNavigation(int index) {
     if (index == _currentIndex) return;
 
-    soundService.playNavigation(); // Som de navegação
-    HapticFeedback.selectionClick(); // Feedback tátil
+    // Apenas feedback háptico na navegação (som removido - era intrusivo)
+    HapticFeedback.selectionClick();
 
     setState(() {
       _currentIndex = index;
@@ -472,12 +472,13 @@ class _OdysseyHomeState extends ConsumerState<OdysseyHome>
 
   Widget _buildMoreMenuSheet() {
     final l10n = AppLocalizations.of(context)!;
+    final colors = Theme.of(context).colorScheme;
     return Container(
       decoration: BoxDecoration(
-        color: UltravioletColors.surface,
+        color: colors.surface,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
         border: Border.all(
-          color: UltravioletColors.outline.withValues(alpha: 0.1),
+          color: colors.outline.withValues(alpha: 0.1),
           width: 1,
         ),
       ),
@@ -490,7 +491,7 @@ class _OdysseyHomeState extends ConsumerState<OdysseyHome>
             width: 40,
             height: 4,
             decoration: BoxDecoration(
-              color: UltravioletColors.outline.withValues(alpha: 0.3),
+              color: colors.outline.withValues(alpha: 0.3),
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -516,7 +517,7 @@ class _OdysseyHomeState extends ConsumerState<OdysseyHome>
                     _buildMoreMenuItem(
                       Icons.auto_graph_outlined,
                       l10n.analytics,
-                      UltravioletColors.primary,
+                      colors.primary,
                       () => _navigateToScreen(
                         const AnalyticsScreen(),
                         title: l10n.analytics,
@@ -525,7 +526,7 @@ class _OdysseyHomeState extends ConsumerState<OdysseyHome>
                     _buildMoreMenuItem(
                       Icons.note_outlined,
                       l10n.notes,
-                      UltravioletColors.tertiary,
+                      colors.tertiary,
                       () => _navigateToScreen(
                         const NotesScreen(),
                         title: l10n.notes,
@@ -534,7 +535,7 @@ class _OdysseyHomeState extends ConsumerState<OdysseyHome>
                     _buildMoreMenuItem(
                       Icons.check_circle_outline,
                       l10n.tasks,
-                      UltravioletColors.accentGreen,
+                      colors.secondary,
                       () => _navigateToScreen(
                         const TasksScreen(),
                         title: l10n.tasks,
@@ -543,7 +544,7 @@ class _OdysseyHomeState extends ConsumerState<OdysseyHome>
                     _buildMoreMenuItem(
                       Icons.menu_book_outlined,
                       l10n.library,
-                      UltravioletColors.secondary,
+                      colors.tertiary,
                       () => _navigateToScreen(
                         const LibraryScreen(),
                         title: l10n.library,
@@ -552,7 +553,7 @@ class _OdysseyHomeState extends ConsumerState<OdysseyHome>
                     _buildMoreMenuItem(
                       Icons.calendar_month_outlined,
                       l10n.calendar,
-                      UltravioletColors.accentBlue,
+                      colors.primary,
                       () => _navigateToScreen(
                         const CalendarScreen(),
                         title: l10n.calendar,
@@ -561,7 +562,7 @@ class _OdysseyHomeState extends ConsumerState<OdysseyHome>
                     _buildMoreMenuItem(
                       Icons.explore_outlined,
                       l10n.isEnglish ? 'Discover' : 'Descobrir',
-                      const Color(0xFF6366F1),
+                      colors.primary,
                       () => _navigateToScreen(
                         const FeatureDiscoveryScreen(),
                         title: l10n.isEnglish ? 'Discover' : 'Descobrir',
@@ -570,7 +571,7 @@ class _OdysseyHomeState extends ConsumerState<OdysseyHome>
                     _buildMoreMenuItem(
                       Icons.settings_outlined,
                       l10n.settings,
-                      UltravioletColors.onSurfaceVariant,
+                      colors.onSurfaceVariant,
                       () => _navigateToScreen(
                         const SettingsScreen(),
                         title: l10n.settings,
@@ -615,7 +616,7 @@ class _OdysseyHomeState extends ConsumerState<OdysseyHome>
           Text(
             label,
             style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: UltravioletColors.onSurfaceVariant,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
             textAlign: TextAlign.center,
           ),
@@ -966,7 +967,7 @@ class _OdysseyHomeState extends ConsumerState<OdysseyHome>
                     ),
                     child: CircleAvatar(
                       radius: 24,
-                      backgroundColor: const Color(0xFF17203A),
+                      backgroundColor: colors.surfaceContainerHighest,
                       backgroundImage: avatarPath != null
                           ? FileImage(File(avatarPath))
                           : null,
@@ -975,10 +976,10 @@ class _OdysseyHomeState extends ConsumerState<OdysseyHome>
                               userName.isNotEmpty
                                   ? userName[0].toUpperCase()
                                   : 'O',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,
-                                color: Colors.white,
+                                color: colors.onSurface,
                               ),
                             )
                           : null,
@@ -991,10 +992,10 @@ class _OdysseyHomeState extends ConsumerState<OdysseyHome>
                       children: [
                         Text(
                           userName.isNotEmpty ? userName : 'Viajante',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 17,
                             fontWeight: FontWeight.bold,
-                            color: Colors.white,
+                            color: colors.onSurface,
                             decoration: TextDecoration.none,
                           ),
                         ),
@@ -1003,7 +1004,7 @@ class _OdysseyHomeState extends ConsumerState<OdysseyHome>
                           '${title.emoji} ${title.name}',
                           style: TextStyle(
                             fontSize: 13,
-                            color: Colors.white.withValues(alpha: 0.7),
+                            color: colors.onSurface.withValues(alpha: 0.7),
                             decoration: TextDecoration.none,
                           ),
                         ),
@@ -1055,9 +1056,11 @@ class _OdysseyHomeState extends ConsumerState<OdysseyHome>
                     ),
 
                     const SizedBox(height: 12),
-                    const Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 24),
-                      child: Divider(color: Colors.white10),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      child: Divider(
+                        color: colors.outline.withValues(alpha: 0.2),
+                      ),
                     ),
                     const SizedBox(height: 12),
 
@@ -1176,17 +1179,17 @@ class _OdysseyHomeState extends ConsumerState<OdysseyHome>
                     Theme.of(context).brightness == Brightness.dark
                         ? Icons.light_mode_rounded
                         : Icons.dark_mode_rounded,
-                    color: Colors.white.withValues(alpha: 0.6),
+                    color: colors.onSurface.withValues(alpha: 0.6),
                     size: 24,
                   ),
                   const SizedBox(width: 14),
-                  const Expanded(
+                  Expanded(
                     child: Text(
                       'Modo Escuro',
                       style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w600,
-                        color: Colors.white,
+                        color: colors.onSurface,
                         decoration: TextDecoration.none,
                       ),
                     ),
@@ -1214,7 +1217,7 @@ class _OdysseyHomeState extends ConsumerState<OdysseyHome>
                 'Odyssey v1.0.0',
                 style: TextStyle(
                   fontSize: 11,
-                  color: Colors.white.withValues(alpha: 0.4),
+                  color: colors.onSurface.withValues(alpha: 0.4),
                   decoration: TextDecoration.none,
                 ),
               ),
@@ -1226,6 +1229,7 @@ class _OdysseyHomeState extends ConsumerState<OdysseyHome>
   }
 
   Widget _menuSectionLabel(String label) {
+    final colors = Theme.of(context).colorScheme;
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 8, 24, 8),
       child: Text(
@@ -1233,7 +1237,7 @@ class _OdysseyHomeState extends ConsumerState<OdysseyHome>
         style: TextStyle(
           fontSize: 12,
           fontWeight: FontWeight.w700,
-          color: Colors.white.withValues(alpha: 0.5),
+          color: colors.onSurface.withValues(alpha: 0.5),
           letterSpacing: 1.2,
           decoration: TextDecoration.none,
         ),
@@ -1247,6 +1251,7 @@ class _OdysseyHomeState extends ConsumerState<OdysseyHome>
     bool isSelected,
     VoidCallback onTap,
   ) {
+    final colors = Theme.of(context).colorScheme;
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -1258,11 +1263,11 @@ class _OdysseyHomeState extends ConsumerState<OdysseyHome>
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
           decoration: BoxDecoration(
             color: isSelected
-                ? Colors.white.withValues(alpha: 0.1)
+                ? colors.primary.withValues(alpha: 0.15)
                 : Colors.transparent,
             border: Border(
               left: BorderSide(
-                color: isSelected ? Colors.white : Colors.transparent,
+                color: isSelected ? colors.primary : Colors.transparent,
                 width: 3,
               ),
             ),
@@ -1272,8 +1277,8 @@ class _OdysseyHomeState extends ConsumerState<OdysseyHome>
               Icon(
                 icon,
                 color: isSelected
-                    ? Colors.white
-                    : Colors.white.withValues(alpha: 0.7),
+                    ? colors.primary
+                    : colors.onSurface.withValues(alpha: 0.7),
                 size: 22,
               ),
               const SizedBox(width: 14),
@@ -1283,8 +1288,8 @@ class _OdysseyHomeState extends ConsumerState<OdysseyHome>
                   fontSize: 15,
                   fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
                   color: isSelected
-                      ? Colors.white
-                      : Colors.white.withValues(alpha: 0.7),
+                      ? colors.primary
+                      : colors.onSurface.withValues(alpha: 0.7),
                   decoration: TextDecoration.none,
                 ),
               ),

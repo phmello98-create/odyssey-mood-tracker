@@ -102,8 +102,9 @@ class _HomeSuggestionsWidgetState extends ConsumerState<HomeSuggestionsWidget>
 
       // Verificar badges
       final totalAccepted = await analyticsRepo.getTotalAddedCount();
-      final newBadges =
-          await gamificationRepo.checkSuggestionBadges(totalAccepted);
+      final newBadges = await gamificationRepo.checkSuggestionBadges(
+        totalAccepted,
+      );
 
       // Atualizar UI
       setState(() {
@@ -167,8 +168,8 @@ class _HomeSuggestionsWidgetState extends ConsumerState<HomeSuggestionsWidget>
       priority: suggestion.difficulty == SuggestionDifficulty.easy
           ? 'low'
           : suggestion.difficulty == SuggestionDifficulty.medium
-              ? 'medium'
-              : 'high',
+          ? 'medium'
+          : 'high',
       category: 'personal',
       createdAt: DateTime.now(),
     );
@@ -314,11 +315,7 @@ class _HomeSuggestionsWidgetState extends ConsumerState<HomeSuggestionsWidget>
 
                   return Transform.scale(
                     scale: value,
-                    child: _buildSuggestionCard(
-                      suggestion,
-                      isAdded,
-                      colors,
-                    ),
+                    child: _buildSuggestionCard(suggestion, isAdded, colors),
                   );
                 },
               );
@@ -359,247 +356,248 @@ class _HomeSuggestionsWidgetState extends ConsumerState<HomeSuggestionsWidget>
     final cardColor = Color(suggestion.colorValue);
     final isHabit = suggestion.type == SuggestionType.habit;
 
-    return Dismissible(
-      key: ValueKey(suggestion.id),
-      direction: DismissDirection.vertical,
-      onDismissed: (_) => _dismissSuggestion(suggestion),
-      background: Container(
+    return GestureDetector(
+      onTap: () {
+        HapticFeedback.lightImpact();
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const SuggestionsScreen()),
+        );
+      },
+      child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 8),
         decoration: BoxDecoration(
-          color: colors.error.withOpacity(0.2),
+          gradient: LinearGradient(
+            colors: [cardColor.withOpacity(0.15), colors.surface],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
           borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: cardColor.withOpacity(0.3), width: 1.5),
+          boxShadow: [
+            BoxShadow(
+              color: cardColor.withOpacity(0.1),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
-        child: Center(
-          child: Icon(
-            Icons.close_rounded,
-            color: colors.error,
-            size: 32,
-          ),
-        ),
-      ),
-      child: GestureDetector(
-        onTap: () {
-          HapticFeedback.lightImpact();
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => const SuggestionsScreen(),
-            ),
-          );
-        },
-        child: Container(
-          margin: const EdgeInsets.symmetric(horizontal: 8),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                cardColor.withOpacity(0.15),
-                colors.surface,
-              ],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: cardColor.withOpacity(0.3),
-              width: 1.5,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: cardColor.withOpacity(0.1),
-                blurRadius: 12,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Header com tipo e dificuldade
-                Row(
-                  children: [
-                    // Badge de tipo
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: isHabit
-                            ? const Color(0xFF8B5CF6).withOpacity(0.2)
-                            : const Color(0xFF06B6D4).withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            isHabit
-                                ? Icons.repeat_rounded
-                                : Icons.task_alt_rounded,
-                            size: 12,
-                            color: isHabit
-                                ? const Color(0xFF8B5CF6)
-                                : const Color(0xFF06B6D4),
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            isHabit ? 'HÁBITO' : 'TAREFA',
-                            style: TextStyle(
-                              fontSize: 9,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 0.5,
-                              color: isHabit
-                                  ? const Color(0xFF8B5CF6)
-                                  : const Color(0xFF06B6D4),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    // Badge de dificuldade
-                    _buildDifficultyBadge(suggestion.difficulty),
-                    const Spacer(),
-                    // Ícone da sugestão
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: cardColor.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Icon(
-                        suggestion.icon,
-                        color: cardColor,
-                        size: 20,
-                      ),
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: 12),
-
-                // Título
-                Text(
-                  suggestion.title,
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: colors.onSurface,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-
-                const SizedBox(height: 6),
-
-                // Descrição
-                Expanded(
-                  child: Text(
-                    suggestion.description,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: colors.onSurfaceVariant,
-                      height: 1.4,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-
-                const SizedBox(height: 12),
-
-                // Botões de ação
-                Row(
-                  children: [
-                    // Info extra
-                    if (suggestion.scheduledTime != null)
+        child: Stack(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Header com tipo e dificuldade
+                  Row(
+                    children: [
+                      // Badge de tipo
                       Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 8,
                           vertical: 4,
                         ),
                         decoration: BoxDecoration(
-                          color: colors.surfaceContainerHighest,
+                          color: isHabit
+                              ? const Color(0xFF8B5CF6).withOpacity(0.2)
+                              : const Color(0xFF06B6D4).withOpacity(0.2),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Icon(
-                              Icons.schedule_rounded,
+                              isHabit
+                                  ? Icons.repeat_rounded
+                                  : Icons.task_alt_rounded,
                               size: 12,
-                              color: colors.onSurfaceVariant,
+                              color: isHabit
+                                  ? const Color(0xFF8B5CF6)
+                                  : const Color(0xFF06B6D4),
                             ),
                             const SizedBox(width: 4),
                             Text(
-                              suggestion.scheduledTime!,
+                              isHabit ? 'HÁBITO' : 'TAREFA',
                               style: TextStyle(
-                                fontSize: 10,
-                                color: colors.onSurfaceVariant,
+                                fontSize: 9,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 0.5,
+                                color: isHabit
+                                    ? const Color(0xFF8B5CF6)
+                                    : const Color(0xFF06B6D4),
                               ),
                             ),
                           ],
                         ),
                       ),
-                    const Spacer(),
-                    // Botão adicionar
-                    GestureDetector(
-                      onTap: isAdded ? null : () => _addSuggestion(suggestion),
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 8,
+                      const SizedBox(width: 8),
+                      // Badge de dificuldade
+                      _buildDifficultyBadge(suggestion.difficulty),
+                    ],
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  // Título
+                  Padding(
+                    padding: const EdgeInsets.only(right: 24.0),
+                    child: Text(
+                      suggestion.title,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: colors.onSurface,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+
+                  const SizedBox(height: 6),
+
+                  // Descrição
+                  Expanded(
+                    child: Text(
+                      suggestion.description,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: colors.onSurfaceVariant,
+                        height: 1.4,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  // Botões de ação
+                  Row(
+                    children: [
+                      // Info extra
+                      if (suggestion.scheduledTime != null)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: colors.surfaceContainerHighest,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.schedule_rounded,
+                                size: 12,
+                                color: colors.onSurfaceVariant,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                suggestion.scheduledTime!,
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  color: colors.onSurfaceVariant,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                        decoration: BoxDecoration(
-                          color: isAdded
-                              ? colors.surfaceContainerHighest
-                              : cardColor,
-                          borderRadius: BorderRadius.circular(12),
-                          boxShadow: isAdded
-                              ? null
-                              : [
-                                  BoxShadow(
-                                    color: cardColor.withOpacity(0.3),
-                                    blurRadius: 8,
-                                    offset: const Offset(0, 2),
-                                  ),
-                                ],
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              isAdded
-                                  ? Icons.check_rounded
-                                  : Icons.add_rounded,
-                              size: 16,
-                              color: isAdded
-                                  ? colors.onSurfaceVariant
-                                  : Colors.white,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              isAdded ? 'Adicionado' : 'Adicionar',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
+                      const Spacer(),
+                      // Botão adicionar
+                      GestureDetector(
+                        onTap: isAdded
+                            ? null
+                            : () => _addSuggestion(suggestion),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 8,
+                          ),
+                          decoration: BoxDecoration(
+                            color: isAdded
+                                ? colors.surfaceContainerHighest
+                                : cardColor,
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: isAdded
+                                ? null
+                                : [
+                                    BoxShadow(
+                                      color: cardColor.withOpacity(0.3),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ],
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                isAdded
+                                    ? Icons.check_rounded
+                                    : Icons.add_rounded,
+                                size: 16,
                                 color: isAdded
                                     ? colors.onSurfaceVariant
                                     : Colors.white,
                               ),
-                            ),
-                          ],
+                              const SizedBox(width: 4),
+                              Text(
+                                isAdded ? 'Adicionado' : 'Adicionar',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: isAdded
+                                      ? colors.onSurfaceVariant
+                                      : Colors.white,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
-                    ),
-                  ],
-                ),
-              ],
+                    ],
+                  ),
+                ],
+              ),
             ),
-          ),
+            // Ícone da sugestão (Fundo)
+            Positioned(
+              right: 12,
+              top: 12,
+              child: Opacity(
+                opacity: 0.1,
+                child: Icon(suggestion.icon, color: cardColor, size: 80),
+              ),
+            ),
+            // Botão Fechar (Topo Direito)
+            Positioned(
+              right: 8,
+              top: 8,
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () => _dismissSuggestion(suggestion),
+                  borderRadius: BorderRadius.circular(20),
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: colors.surface.withOpacity(0.5),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.close_rounded,
+                      size: 18,
+                      color: colors.onSurfaceVariant.withOpacity(0.7),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -636,10 +634,7 @@ class _HomeSuggestionsWidgetState extends ConsumerState<HomeSuggestionsWidget>
           Container(
             width: 6,
             height: 6,
-            decoration: BoxDecoration(
-              color: color,
-              shape: BoxShape.circle,
-            ),
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
           ),
           const SizedBox(width: 4),
           Text(
@@ -662,9 +657,7 @@ class _HomeSuggestionsWidgetState extends ConsumerState<HomeSuggestionsWidget>
       decoration: BoxDecoration(
         color: colors.surface,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: colors.outline.withOpacity(0.1),
-        ),
+        border: Border.all(color: colors.outline.withOpacity(0.1)),
       ),
       child: Center(
         child: Column(
@@ -681,10 +674,7 @@ class _HomeSuggestionsWidgetState extends ConsumerState<HomeSuggestionsWidget>
             const SizedBox(height: 12),
             Text(
               'Carregando sugestões...',
-              style: TextStyle(
-                fontSize: 12,
-                color: colors.onSurfaceVariant,
-              ),
+              style: TextStyle(fontSize: 12, color: colors.onSurfaceVariant),
             ),
           ],
         ),
@@ -699,9 +689,7 @@ class _HomeSuggestionsWidgetState extends ConsumerState<HomeSuggestionsWidget>
       decoration: BoxDecoration(
         color: colors.surface,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: colors.outline.withOpacity(0.1),
-        ),
+        border: Border.all(color: colors.outline.withOpacity(0.1)),
       ),
       child: Column(
         children: [
@@ -723,10 +711,7 @@ class _HomeSuggestionsWidgetState extends ConsumerState<HomeSuggestionsWidget>
           const SizedBox(height: 6),
           Text(
             'Continue praticando seus hábitos e tarefas',
-            style: TextStyle(
-              fontSize: 12,
-              color: colors.onSurfaceVariant,
-            ),
+            style: TextStyle(fontSize: 12, color: colors.onSurfaceVariant),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 16),
@@ -735,9 +720,7 @@ class _HomeSuggestionsWidgetState extends ConsumerState<HomeSuggestionsWidget>
               HapticFeedback.lightImpact();
               Navigator.push(
                 context,
-                MaterialPageRoute(
-                  builder: (_) => const SuggestionsScreen(),
-                ),
+                MaterialPageRoute(builder: (_) => const SuggestionsScreen()),
               );
             },
             child: Container(

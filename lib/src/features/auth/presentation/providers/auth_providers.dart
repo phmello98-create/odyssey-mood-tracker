@@ -12,8 +12,10 @@ import '../../data/repositories/firebase_auth_repository.dart';
 
 /// Provider para SharedPreferences (deve ser inicializado no main)
 final sharedPreferencesProvider = Provider<SharedPreferences>((ref) {
-  throw UnimplementedError('SharedPreferences não foi inicializado. '
-      'Use ProviderScope overrides no main.dart');
+  throw UnimplementedError(
+    'SharedPreferences não foi inicializado. '
+    'Use ProviderScope overrides no main.dart',
+  );
 });
 
 /// Provider para o AuthRepository
@@ -59,15 +61,9 @@ class AuthControllerState {
   final AuthResult? lastResult;
   final bool isLoading;
 
-  const AuthControllerState({
-    this.lastResult,
-    this.isLoading = false,
-  });
+  const AuthControllerState({this.lastResult, this.isLoading = false});
 
-  AuthControllerState copyWith({
-    AuthResult? lastResult,
-    bool? isLoading,
-  }) {
+  AuthControllerState copyWith({AuthResult? lastResult, bool? isLoading}) {
     return AuthControllerState(
       lastResult: lastResult ?? this.lastResult,
       isLoading: isLoading ?? this.isLoading,
@@ -76,7 +72,7 @@ class AuthControllerState {
 }
 
 /// Controller para operações de autenticação
-/// 
+///
 /// Gerencia o estado de loading e resultados das operações,
 /// delegando a lógica real para o AuthRepository.
 class AuthController extends StateNotifier<AuthControllerState> {
@@ -87,28 +83,22 @@ class AuthController extends StateNotifier<AuthControllerState> {
   /// Login com Google
   Future<AuthResult> signInWithGoogle() async {
     state = state.copyWith(isLoading: true);
-    
+
     final result = await _authRepository.signInWithGoogle();
-    
-    state = state.copyWith(
-      isLoading: false,
-      lastResult: result,
-    );
-    
+
+    state = state.copyWith(isLoading: false, lastResult: result);
+
     return result;
   }
 
   /// Login com Email/Password
   Future<AuthResult> signInWithEmail(String email, String password) async {
     state = state.copyWith(isLoading: true);
-    
+
     final result = await _authRepository.signInWithEmail(email, password);
-    
-    state = state.copyWith(
-      isLoading: false,
-      lastResult: result,
-    );
-    
+
+    state = state.copyWith(isLoading: false, lastResult: result);
+
     return result;
   }
 
@@ -119,88 +109,81 @@ class AuthController extends StateNotifier<AuthControllerState> {
     String displayName,
   ) async {
     state = state.copyWith(isLoading: true);
-    
+
     final result = await _authRepository.signUpWithEmail(
       email,
       password,
       displayName,
     );
-    
-    state = state.copyWith(
-      isLoading: false,
-      lastResult: result,
-    );
-    
+
+    state = state.copyWith(isLoading: false, lastResult: result);
+
     return result;
   }
 
   /// Entrar como visitante
   Future<AuthResult> signInAsGuest() async {
     state = state.copyWith(isLoading: true);
-    
+
     final result = await _authRepository.signInAsGuest();
-    
-    state = state.copyWith(
-      isLoading: false,
-      lastResult: result,
-    );
-    
+
+    state = state.copyWith(isLoading: false, lastResult: result);
+
     return result;
   }
 
   /// Recuperar senha
   Future<AuthResult> resetPassword(String email) async {
     state = state.copyWith(isLoading: true);
-    
+
     final result = await _authRepository.resetPassword(email);
-    
-    state = state.copyWith(
-      isLoading: false,
-      lastResult: result,
-    );
-    
+
+    state = state.copyWith(isLoading: false, lastResult: result);
+
     return result;
   }
 
   /// Logout
   Future<AuthResult> signOut() async {
     state = state.copyWith(isLoading: true);
-    
+
     final result = await _authRepository.signOut();
-    
-    state = state.copyWith(
-      isLoading: false,
-      lastResult: result,
-    );
-    
+
+    state = state.copyWith(isLoading: false, lastResult: result);
+
     return result;
   }
 
   /// Deletar conta
   Future<AuthResult> deleteAccount() async {
     state = state.copyWith(isLoading: true);
-    
+
     final result = await _authRepository.deleteAccount();
-    
-    state = state.copyWith(
-      isLoading: false,
-      lastResult: result,
-    );
-    
+
+    state = state.copyWith(isLoading: false, lastResult: result);
+
     return result;
   }
 
-  /// Converter conta guest em conta real
+  /// Converter conta guest em conta real com Email/Senha
   Future<AuthResult> upgradeGuestAccount(String email, String password) async {
     state = state.copyWith(isLoading: true);
-    
+
     final result = await _authRepository.upgradeGuestAccount(email, password);
-    
-    state = state.copyWith(
-      isLoading: false,
-      lastResult: result,
-    );
-    
+
+    state = state.copyWith(isLoading: false, lastResult: result);
+
+    return result;
+  }
+
+  /// Converter conta guest em conta real com Google
+  Future<AuthResult> upgradeGuestWithGoogle() async {
+    state = state.copyWith(isLoading: true);
+
+    final result = await _authRepository.upgradeGuestWithGoogle();
+
+    state = state.copyWith(isLoading: false, lastResult: result);
+
     return result;
   }
 
@@ -210,17 +193,14 @@ class AuthController extends StateNotifier<AuthControllerState> {
     String? photoURL,
   }) async {
     state = state.copyWith(isLoading: true);
-    
+
     final result = await _authRepository.updateProfile(
       displayName: displayName,
       photoURL: photoURL,
     );
-    
-    state = state.copyWith(
-      isLoading: false,
-      lastResult: result,
-    );
-    
+
+    state = state.copyWith(isLoading: false, lastResult: result);
+
     return result;
   }
 
@@ -243,9 +223,9 @@ class AuthController extends StateNotifier<AuthControllerState> {
 /// Provider para o AuthController
 final authControllerProvider =
     StateNotifierProvider<AuthController, AuthControllerState>((ref) {
-  final authRepository = ref.watch(authRepositoryProvider);
-  return AuthController(authRepository);
-});
+      final authRepository = ref.watch(authRepositoryProvider);
+      return AuthController(authRepository);
+    });
 
 /// Provider para estado de loading
 final authLoadingProvider = Provider<bool>((ref) {

@@ -11,7 +11,7 @@ import '../../domain/models/account_type.dart';
 import '../../domain/repositories/auth_repository.dart';
 
 /// Implementação do AuthRepository usando Firebase Auth
-/// 
+///
 /// Gerencia autenticação com Firebase Auth e Google Sign-In,
 /// com suporte a modo visitante (local-only).
 class FirebaseAuthRepository implements AuthRepository {
@@ -22,7 +22,7 @@ class FirebaseAuthRepository implements AuthRepository {
 
   // Controllers para streams
   final _authStateController = StreamController<OdysseyUser?>.broadcast();
-  
+
   // Cache do usuário atual
   OdysseyUser? _cachedUser;
 
@@ -30,15 +30,16 @@ class FirebaseAuthRepository implements AuthRepository {
     firebase_auth.FirebaseAuth? firebaseAuth,
     GoogleSignIn? googleSignIn,
     required SharedPreferences prefs,
-  })  : _firebaseAuth = firebaseAuth ?? _getFirebaseAuthOrNull(),
-        _googleSignIn = googleSignIn ?? GoogleSignIn(scopes: ['email', 'profile']),
-        _prefs = prefs,
-        _uuid = const Uuid() {
+  }) : _firebaseAuth = firebaseAuth ?? _getFirebaseAuthOrNull(),
+       _googleSignIn =
+           googleSignIn ?? GoogleSignIn(scopes: ['email', 'profile']),
+       _prefs = prefs,
+       _uuid = const Uuid() {
     // Apenas escutar mudanças se Firebase estiver disponível
     if (_firebaseAuth != null) {
       _firebaseAuth.authStateChanges().listen(_handleAuthStateChange);
     }
-    
+
     // Inicializar com estado atual
     _initializeAuthState();
   }
@@ -57,7 +58,8 @@ class FirebaseAuthRepository implements AuthRepository {
   AuthResult _requireFirebase(String operation) {
     if (_firebaseAuth == null) {
       return const AuthResult.failure(
-        message: 'Firebase não está disponível nesta plataforma. Use modo visitante.',
+        message:
+            'Firebase não está disponível nesta plataforma. Use modo visitante.',
         errorCode: 'firebase-unavailable',
       );
     }
@@ -142,7 +144,9 @@ class FirebaseAuthRepository implements AuthRepository {
         idToken: googleAuth.idToken,
       );
 
-      final userCredential = await _firebaseAuth.signInWithCredential(credential);
+      final userCredential = await _firebaseAuth.signInWithCredential(
+        credential,
+      );
       final user = _mapFirebaseUser(userCredential.user!);
 
       // Salvar localmente
@@ -209,7 +213,7 @@ class FirebaseAuthRepository implements AuthRepository {
 
       // Atualizar displayName
       await userCredential.user!.updateDisplayName(displayName);
-      
+
       // Enviar email de verificação
       await userCredential.user!.sendEmailVerification();
 
@@ -243,18 +247,59 @@ class FirebaseAuthRepository implements AuthRepository {
 
   @override
   Future<AuthResult> signInAsGuest() async {
+    // Verificar se Firebase está disponível
+    if (_firebaseAuth == null) {
+      // Fallback para modo local se Firebase não disponível
+      try {
+        final guestUid = 'guest_${_uuid.v4()}';
+        final guestUser = OdysseyUser.guest(
+          uid: guestUid,
+          displayName: 'Visitante',
+        );
+
+        await _saveLocalAuth(guestUser, isGuest: true);
+        _cachedUser = guestUser;
+        _authStateController.add(guestUser);
+
+        return AuthResult.success(user: guestUser);
+      } catch (e) {
+        return AuthResult.failure(
+          message: 'Erro ao entrar como visitante',
+          errorCode: 'guest_error',
+          exception: e,
+        );
+      }
+    }
+
+    // Usar Firebase Anonymous Auth
     try {
-      final guestUid = 'guest_${_uuid.v4()}';
-      final guestUser = OdysseyUser.guest(
-        uid: guestUid,
+      final userCredential = await _firebaseAuth.signInAnonymously();
+      final firebaseUser = userCredential.user!;
+
+      final user = OdysseyUser(
+        uid: firebaseUser.uid,
         displayName: 'Visitante',
+        email: null,
+        photoURL: null,
+        isGuest: true, // Marcamos como guest mesmo com UID Firebase
+        isPro: false,
+        accountType: AccountType.free,
+        createdAt: firebaseUser.metadata.creationTime ?? DateTime.now(),
+        emailVerified: false,
+        authProvider: 'anonymous',
       );
 
-      await _saveLocalAuth(guestUser, isGuest: true);
-      _cachedUser = guestUser;
-      _authStateController.add(guestUser);
+      await _saveLocalAuth(user, isGuest: true);
+      _cachedUser = user;
+      _authStateController.add(user);
 
-      return AuthResult.success(user: guestUser);
+      return AuthResult.success(user: user);
+    } on firebase_auth.FirebaseAuthException catch (e) {
+      return AuthResult.failure(
+        message: _getErrorMessage(e.code),
+        errorCode: e.code,
+        exception: e,
+      );
     } catch (e) {
       return AuthResult.failure(
         message: 'Erro ao entrar como visitante',
@@ -268,9 +313,7 @@ class FirebaseAuthRepository implements AuthRepository {
   Future<AuthResult> resetPassword(String email) async {
     try {
       await _fb.sendPasswordResetEmail(email: email.trim());
-      return const AuthResult.success(
-        message: 'Email de recuperação enviado!',
-      );
+      return const AuthResult.success(message: 'Email de recuperação enviado!');
     } on firebase_auth.FirebaseAuthException catch (e) {
       return AuthResult.failure(
         message: _getErrorMessage(e.code),
@@ -291,13 +334,13 @@ class FirebaseAuthRepository implements AuthRepository {
     try {
       // Logout do Firebase
       await _fb.signOut();
-      
+
       // Logout do Google
       await _googleSignIn.signOut();
-      
+
       // Limpar dados locais
       await _clearLocalAuth();
-      
+
       _cachedUser = null;
       _authStateController.add(null);
 
@@ -323,13 +366,12 @@ class FirebaseAuthRepository implements AuthRepository {
       _cachedUser = null;
       _authStateController.add(null);
 
-      return const AuthResult.success(
-        message: 'Conta deletada com sucesso',
-      );
+      return const AuthResult.success(message: 'Conta deletada com sucesso');
     } on firebase_auth.FirebaseAuthException catch (e) {
       if (e.code == 'requires-recent-login') {
         return const AuthResult.failure(
-          message: 'Por segurança, faça login novamente antes de deletar a conta',
+          message:
+              'Por segurança, faça login novamente antes de deletar a conta',
           errorCode: 'requires-recent-login',
         );
       }
@@ -350,7 +392,43 @@ class FirebaseAuthRepository implements AuthRepository {
   @override
   Future<AuthResult> upgradeGuestAccount(String email, String password) async {
     try {
-      // Criar nova conta
+      final currentFirebaseUser = _firebaseAuth?.currentUser;
+
+      // Verificar se usuário atual é anônimo do Firebase
+      if (currentFirebaseUser != null && currentFirebaseUser.isAnonymous) {
+        // Usar linkWithCredential para manter o mesmo UID
+        final credential = firebase_auth.EmailAuthProvider.credential(
+          email: email.trim(),
+          password: password,
+        );
+
+        final userCredential = await currentFirebaseUser.linkWithCredential(
+          credential,
+        );
+
+        // Preservar nome se tiver
+        final guestName = _prefs.getString('userName');
+        if (guestName != null && guestName != 'Visitante') {
+          await userCredential.user!.updateDisplayName(guestName);
+        }
+
+        // Enviar verificação de email
+        await userCredential.user!.sendEmailVerification();
+
+        await userCredential.user!.reload();
+        final user = _mapFirebaseUser(_firebaseAuth!.currentUser!);
+        await _saveLocalAuth(user, isGuest: false);
+        _cachedUser = user;
+        _authStateController.add(user);
+
+        return AuthResult.success(
+          user: user,
+          message: 'Conta vinculada com sucesso! Verifique seu email.',
+        );
+      }
+
+      // Fallback: criar nova conta se não for anônimo do Firebase
+      // (para usuários guest locais antigos)
       final userCredential = await _fb.createUserWithEmailAndPassword(
         email: email.trim(),
         password: password,
@@ -376,6 +454,20 @@ class FirebaseAuthRepository implements AuthRepository {
         message: 'Conta criada com sucesso! Verifique seu email.',
       );
     } on firebase_auth.FirebaseAuthException catch (e) {
+      // Tratar caso específico de email já em uso
+      if (e.code == 'email-already-in-use') {
+        return const AuthResult.failure(
+          message:
+              'Este email já está vinculado a outra conta. Faça login com ele.',
+          errorCode: 'email-already-in-use',
+        );
+      }
+      if (e.code == 'credential-already-in-use') {
+        return const AuthResult.failure(
+          message: 'Esta credencial já está em uso por outra conta.',
+          errorCode: 'credential-already-in-use',
+        );
+      }
       return AuthResult.failure(
         message: _getErrorMessage(e.code),
         errorCode: e.code,
@@ -384,6 +476,85 @@ class FirebaseAuthRepository implements AuthRepository {
     } catch (e) {
       return AuthResult.failure(
         message: 'Erro ao criar conta',
+        errorCode: 'unknown',
+        exception: e,
+      );
+    }
+  }
+
+  @override
+  Future<AuthResult> upgradeGuestWithGoogle() async {
+    // Verificar se Firebase está disponível
+    if (_firebaseAuth == null) {
+      return const AuthResult.failure(
+        message: 'Firebase não está disponível nesta plataforma',
+        errorCode: 'firebase-unavailable',
+      );
+    }
+
+    try {
+      final currentFirebaseUser = _firebaseAuth.currentUser;
+
+      // Fazer login do Google para obter credencial
+      await _googleSignIn.signOut(); // Forçar seletor de conta
+      final googleUser = await _googleSignIn.signIn();
+      if (googleUser == null) {
+        return const AuthResult.failure(
+          message: 'Login cancelado',
+          errorCode: 'cancelled',
+        );
+      }
+
+      final googleAuth = await googleUser.authentication;
+      final credential = firebase_auth.GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+
+      // Verificar se usuário atual é anônimo do Firebase
+      if (currentFirebaseUser != null && currentFirebaseUser.isAnonymous) {
+        // Usar linkWithCredential para manter o mesmo UID
+        final userCredential = await currentFirebaseUser.linkWithCredential(
+          credential,
+        );
+
+        final user = _mapFirebaseUser(userCredential.user!);
+        await _saveLocalAuth(user, isGuest: false);
+        _cachedUser = user;
+        _authStateController.add(user);
+
+        return AuthResult.success(
+          user: user,
+          message: 'Conta Google vinculada com sucesso!',
+        );
+      }
+
+      // Fallback: login normal com Google se não for anônimo
+      final userCredential = await _firebaseAuth.signInWithCredential(
+        credential,
+      );
+      final user = _mapFirebaseUser(userCredential.user!);
+
+      await _saveLocalAuth(user, isGuest: false);
+      _cachedUser = user;
+      _authStateController.add(user);
+
+      return AuthResult.success(user: user);
+    } on firebase_auth.FirebaseAuthException catch (e) {
+      if (e.code == 'credential-already-in-use') {
+        return const AuthResult.failure(
+          message: 'Esta conta Google já está vinculada a outro usuário.',
+          errorCode: 'credential-already-in-use',
+        );
+      }
+      return AuthResult.failure(
+        message: _getErrorMessage(e.code),
+        errorCode: e.code,
+        exception: e,
+      );
+    } catch (e) {
+      return AuthResult.failure(
+        message: 'Erro ao vincular conta Google',
         errorCode: 'unknown',
         exception: e,
       );
@@ -456,9 +627,7 @@ class FirebaseAuthRepository implements AuthRepository {
       }
 
       await user.sendEmailVerification();
-      return const AuthResult.success(
-        message: 'Email de verificação enviado!',
-      );
+      return const AuthResult.success(message: 'Email de verificação enviado!');
     } on firebase_auth.FirebaseAuthException catch (e) {
       return AuthResult.failure(
         message: _getErrorMessage(e.code),
@@ -525,19 +694,19 @@ class FirebaseAuthRepository implements AuthRepository {
     await _prefs.setBool('isGuest', isGuest);
     await _prefs.setString('uid', user.uid);
     await _prefs.setString('userName', user.displayName);
-    
+
     if (user.email != null) {
       await _prefs.setString('userEmail', user.email!);
     } else {
       await _prefs.remove('userEmail');
     }
-    
+
     if (user.photoURL != null) {
       await _prefs.setString('userPhoto', user.photoURL!);
     } else {
       await _prefs.remove('userPhoto');
     }
-    
+
     if (isGuest) {
       await _prefs.setString('guestUid', user.uid);
     } else {

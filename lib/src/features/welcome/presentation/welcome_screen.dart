@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:odyssey/src/features/welcome/services/welcome_service.dart';
 import 'package:odyssey/src/features/home/presentation/odyssey_home.dart';
-import 'package:odyssey/src/features/auth/presentation/health_data_consent_screen.dart';
 import 'package:odyssey/src/providers/locale_provider.dart';
 
 /// Dados de uma página do onboarding
@@ -157,51 +156,27 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen>
 
     if (!mounted) return;
 
-    // Verificar se precisa de consentimento LGPD
-    final hasConsent = await HealthDataConsentScreen.hasConsent();
+    // Dados são armazenados apenas localmente no dispositivo do usuário
+    // Não há coleta de dados pelo app, então não precisamos de tela de consentimento
 
-    if (!hasConsent && mounted) {
-      // Mostrar tela de consentimento antes de ir para home
-      final accepted = await Navigator.push<bool>(
-        context,
-        MaterialPageRoute(builder: (_) => const HealthDataConsentScreen()),
-      );
-
-      // Se não aceitou, mostra aviso mas continua (dados ficam apenas locais)
-      if (accepted != true && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              _isPortuguese
-                  ? 'Você pode dar seu consentimento depois nas configurações.'
-                  : 'You can give your consent later in settings.',
+    Navigator.of(context).pushReplacement(
+      PageRouteBuilder(
+        pageBuilder: (_, __, ___) => const OdysseyHome(),
+        transitionsBuilder: (_, anim, __, child) {
+          return FadeTransition(
+            opacity: CurvedAnimation(parent: anim, curve: Curves.easeOut),
+            child: SlideTransition(
+              position: Tween<Offset>(
+                begin: const Offset(0, 0.05),
+                end: Offset.zero,
+              ).animate(CurvedAnimation(parent: anim, curve: Curves.easeOut)),
+              child: child,
             ),
-            duration: const Duration(seconds: 4),
-          ),
-        );
-      }
-    }
-
-    if (mounted) {
-      Navigator.of(context).pushReplacement(
-        PageRouteBuilder(
-          pageBuilder: (_, __, ___) => const OdysseyHome(),
-          transitionsBuilder: (_, anim, __, child) {
-            return FadeTransition(
-              opacity: CurvedAnimation(parent: anim, curve: Curves.easeOut),
-              child: SlideTransition(
-                position: Tween<Offset>(
-                  begin: const Offset(0, 0.05),
-                  end: Offset.zero,
-                ).animate(CurvedAnimation(parent: anim, curve: Curves.easeOut)),
-                child: child,
-              ),
-            );
-          },
-          transitionDuration: const Duration(milliseconds: 500),
-        ),
-      );
-    }
+          );
+        },
+        transitionDuration: const Duration(milliseconds: 500),
+      ),
+    );
   }
 
   @override
@@ -272,35 +247,33 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen>
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          // Logo pequeno
+          // Logo atualizado
           Row(
             children: [
-              Container(
-                width: 32,
-                height: 32,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(8),
-                  gradient: LinearGradient(
-                    colors: [
-                      Colors.white.withValues(alpha: 0.2),
-                      Colors.white.withValues(alpha: 0.1),
-                    ],
-                  ),
-                ),
+              Hero(
+                tag: 'appLogo',
                 child: Image.asset(
-                  'assets/app_icon/icon_foreground.png',
-                  width: 24,
-                  height: 24,
+                  'assets/images/odyssey_logo_transparent.png',
+                  width: 36,
+                  height: 36,
                 ),
               ),
               const SizedBox(width: 10),
-              Text(
-                'ODYSSEY',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.white.withValues(alpha: 0.9),
-                  letterSpacing: 2,
+              ShaderMask(
+                shaderCallback: (bounds) => LinearGradient(
+                  colors: [
+                    Colors.white,
+                    _pages[_currentPage].gradientColors[0],
+                  ],
+                ).createShader(bounds),
+                child: const Text(
+                  'ODYSSEY',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white,
+                    letterSpacing: 3,
+                  ),
                 ),
               ),
             ],
@@ -319,15 +292,15 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen>
                   color: Colors.white.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.1),
+                    color: Colors.white.withValues(alpha: 0.15),
                   ),
                 ),
                 child: Text(
                   _isPortuguese ? 'Pular' : 'Skip',
                   style: TextStyle(
                     fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                    color: Colors.white.withValues(alpha: 0.7),
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white.withValues(alpha: 0.8),
                   ),
                 ),
               ),

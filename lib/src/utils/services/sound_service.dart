@@ -45,6 +45,7 @@ class SoundService {
       stopAmbientSound();
       stopTickSound();
     }
+    _saveSettings(); // Persist the setting
   }
 
   double get volume => _volume;
@@ -271,6 +272,8 @@ class SoundService {
   Future<void> _loadSettings() async {
     try {
       final prefs = await SharedPreferences.getInstance();
+      // Carregar preferência de som (desabilitado por padrão na primeira execução)
+      _soundEnabled = prefs.getBool('sound_enabled') ?? true;
       _ambientVolume = prefs.getDouble('ambient_volume') ?? 0.3;
       _tickVolume = prefs.getDouble('tick_volume') ?? 0.3;
       _isTickingEnabled = prefs.getBool('tick_enabled') ?? false;
@@ -284,6 +287,7 @@ class SoundService {
   Future<void> _saveSettings() async {
     try {
       final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('sound_enabled', _soundEnabled);
       await prefs.setDouble('ambient_volume', _ambientVolume);
       await prefs.setDouble('tick_volume', _tickVolume);
       await prefs.setBool('tick_enabled', _isTickingEnabled);

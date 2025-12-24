@@ -19,6 +19,7 @@ import 'package:odyssey/src/localization/app_localizations.dart';
 import 'package:odyssey/src/features/onboarding/onboarding.dart';
 import 'package:odyssey/src/features/onboarding/services/showcase_service.dart'
     as showcase;
+import 'package:odyssey/src/features/auth/presentation/providers/auth_providers.dart';
 import '../data/gamification_repository.dart';
 import '../domain/user_stats.dart';
 import '../domain/user_skills.dart';
@@ -147,6 +148,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
               // Header elegante
               SliverToBoxAdapter(child: _buildProfileHeader(stats, colors)),
 
+              // Banner de upgrade para Guest
+              SliverToBoxAdapter(child: _buildGuestUpgradeBanner()),
+
               // Stats Carousel horizontal
               SliverToBoxAdapter(
                 child: Padding(
@@ -242,6 +246,109 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
       onSettings: () => _navigateToScreen(const SettingsScreen()),
       onAvatarTap: () => _showEditProfileDialog(colors),
       onBannerTap: () => _showBannerOptions(colors),
+    );
+  }
+
+  /// Banner de upgrade para usuários Guest
+  Widget _buildGuestUpgradeBanner() {
+    final user = ref.watch(currentUserProvider);
+
+    // Só mostrar para guests
+    if (user == null || !user.isGuest) {
+      return const SizedBox.shrink();
+    }
+
+    final colors = Theme.of(context).colorScheme;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [colors.primaryContainer, colors.secondaryContainer],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: colors.primary.withValues(alpha: 0.3),
+            width: 1.5,
+          ),
+        ),
+        child: Column(
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: colors.surface,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    Icons.account_circle_outlined,
+                    color: colors.primary,
+                    size: 28,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '👤 Modo Visitante',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: colors.onPrimaryContainer,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Seus dados estão salvos apenas neste dispositivo',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: colors.onPrimaryContainer.withValues(
+                            alpha: 0.7,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: FilledButton.icon(
+                    onPressed: () => _showUpgradeDialog(colors),
+                    icon: const Icon(Icons.email_outlined, size: 18),
+                    label: const Text('Email', style: TextStyle(fontSize: 13)),
+                    style: FilledButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: FilledButton.tonalIcon(
+                    onPressed: () => _handleGoogleUpgrade(),
+                    icon: const Icon(Icons.g_mobiledata, size: 22),
+                    label: const Text('Google', style: TextStyle(fontSize: 13)),
+                    style: FilledButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -691,6 +798,224 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
         ),
       ),
     );
+  }
+
+  /// Dialog de upgrade com Email/Senha
+  void _showUpgradeDialog(ColorScheme colors) {
+    final emailController = TextEditingController();
+    final passwordController = TextEditingController();
+    final confirmPasswordController = TextEditingController();
+    bool obscurePassword = true;
+    bool obscureConfirm = true;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: colors.surface,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setModalState) => Padding(
+          padding: EdgeInsets.fromLTRB(
+            24,
+            24,
+            24,
+            MediaQuery.of(context).viewInsets.bottom + 24,
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Handle
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: colors.outlineVariant,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                // Title
+                Text(
+                  '🔐 Criar Conta Permanente',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Seus dados serão preservados e sincronizados na nuvem.',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: colors.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                // Email field
+                TextField(
+                  controller: emailController,
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: InputDecoration(
+                    labelText: 'Email',
+                    prefixIcon: const Icon(Icons.email_outlined),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                // Password field
+                TextField(
+                  controller: passwordController,
+                  obscureText: obscurePassword,
+                  decoration: InputDecoration(
+                    labelText: 'Senha',
+                    prefixIcon: const Icon(Icons.lock_outlined),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        obscurePassword
+                            ? Icons.visibility_outlined
+                            : Icons.visibility_off_outlined,
+                      ),
+                      onPressed: () {
+                        setModalState(() => obscurePassword = !obscurePassword);
+                      },
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                // Confirm password field
+                TextField(
+                  controller: confirmPasswordController,
+                  obscureText: obscureConfirm,
+                  decoration: InputDecoration(
+                    labelText: 'Confirmar Senha',
+                    prefixIcon: const Icon(Icons.lock_outlined),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        obscureConfirm
+                            ? Icons.visibility_outlined
+                            : Icons.visibility_off_outlined,
+                      ),
+                      onPressed: () {
+                        setModalState(() => obscureConfirm = !obscureConfirm);
+                      },
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                // Create button
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    onPressed: () async {
+                      final email = emailController.text.trim();
+                      final password = passwordController.text;
+                      final confirm = confirmPasswordController.text;
+
+                      if (email.isEmpty ||
+                          password.isEmpty ||
+                          confirm.isEmpty) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Preencha todos os campos'),
+                          ),
+                        );
+                        return;
+                      }
+
+                      if (password != confirm) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Senhas não conferem')),
+                        );
+                        return;
+                      }
+
+                      if (password.length < 6) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              'Senha deve ter no mínimo 6 caracteres',
+                            ),
+                          ),
+                        );
+                        return;
+                      }
+
+                      Navigator.pop(context);
+
+                      final result = await ref
+                          .read(authControllerProvider.notifier)
+                          .upgradeGuestAccount(email, password);
+
+                      if (mounted) {
+                        if (result.isSuccess) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                result.message ?? 'Conta criada com sucesso!',
+                              ),
+                              backgroundColor: Colors.green,
+                            ),
+                          );
+                        } else {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                result.message ?? 'Erro ao criar conta',
+                              ),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                        }
+                      }
+                    },
+                    icon: const Icon(Icons.check),
+                    label: const Text('Criar Conta'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Upgrade com Google
+  Future<void> _handleGoogleUpgrade() async {
+    final result = await ref
+        .read(authControllerProvider.notifier)
+        .upgradeGuestWithGoogle();
+
+    if (mounted) {
+      if (result.isSuccess) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result.message ?? 'Conta vinculada com sucesso!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result.message ?? 'Erro ao vincular conta Google'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   Widget _buildCompactAvatar(UserStats stats, ColorScheme colors) {

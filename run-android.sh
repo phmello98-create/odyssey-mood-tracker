@@ -143,8 +143,9 @@ echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 
-# Executar o app
-$FLUTTER_BIN run
+# Executar o app (usando flavor prod por padrão)
+# Para dev, use: ./run-dev.sh
+$FLUTTER_BIN run --flavor prod -t lib/main_prod.dart
 
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"

@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Odyssey - Autenticação</title>
+    <style>
+        :root {
+            --bg: #121212;
+            --surface: #1E1E1E;
+            --primary: #BB86FC;
+            --secondary: #03DAC6;
+            --text-primary: #FFFFFF;
+            --text-secondary: #B0B0B0;
+            --error: #CF6679;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text-primary);
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .container {
+            background-color: var(--surface);
+            padding: 40px;
+            border-radius: 16px;
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+            max-width: 400px;
+            width: 100%;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .logo {
+            font-size: 48px;
+            margin-bottom: 20px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: bold;
+        }
+
+        h2 {
+            margin: 0 0 20px 0;
+            font-weight: 500;
+        }
+
+        p {
+            color: var(--text-secondary);
+            line-height: 1.5;
+            margin-bottom: 30px;
+        }
+
+        .status-icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+            display: block;
+        }
+
+        .spinner {
+            border: 4px solid rgba(255, 255, 255, 0.1);
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border-left-color: var(--primary);
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px auto;
+        }
+
+        button {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border: none;
+            padding: 12px 30px;
+            color: #000;
+            font-weight: bold;
+            border-radius: 30px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: opacity 0.2s;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        button:hover {
+            opacity: 0.9;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container" id="container">
+    <div class="logo">Odyssey</div>
+
+    <!-- Loading State -->
+    <div id="loading-view">
+        <div class="spinner"></div>
+        <p>Processando sua solicitação...</p>
+    </div>
+
+    <!-- Success View -->
+    <div id="success-view" class="hidden">
+        <span class="status-icon">🎉</span>
+        <h2 id="success-title">Sucesso!</h2>
+        <p id="success-message">Ação concluída com sucesso.</p>
+        <button onclick="openApp()">Abrir App</button>
+    </div>
+
+    <!-- Error View -->
+    <div id="error-view" class="hidden">
+        <span class="status-icon">⚠️</span>
+        <h2>Ops!</h2>
+        <p id="error-message">Não foi possível completar a ação. O link pode ter expirado.</p>
+    </div>
+
+    <!-- Reset Password View -->
+    <div id="reset-password-view" class="hidden">
+        <h2>Nova Senha</h2>
+        <p>Digite sua nova senha abaixo.</p>
+        <input type="password" id="new-password" placeholder="Nova senha" style="width: 100%; padding: 12px; margin-bottom: 20px; border-radius: 8px; border: 1px solid #444; background: #2C2C2C; color: white;">
+        <button onclick="handleResetPassword()">Salvar Senha</button>
+    </div>
+</div>
+
+<!-- Firebase SDKs -->
+<script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+    import { getAuth, applyActionCode, verifyPasswordResetCode, confirmPasswordReset } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+
+    // Configuração do Firebase (Extraída do google-services.json)
+    const firebaseConfig = {
+        apiKey: "AIzaSyDJ67iq4RuBOEg-iuNdpflBW9Zace57EFM",
+        authDomain: "odyssey-7d931.firebaseapp.com",
+        projectId: "odyssey-7d931",
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+
+    // Get URL parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    const mode = urlParams.get('mode');
+    const actionCode = urlParams.get('oobCode');
+    // const continueUrl = urlParams.get('continueUrl'); // Not used currently
+
+    const loadingView = document.getElementById('loading-view');
+    const successView = document.getElementById('success-view');
+    const errorView = document.getElementById('error-view');
+    const resetPasswordView = document.getElementById('reset-password-view');
+
+    function showError(message) {
+        loadingView.classList.add('hidden');
+        resetPasswordView.classList.add('hidden');
+        successView.classList.add('hidden');
+        errorView.classList.remove('hidden');
+        document.getElementById('error-message').textContent = message || "Ocorreu um erro desconhecido.";
+    }
+
+    function showSuccess(title, message) {
+        loadingView.classList.add('hidden');
+        resetPasswordView.classList.add('hidden');
+        errorView.classList.add('hidden');
+        successView.classList.remove('hidden');
+        document.getElementById('success-title').textContent = title;
+        document.getElementById('success-message').textContent = message;
+    }
+
+    // Main Handler
+    async function handleAction() {
+        if (!mode || !actionCode) {
+            showError("Link inválido ou incompleto.");
+            return;
+        }
+
+        try {
+            switch (mode) {
+                case 'verifyEmail':
+                    await applyActionCode(auth, actionCode);
+                    showSuccess("E-mail Verificado!", "Sua conta foi verificada com sucesso. Você já pode voltar para o Odyssey.");
+                    break;
+
+                case 'resetPassword':
+                    await verifyPasswordResetCode(auth, actionCode);
+                    // Show password input form
+                    loadingView.classList.add('hidden');
+                    resetPasswordView.classList.remove('hidden');
+                    // Handler is separate (handleResetPassword)
+                    break;
+
+                case 'recoverEmail':
+                    await applyActionCode(auth, actionCode);
+                    showSuccess("E-mail Restaurado", "O acesso ao seu e-mail anterior foi restaurado.");
+                    break;
+
+                default:
+                    showError("Ação desconhecida.");
+            }
+        } catch (error) {
+            console.error(error);
+            showError(getErrorMessage(error));
+        }
+    }
+
+    window.handleResetPassword = async () => {
+        const newPassword = document.getElementById('new-password').value;
+        if (!newPassword || newPassword.length < 6) {
+            alert("A senha deve ter pelo menos 6 caracteres.");
+            return;
+        }
+
+        loadingView.classList.remove('hidden');
+        resetPasswordView.classList.add('hidden');
+
+        try {
+            await confirmPasswordReset(auth, actionCode, newPassword);
+            showSuccess("Senha Alterada!", "Sua senha foi atualizada com sucesso. Você já pode fazer login.");
+        } catch (error) {
+            console.error(error);
+            showError(getErrorMessage(error));
+        }
+    };
+
+    window.openApp = () => {
+        // Tenta abrir o app via deep link (se configurado) ou apenas fecha a aba
+        // Como fallback, manda pra home
+        window.location.href = "https://odyssey-7d931.firebaseapp.com";
+    };
+
+    function getErrorMessage(error) {
+        switch (error.code) {
+            case 'auth/expired-action-code': return "Este link expirou. Solicite um novo.";
+            case 'auth/invalid-action-code': return "Link inválido ou já utilizado.";
+            case 'auth/user-disabled': return "Este usuário foi desativado.";
+            case 'auth/user-not-found': return "Usuário não encontrado.";
+            case 'auth/weak-password': return "A senha é muito fraca.";
+            default: return error.message;
+        }
+    }
+
+    // Start
+    handleAction();
+</script>
+
+</body>
+</html>

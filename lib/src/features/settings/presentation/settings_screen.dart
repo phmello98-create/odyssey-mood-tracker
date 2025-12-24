@@ -23,6 +23,8 @@ import 'package:odyssey/src/localization/app_localizations_x.dart';
 import 'package:odyssey/src/features/onboarding/onboarding.dart';
 import 'package:odyssey/src/features/onboarding/services/showcase_service.dart'
     as showcase;
+import 'package:odyssey/src/config/app_flavor.dart';
+import 'package:odyssey/src/features/settings/presentation/dev_tools_screen.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({Key? key}) : super(key: key);
@@ -400,6 +402,21 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   child: _buildSettingsCard([
+                    // Upgrade de Guest (só aparece para guests)
+                    if (ref.watch(currentUserProvider)?.isGuest ?? false) ...[
+                      _buildSettingsTile(
+                        icon: Icons.upgrade_rounded,
+                        iconBgColor: Colors.green,
+                        title: l10n.isEnglish
+                            ? 'Create Permanent Account'
+                            : 'Criar Conta Permanente',
+                        value: l10n.isEnglish
+                            ? 'Keep your data forever'
+                            : 'Mantenha seus dados para sempre',
+                        onTap: () => _showAccountUpgradeDialog(),
+                      ),
+                      _buildDivider(),
+                    ],
                     _buildSettingsTile(
                       icon: Icons.logout_rounded,
                       iconBgColor: Colors.orange,
@@ -484,6 +501,30 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
                   ]),
                 ),
               ),
+
+              // Dev Tools Section (apenas em Dev flavor)
+              if (FlavorConfig.isDev) ...[
+                _buildSectionHeader('🛠️ Ferramentas de Dev'),
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: _buildSettingsCard([
+                      _buildSettingsTile(
+                        icon: Icons.developer_mode,
+                        iconBgColor: Colors.orange,
+                        title: 'Dev Tools',
+                        value: 'Debug, cache, seed data',
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const DevToolsScreen(),
+                          ),
+                        ),
+                      ),
+                    ]),
+                  ),
+                ),
+              ],
 
               const SliverToBoxAdapter(child: SizedBox(height: 40)),
             ],
@@ -1916,6 +1957,380 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
         ],
       ),
     );
+  }
+
+  void _showAccountUpgradeDialog() {
+    final colorScheme = Theme.of(context).colorScheme;
+    final l10n = AppLocalizations.of(context)!;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: colorScheme.surface,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) => Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Handle
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: colorScheme.outlineVariant,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 20),
+            // Icon
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    colorScheme.primaryContainer,
+                    colorScheme.secondaryContainer,
+                  ],
+                ),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.upgrade_rounded,
+                size: 40,
+                color: colorScheme.primary,
+              ),
+            ),
+            const SizedBox(height: 20),
+            // Title
+            Text(
+              l10n.isEnglish
+                  ? 'Create Permanent Account'
+                  : 'Criar Conta Permanente',
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.w700,
+                color: colorScheme.onSurface,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 12),
+            // Description
+            Text(
+              l10n.isEnglish
+                  ? 'Choose how you want to create your permanent account. Your data will be synced to the cloud and preserved.'
+                  : 'Escolha como deseja criar sua conta permanente. Seus dados serão sincronizados na nuvem e preservados.',
+              style: TextStyle(
+                fontSize: 14,
+                color: colorScheme.onSurfaceVariant,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 28),
+            // Email button
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed: () {
+                  Navigator.pop(context);
+                  // Reutilizar o mesmo dialog do ProfileScreen
+                  _showEmailUpgradeDialog(colorScheme);
+                },
+                icon: const Icon(Icons.email_outlined),
+                label: Text(
+                  l10n.isEnglish
+                      ? 'Create with Email/Password'
+                      : 'Criar com Email/Senha',
+                ),
+                style: FilledButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            // Google button
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.tonalIcon(
+                onPressed: () {
+                  Navigator.pop(context);
+                  _handleGoogleUpgrade();
+                },
+                icon: const Icon(Icons.g_mobiledata, size: 24),
+                label: Text(
+                  l10n.isEnglish
+                      ? 'Link Google Account'
+                      : 'Vincular Conta Google',
+                ),
+                style: FilledButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            // Cancel
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(l10n.isEnglish ? 'Cancel' : 'Cancelar'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showEmailUpgradeDialog(ColorScheme colorScheme) {
+    final l10n = AppLocalizations.of(context)!;
+    final emailController = TextEditingController();
+    final passwordController = TextEditingController();
+    final confirmPasswordController = TextEditingController();
+    bool obscurePassword = true;
+    bool obscureConfirm = true;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: colorScheme.surface,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setModalState) => Padding(
+          padding: EdgeInsets.fromLTRB(
+            24,
+            24,
+            24,
+            MediaQuery.of(context).viewInsets.bottom + 24,
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Handle
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: colorScheme.outlineVariant,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                // Title
+                Text(
+                  '🔐 ${l10n.isEnglish ? 'Create Permanent Account' : 'Criar Conta Permanente'}',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  l10n.isEnglish
+                      ? 'Your data will be preserved and synced to the cloud.'
+                      : 'Seus dados serão preservados e sincronizados na nuvem.',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                // Email
+                TextField(
+                  controller: emailController,
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: InputDecoration(
+                    labelText: 'Email',
+                    prefixIcon: const Icon(Icons.email_outlined),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                // Password
+                TextField(
+                  controller: passwordController,
+                  obscureText: obscurePassword,
+                  decoration: InputDecoration(
+                    labelText: l10n.isEnglish ? 'Password' : 'Senha',
+                    prefixIcon: const Icon(Icons.lock_outlined),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        obscurePassword
+                            ? Icons.visibility_outlined
+                            : Icons.visibility_off_outlined,
+                      ),
+                      onPressed: () {
+                        setModalState(() => obscurePassword = !obscurePassword);
+                      },
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                // Confirm Password
+                TextField(
+                  controller: confirmPasswordController,
+                  obscureText: obscureConfirm,
+                  decoration: InputDecoration(
+                    labelText: l10n.isEnglish
+                        ? 'Confirm Password'
+                        : 'Confirmar Senha',
+                    prefixIcon: const Icon(Icons.lock_outlined),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        obscureConfirm
+                            ? Icons.visibility_outlined
+                            : Icons.visibility_off_outlined,
+                      ),
+                      onPressed: () {
+                        setModalState(() => obscureConfirm = !obscureConfirm);
+                      },
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                // Create button
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    onPressed: () async {
+                      final email = emailController.text.trim();
+                      final password = passwordController.text;
+                      final confirm = confirmPasswordController.text;
+
+                      if (email.isEmpty ||
+                          password.isEmpty ||
+                          confirm.isEmpty) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              l10n.isEnglish
+                                  ? 'Fill all fields'
+                                  : 'Preencha todos os campos',
+                            ),
+                          ),
+                        );
+                        return;
+                      }
+
+                      if (password != confirm) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              l10n.isEnglish
+                                  ? 'Passwords do not match'
+                                  : 'Senhas não conferem',
+                            ),
+                          ),
+                        );
+                        return;
+                      }
+
+                      if (password.length < 6) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              l10n.isEnglish
+                                  ? 'Password must be at least 6 characters'
+                                  : 'Senha deve ter no mínimo 6 caracteres',
+                            ),
+                          ),
+                        );
+                        return;
+                      }
+
+                      Navigator.pop(context);
+
+                      final result = await ref
+                          .read(authControllerProvider.notifier)
+                          .upgradeGuestAccount(email, password);
+
+                      if (mounted) {
+                        if (result.isSuccess) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                result.message ??
+                                    (l10n.isEnglish
+                                        ? 'Account created successfully!'
+                                        : 'Conta criada com sucesso!'),
+                              ),
+                              backgroundColor: Colors.green,
+                            ),
+                          );
+                        } else {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                result.message ??
+                                    (l10n.isEnglish
+                                        ? 'Error creating account'
+                                        : 'Erro ao criar conta'),
+                              ),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                        }
+                      }
+                    },
+                    icon: const Icon(Icons.check),
+                    label: Text(
+                      l10n.isEnglish ? 'Create Account' : 'Criar Conta',
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _handleGoogleUpgrade() async {
+    final l10n = AppLocalizations.of(context)!;
+    final result = await ref
+        .read(authControllerProvider.notifier)
+        .upgradeGuestWithGoogle();
+
+    if (mounted) {
+      if (result.isSuccess) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              result.message ??
+                  (l10n.isEnglish
+                      ? 'Account linked successfully!'
+                      : 'Conta vinculada com sucesso!'),
+            ),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              result.message ??
+                  (l10n.isEnglish
+                      ? 'Error linking Google account'
+                      : 'Erro ao vincular conta Google'),
+            ),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   void _showLogoutDialog() {

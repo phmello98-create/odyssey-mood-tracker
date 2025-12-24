@@ -1,3 +1,6 @@
+import 'package:odyssey/src/features/library/domain/book.dart';
+// Removing potential duplicate imports if any.
+
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:isar/isar.dart';
@@ -13,12 +16,13 @@ import 'package:odyssey/src/features/diary/data/models/diary_entry_isar.dart';
 class DataSeeder {
   static final Random _random = Random();
 
-  /// Verifica cada box e popula dados se estiver vazia
-  static Future<void> seedIfEmpty() async {
+  /// Verifica cada box e popula dados se estiver vazia (ou forçado)
+  static Future<void> seedIfEmpty({bool force = false}) async {
     // 1. Mood Records
     try {
-      final moodBox = await Hive.openBox<MoodRecord>('moodRecordsBox_v2');
-      if (moodBox.isEmpty) {
+      final moodBox = await Hive.openBox<MoodRecord>('mood_records');
+      if (moodBox.isEmpty || force) {
+        debugPrint('🌱 Seeding Mood Records...');
         await _seedMoodRecords(moodBox);
       }
     } catch (e) {
@@ -28,19 +32,20 @@ class DataSeeder {
     // 2. Time Tracking
     try {
       final timeBox = await Hive.openBox<TimeTrackingRecord>(
-        'timeTrackingRecordsBox',
+        'time_tracking_records',
       );
-      if (timeBox.isEmpty) {
+      if (timeBox.isEmpty || force) {
+        debugPrint('🌱 Seeding Time Tracking...');
         await _seedTimeTrackingRecords(timeBox);
       }
     } catch (e) {
       debugPrint('Error accessing time tracking box: $e');
     }
 
-    // 3. Notes
+    // 3. Notes (Legacy Hive) - Keeping as is just in case, or skipping if unused
     try {
       final notesBox = await Hive.openBox('notes');
-      if (notesBox.isEmpty) {
+      if (notesBox.isEmpty || force) {
         await _seedNotes(notesBox);
       }
     } catch (e) {
@@ -50,8 +55,8 @@ class DataSeeder {
     // 4. Tasks (dados ricos)
     try {
       final taskBox = await Hive.openBox('tasks');
-      if (taskBox.length < 5) {
-        debugPrint('🌱 Seeding Tasks (Standard Set)...');
+      if (taskBox.length < 5 || force) {
+        debugPrint('🌱 Seeding Tasks...');
         await _seedTasks(taskBox);
       }
     } catch (e) {
@@ -62,8 +67,8 @@ class DataSeeder {
     try {
       if (Hive.isAdapterRegistered(10)) {
         final habitBox = await Hive.openBox<Habit>('habits');
-        if (habitBox.length < 2) {
-          debugPrint('🌱 Seeding Habits (Standard Set)...');
+        if (habitBox.length < 2 || force) {
+          debugPrint('🌱 Seeding Habits...');
           await _seedHabits(habitBox);
         }
       }
@@ -74,7 +79,8 @@ class DataSeeder {
     // 6. Gamification
     try {
       final gameBox = await Hive.openBox('gamification');
-      if (gameBox.isEmpty) {
+      if (gameBox.isEmpty || force) {
+        debugPrint('🌱 Seeding Gamification...');
         await _seedGamificationData(gameBox);
       }
     } catch (e) {
@@ -84,10 +90,9 @@ class DataSeeder {
     // 7. Diary (Isar)
     try {
       final isar = IsarService.instance;
-      // Verifica se o schema está acessível via count (pode dar erro de getter se não gerado, vamos tentar)
-      // Se der erro aqui, captura no catch e segue a vida
+      // Verifica se o schema está acessível via count
       final count = await isar.diaryEntryIsars.count();
-      if (count < 2) {
+      if (count < 2 || force) {
         debugPrint('🌱 Seeding Diary (Isar)...');
         await _seedDiary(isar);
       }
@@ -96,8 +101,25 @@ class DataSeeder {
     }
   }
 
-  static Future<void> seedAllData() async {
-    await seedIfEmpty();
+  static Future<void> seedAllData({bool force = false}) async {
+    await seedIfEmpty(force: force);
+
+    // Seed Library (Books & Articles)
+    try {
+      final booksBox = await Hive.openBox<Book>('books_v3');
+      if (booksBox.isEmpty || force) {
+        debugPrint('🌱 Seeding Books...');
+        await _seedBooks(booksBox);
+      }
+
+      final articlesBox = await Hive.openBox<Article>('articles');
+      if (articlesBox.isEmpty || force) {
+        debugPrint('🌱 Seeding Articles...');
+        await _seedArticles(articlesBox);
+      }
+    } catch (e) {
+      debugPrint('Error accessing library boxes: $e');
+    }
   }
 
   static Future<void> _seedDiary(Isar isar) async {
@@ -464,6 +486,119 @@ class DataSeeder {
         'pomo_5',
       ],
     });
+  }
+
+  static Future<void> _seedBooks(Box<Book> box) async {
+    await box.clear();
+    final now = DateTime.now();
+
+    final books = [
+      Book(
+        id: 'book_1',
+        title: 'O Poder do Hábito',
+        author: 'Charles Duhigg',
+        description: 'Por que fazemos o que fazemos na vida e nos negócios.',
+        statusIndex: BookStatus.read.index,
+        formatIndex: BookFormat.paperback.index,
+        rating: 90, // 4.5 estrelas
+        pages: 408,
+        currentPage: 408,
+        genre: 'Produtividade',
+        dateAdded: now.subtract(const Duration(days: 60)),
+        dateModified: now.subtract(const Duration(days: 30)),
+        tags: 'hábito|||||psicologia|||||produtividade',
+        myReview: 'Mudou minha forma de ver rotinas.',
+        totalReadingTimeSeconds: 36000,
+        readingsData: ReadingPeriod(
+          startDate: now.subtract(const Duration(days: 60)),
+          finishDate: now.subtract(const Duration(days: 30)),
+        ).toString(),
+      ),
+      Book(
+        id: 'book_2',
+        title: 'Hábitos Atômicos',
+        author: 'James Clear',
+        description:
+            'Um método fácil e comprovado de criar bons hábitos e se livrar dos maus.',
+        statusIndex: BookStatus.inProgress.index,
+        formatIndex: BookFormat.ebook.index,
+        rating: null,
+        pages: 320,
+        currentPage: 150,
+        genre: 'Autoajuda',
+        dateAdded: now.subtract(const Duration(days: 15)),
+        dateModified: now,
+        tags: 'hábito|||||crescimento',
+        totalReadingTimeSeconds: 12000,
+        readingsData: ReadingPeriod(
+          startDate: now.subtract(const Duration(days: 15)),
+        ).toString(),
+      ),
+      Book(
+        id: 'book_3',
+        title: 'Clean Code',
+        author: 'Robert C. Martin',
+        description: 'A Handbook of Agile Software Craftsmanship.',
+        statusIndex: BookStatus.forLater.index,
+        formatIndex: BookFormat.hardcover.index,
+        pages: 464,
+        currentPage: 0,
+        genre: 'Tecnologia',
+        dateAdded: now.subtract(const Duration(days: 5)),
+        dateModified: now.subtract(const Duration(days: 5)),
+        tags: 'programação|||||técnico',
+      ),
+    ];
+
+    for (final book in books) {
+      await box.put(book.id, book);
+    }
+  }
+
+  static Future<void> _seedArticles(Box<Article> box) async {
+    await box.clear();
+    final now = DateTime.now();
+
+    final articles = [
+      Article(
+        id: 'article_1',
+        title: 'Introduction to Riverpod',
+        author: 'Remi Rousselet',
+        source: 'Riverpod.dev',
+        url: 'https://riverpod.dev',
+        statusIndex: ArticleStatus.read.index,
+        dateAdded: now.subtract(const Duration(days: 10)),
+        dateRead: now.subtract(const Duration(days: 9)),
+        readingTimeMinutes: 15,
+        rating: 50, // 5.0
+        tags: 'flutter|||||state-management',
+        category: 'Tecnologia',
+        summary: 'Excelente introdução ao gerenciamento de estado moderno.',
+      ),
+      Article(
+        id: 'article_2',
+        title: 'O poder do sono',
+        author: 'Matthew Walker',
+        source: 'Blog de Saúde',
+        statusIndex: ArticleStatus.reading.index,
+        dateAdded: now.subtract(const Duration(days: 2)),
+        readingTimeMinutes: 10,
+        tags: 'saúde|||||sono',
+        category: 'Saúde',
+      ),
+      Article(
+        id: 'article_3',
+        title: 'Como organizar suas finanças',
+        source: 'Investidor Inteligente',
+        statusIndex: ArticleStatus.toRead.index,
+        dateAdded: now.subtract(const Duration(days: 1)),
+        tags: 'finanças|||||planejamento',
+      ),
+    ];
+
+    for (final article in articles) {
+      await box.put(article.id, article);
+    }
   }
 
   static int _weightedRandom(List<double> weights) {

@@ -5,6 +5,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'providers/auth_providers.dart';
 import 'package:odyssey/src/localization/app_localizations.dart';
 import 'package:odyssey/src/providers/locale_provider.dart';
+import 'package:odyssey/src/features/auth/presentation/providers/migration_providers.dart';
+import 'package:odyssey/src/features/auth/presentation/screens/account_migration_screen.dart';
+import 'package:odyssey/src/features/home/presentation/odyssey_home.dart';
+import 'package:odyssey/src/features/welcome/presentation/welcome_screen.dart';
+import 'package:odyssey/src/features/welcome/services/welcome_service.dart';
 
 /// Tela de cadastro com email e senha
 class SignupScreen extends ConsumerStatefulWidget {
@@ -688,7 +693,8 @@ This policy may be updated periodically.
       if (user != null && !user.emailVerified) {
         _showVerificationDialog();
       } else {
-        Navigator.of(context).pop(true); // Retorna true indicando sucesso
+        // Sucesso total - navegar para home
+        _checkMigrationAndNavigate(isGuest: false);
       }
     } else {
       // Erro
@@ -755,8 +761,9 @@ This policy may be updated periodically.
           ),
           ElevatedButton(
             onPressed: () {
+              // Fechar dialog e navegar para home
               Navigator.of(context).pop();
-              Navigator.of(context).pop(true);
+              _checkMigrationAndNavigate(isGuest: false);
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: colors.primary,
@@ -766,6 +773,85 @@ This policy may be updated periodically.
           ),
         ],
       ),
+    );
+  }
+
+  Future<void> _checkMigrationAndNavigate({required bool isGuest}) async {
+    if (isGuest) {
+      _navigateToHome();
+      return;
+    }
+
+    try {
+      final needsMigration = await ref.read(needsMigrationProvider.future);
+
+      if (needsMigration && mounted) {
+        Navigator.of(context).pushAndRemoveUntil(
+          PageRouteBuilder(
+            pageBuilder: (_, __, ___) => const AccountMigrationScreen(),
+            transitionsBuilder: (_, anim, __, child) {
+              return FadeTransition(
+                opacity: CurvedAnimation(parent: anim, curve: Curves.easeOut),
+                child: child,
+              );
+            },
+            transitionDuration: const Duration(milliseconds: 500),
+          ),
+          (route) => false,
+        );
+      } else {
+        _navigateToHome();
+      }
+    } catch (e) {
+      _navigateToHome();
+    }
+  }
+
+  void _navigateToHome() {
+    if (!mounted) return;
+
+    final welcomeService = ref.read(welcomeServiceProvider);
+    final welcomeType = welcomeService.determineWelcomeType();
+
+    if (welcomeType == WelcomeType.firstTime) {
+      final user = ref.read(currentUserProvider);
+      final userName =
+          user?.displayName ?? _nameController.text.split(' ').first;
+
+      Navigator.of(context).pushAndRemoveUntil(
+        PageRouteBuilder(
+          pageBuilder: (_, __, ___) => WelcomeScreen(userName: userName),
+          transitionsBuilder: (_, anim, __, child) {
+            return FadeTransition(
+              opacity: CurvedAnimation(parent: anim, curve: Curves.easeOut),
+              child: child,
+            );
+          },
+          transitionDuration: const Duration(milliseconds: 500),
+        ),
+        (route) => false,
+      );
+      return;
+    }
+
+    Navigator.of(context).pushAndRemoveUntil(
+      PageRouteBuilder(
+        pageBuilder: (_, __, ___) => const OdysseyHome(),
+        transitionsBuilder: (_, anim, __, child) {
+          return FadeTransition(
+            opacity: CurvedAnimation(parent: anim, curve: Curves.easeOut),
+            child: SlideTransition(
+              position: Tween<Offset>(
+                begin: const Offset(0, 0.05),
+                end: Offset.zero,
+              ).animate(CurvedAnimation(parent: anim, curve: Curves.easeOut)),
+              child: child,
+            ),
+          );
+        },
+        transitionDuration: const Duration(milliseconds: 500),
+      ),
+      (route) => false,
     );
   }
 }
@@ -779,19 +865,16 @@ class _LegalDocumentSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
     return DraggableScrollableSheet(
       initialChildSize: 0.85,
       minChildSize: 0.5,
       maxChildSize: 0.95,
       builder: (context, scrollController) {
         return Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [Color(0xFF1A1A2E), Color(0xFF16213E)],
-            ),
-            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+          decoration: BoxDecoration(
+            color: colors.surface,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
           ),
           child: Column(
             children: [
@@ -801,7 +884,7 @@ class _LegalDocumentSheet extends StatelessWidget {
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
+                  color: colors.outline.withOpacity(0.3),
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -814,8 +897,8 @@ class _LegalDocumentSheet extends StatelessWidget {
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFF667EEA), Color(0xFF764BA2)],
+                        gradient: LinearGradient(
+                          colors: [colors.primary, colors.tertiary],
                         ),
                         borderRadius: BorderRadius.circular(14),
                       ),
@@ -829,10 +912,10 @@ class _LegalDocumentSheet extends StatelessWidget {
                     Expanded(
                       child: Text(
                         title,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
-                          color: Colors.white,
+                          color: colors.onSurface,
                         ),
                       ),
                     ),
@@ -841,12 +924,12 @@ class _LegalDocumentSheet extends StatelessWidget {
                       icon: Container(
                         padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.1),
+                          color: colors.surfaceContainerHighest,
                           borderRadius: BorderRadius.circular(10),
                         ),
-                        child: const Icon(
+                        child: Icon(
                           Icons.close_rounded,
-                          color: Colors.white70,
+                          color: colors.onSurfaceVariant,
                           size: 20,
                         ),
                       ),
@@ -856,7 +939,7 @@ class _LegalDocumentSheet extends StatelessWidget {
               ),
 
               // Divider
-              Divider(color: Colors.white.withOpacity(0.1), height: 1),
+              Divider(color: colors.outline.withOpacity(0.2), height: 1),
 
               // Content
               Expanded(
@@ -867,7 +950,7 @@ class _LegalDocumentSheet extends StatelessWidget {
                     content,
                     style: TextStyle(
                       fontSize: 14,
-                      color: Colors.white.withOpacity(0.8),
+                      color: colors.onSurface.withOpacity(0.8),
                       height: 1.7,
                     ),
                   ),
@@ -883,7 +966,7 @@ class _LegalDocumentSheet extends StatelessWidget {
                     child: ElevatedButton(
                       onPressed: () => Navigator.pop(context),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF667EEA),
+                        backgroundColor: colors.primary,
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(

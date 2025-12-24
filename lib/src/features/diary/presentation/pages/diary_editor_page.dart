@@ -323,30 +323,47 @@ class _DiaryEditorPageState extends ConsumerState<DiaryEditorPage> {
           ),
 
           // Toolbar
+          // Toolbar
           Container(
-            padding: const EdgeInsets.only(bottom: 16, top: 8),
+            padding: const EdgeInsets.symmetric(vertical: 8),
             decoration: BoxDecoration(
               color: theme.colorScheme.surface,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.05),
-                  offset: const Offset(0, -4),
-                  blurRadius: 16,
+              border: Border(
+                top: BorderSide(
+                  color: theme.colorScheme.outline.withValues(alpha: 0.1),
                 ),
-              ],
+              ),
             ),
             child: QuillSimpleToolbar(
               controller: _quillController,
               config: const QuillSimpleToolbarConfig(
+                // Mostra apenas o essencial
                 showFontFamily: false,
                 showFontSize: false,
                 showSearchButton: false,
                 showSubscript: false,
                 showSuperscript: false,
-                toolbarIconAlignment: WrapAlignment.center,
+                showStrikeThrough: false,
+                showInlineCode: false,
+                showColorButton: false,
+                showBackgroundColorButton: false,
+                showClearFormat: false,
+                showAlignmentButtons: false, // Ocupa muito espaço
+                showHeaderStyle: true,
+                showListNumbers: true,
+                showListBullets: true,
+                showListCheck: true,
+                showCodeBlock: false,
+                showQuote: true,
+                showIndent: false,
+                showLink: false,
+                showUndo: false,
+                showRedo: false,
                 showClipboardCopy: false,
                 showClipboardCut: false,
                 showClipboardPaste: false,
+                multiRowsDisplay:
+                    false, // Força linha única com scroll se necessário
               ),
             ),
           ),

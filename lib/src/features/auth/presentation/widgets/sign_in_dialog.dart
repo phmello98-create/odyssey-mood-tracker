@@ -327,7 +327,8 @@ class _SignInDialogState extends ConsumerState<SignInDialog> {
                         ),
                       ],
                       color: theme.brightness == Brightness.dark
-                          ? const Color(0xFF1E1E2A).withOpacity(0.95)
+                          ? theme.colorScheme.surfaceContainerHighest
+                                .withOpacity(0.95)
                           : CupertinoColors.secondarySystemBackground,
                       backgroundBlendMode: BlendMode.srcOver,
                     ),
