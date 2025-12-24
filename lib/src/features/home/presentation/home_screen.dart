@@ -1614,9 +1614,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             // Tab selector animado
             _buildHabitsTasksTabBar(context),
             const SizedBox(height: 12),
-            // Calendário semanal (compartilhado)
-            _buildWeekCalendar(context),
-            const SizedBox(height: 12),
             // Conteúdo dinâmico (Hábitos ou Tarefas)
             AnimatedSwitcher(
               duration: const Duration(milliseconds: 300),

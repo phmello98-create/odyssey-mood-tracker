@@ -109,7 +109,7 @@ class HomeDayOverview extends ConsumerWidget {
       crossAxisCount: 3,
       mainAxisSpacing: 10,
       crossAxisSpacing: 10,
-      childAspectRatio: 1.0,
+      childAspectRatio: 0.85,
       children: List.generate(
         6,
         (index) => _OverviewItemPlaceholder(colors: colors),
@@ -161,7 +161,7 @@ class HomeDayOverview extends ConsumerWidget {
           crossAxisCount: 3,
           mainAxisSpacing: 10,
           crossAxisSpacing: 10,
-          childAspectRatio: 1.0,
+          childAspectRatio: 0.85,
           children: [
             _OverviewItem(
               icon: Icons.check_circle_outline_rounded,

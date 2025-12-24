@@ -864,6 +864,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
               // Campo nome
               TextField(
                 controller: nameController,
+                style: TextStyle(color: colorScheme.onSurface),
                 decoration: InputDecoration(
                   labelText: 'Nome da Tarefa',
                   prefixIcon: Icon(Icons.edit_outlined, color: currentColor),
@@ -889,6 +890,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                   Expanded(
                     child: TextField(
                       controller: categoryController,
+                      style: TextStyle(color: colorScheme.onSurface),
                       decoration: InputDecoration(
                         labelText: 'Categoria',
                         prefixIcon: Icon(
@@ -910,6 +912,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                   Expanded(
                     child: TextField(
                       controller: projectController,
+                      style: TextStyle(color: colorScheme.onSurface),
                       decoration: InputDecoration(
                         labelText: 'Projeto',
                         prefixIcon: Icon(
@@ -1413,59 +1416,61 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
   // FREE TIME TAB - Aba de Tempo Livre
   // =====================================================
   Widget _buildFreeTimeTab() {
-    return Column(
-      children: [
-        const SizedBox(height: 8),
-        // Timer Card atual
-        _buildCurrentTimerCard(),
-        const SizedBox(height: 16),
+    return SingleChildScrollView(
+      child: Column(
+        children: [
+          const SizedBox(height: 8),
+          // Timer Card atual
+          _buildCurrentTimerCard(),
+          const SizedBox(height: 16),
 
-        // Seletor de tarefas para o Tempo Livre
-        TimerTaskSelector(
-          isPomodoro: false,
-          customTaskName: _customTaskName,
-          taskNameController: _taskNameController,
-          activities: _activities,
-          onNewTaskTap: _showCreateTaskDialog,
-          onTaskSelected: (name, category, project) {
-            setState(() {
-              _customTaskName = name.isEmpty ? null : name;
-              _taskNameController.text = name;
-              _selectedCategory = category;
-              _selectedProject = project;
-            });
-          },
-          onTaskEdited: (index, name, category, project) {
-            setState(() {
-              _activities[index] = {
-                ..._activities[index],
-                'name': name,
-                'category': category,
-                'project': project,
-              };
-
-              if (_customTaskName == _activities[index]['name']) {
-                _customTaskName = name;
+          // Seletor de tarefas para o Tempo Livre
+          TimerTaskSelector(
+            isPomodoro: false,
+            customTaskName: _customTaskName,
+            taskNameController: _taskNameController,
+            activities: _activities,
+            onNewTaskTap: _showCreateTaskDialog,
+            onTaskSelected: (name, category, project) {
+              setState(() {
+                _customTaskName = name.isEmpty ? null : name;
                 _taskNameController.text = name;
-              }
-            });
-          },
-          onTaskDeleted: (index) {
-            final deletedName = _activities[index]['name'];
-            setState(() {
-              _activities.removeAt(index);
-              if (_customTaskName == deletedName) {
-                _customTaskName = null;
-                _taskNameController.clear();
-              }
-            });
-          },
-        ),
+                _selectedCategory = category;
+                _selectedProject = project;
+              });
+            },
+            onTaskEdited: (index, name, category, project) {
+              setState(() {
+                _activities[index] = {
+                  ..._activities[index],
+                  'name': name,
+                  'category': category,
+                  'project': project,
+                };
 
-        const SizedBox(height: 16),
-        // Lista de tarefas
-        Expanded(child: _buildTodayTasksList()),
-      ],
+                if (_customTaskName == _activities[index]['name']) {
+                  _customTaskName = name;
+                  _taskNameController.text = name;
+                }
+              });
+            },
+            onTaskDeleted: (index) {
+              final deletedName = _activities[index]['name'];
+              setState(() {
+                _activities.removeAt(index);
+                if (_customTaskName == deletedName) {
+                  _customTaskName = null;
+                  _taskNameController.clear();
+                }
+              });
+            },
+          ),
+
+          const SizedBox(height: 16),
+          // Lista de tarefas
+          _buildTodayTasksList(),
+        ],
+      ),
     );
   }
 
@@ -2084,7 +2089,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                       ? () => _startTimer(customTask: _taskNameController.text)
                       : null),
             child: Container(
-              height: 150,
+              constraints: const BoxConstraints(minHeight: 140),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
@@ -2138,7 +2143,10 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                   ),
 
                   Padding(
-                    padding: const EdgeInsets.all(24),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 16,
+                    ),
                     child: Row(
                       children: [
                         // Timer Ring Esquerdo
@@ -2438,64 +2446,64 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
               const SizedBox(height: 12),
 
               // Task list
-              Expanded(
-                child: ListView(
-                  padding: EdgeInsets.zero,
-                  children: [
-                    // Pending tasks section (AGRUPADOS)
-                    if (groupedPending.isNotEmpty) ...[
-                      _buildSectionHeader(
-                        icon: Icons.timer_outlined,
-                        title: 'Em andamento',
-                        count: groupedPending.length,
-                        color: colorScheme.primary,
+              ListView(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                padding: EdgeInsets.zero,
+                children: [
+                  // Pending tasks section (AGRUPADOS)
+                  if (groupedPending.isNotEmpty) ...[
+                    _buildSectionHeader(
+                      icon: Icons.timer_outlined,
+                      title: 'Em andamento',
+                      count: groupedPending.length,
+                      color: colorScheme.primary,
+                    ),
+                    const SizedBox(height: 8),
+                    ...groupedPending.entries.map(
+                      (entry) => _buildGroupedRecordCard(
+                        entry.key,
+                        entry.value,
+                        isCompleted: false,
                       ),
-                      const SizedBox(height: 8),
-                      ...groupedPending.entries.map(
-                        (entry) => _buildGroupedRecordCard(
-                          entry.key,
-                          entry.value,
-                          isCompleted: false,
-                        ),
-                      ),
-                    ],
-
-                    // Suggestions if no pending
-                    if (groupedPending.isEmpty) ...[
-                      _buildSectionHeader(
-                        icon: Icons.lightbulb_outline_rounded,
-                        title: 'Comece uma tarefa',
-                        count: null,
-                        color: colorScheme.tertiary,
-                      ),
-                      const SizedBox(height: 8),
-                      ...(_activities
-                          .take(4)
-                          .map((a) => _buildTaskCard(a, isPreset: true))),
-                    ],
-
-                    // Completed tasks section (AGRUPADOS)
-                    if (groupedCompleted.isNotEmpty) ...[
-                      const SizedBox(height: 20),
-                      _buildSectionHeader(
-                        icon: Icons.check_circle_outline_rounded,
-                        title: 'Concluídos',
-                        count: groupedCompleted.length,
-                        color: const Color(0xFF27AE60),
-                      ),
-                      const SizedBox(height: 8),
-                      ...groupedCompleted.entries.map(
-                        (entry) => _buildGroupedRecordCard(
-                          entry.key,
-                          entry.value,
-                          isCompleted: true,
-                        ),
-                      ),
-                    ],
-
-                    const SizedBox(height: 100), // Padding for bottom nav
+                    ),
                   ],
-                ),
+
+                  // Suggestions if no pending
+                  if (groupedPending.isEmpty) ...[
+                    _buildSectionHeader(
+                      icon: Icons.lightbulb_outline_rounded,
+                      title: 'Comece uma tarefa',
+                      count: null,
+                      color: colorScheme.tertiary,
+                    ),
+                    const SizedBox(height: 8),
+                    ...(_activities
+                        .take(4)
+                        .map((a) => _buildTaskCard(a, isPreset: true))),
+                  ],
+
+                  // Completed tasks section (AGRUPADOS)
+                  if (groupedCompleted.isNotEmpty) ...[
+                    const SizedBox(height: 20),
+                    _buildSectionHeader(
+                      icon: Icons.check_circle_outline_rounded,
+                      title: 'Concluídos',
+                      count: groupedCompleted.length,
+                      color: const Color(0xFF27AE60),
+                    ),
+                    const SizedBox(height: 8),
+                    ...groupedCompleted.entries.map(
+                      (entry) => _buildGroupedRecordCard(
+                        entry.key,
+                        entry.value,
+                        isCompleted: true,
+                      ),
+                    ),
+                  ],
+
+                  const SizedBox(height: 100), // Padding for bottom nav
+                ],
               ),
             ],
           ),
@@ -4448,6 +4456,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                 // Nome da tarefa
                 TextField(
                   controller: _taskNameController,
+                  style: TextStyle(color: colorScheme.onSurface),
                   autofocus: true,
                   decoration: InputDecoration(
                     hintText: 'Nome da tarefa...',
@@ -4678,6 +4687,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                 // Campo para novo projeto
                 TextField(
                   controller: projectController,
+                  style: TextStyle(color: colorScheme.onSurface),
                   decoration: InputDecoration(
                     hintText: 'Ou digite um novo projeto...',
                     filled: true,
@@ -5155,21 +5165,25 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
     required String value,
     required String label,
   }) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Column(
       children: [
         Text(icon, style: const TextStyle(fontSize: 20)),
         const SizedBox(height: 4),
         Text(
           value,
-          style: const TextStyle(
-            color: Colors.white,
+          style: TextStyle(
+            color: colorScheme.onSurface,
             fontSize: 18,
             fontWeight: FontWeight.w600,
           ),
         ),
         Text(
           label,
-          style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12),
+          style: TextStyle(
+            color: colorScheme.onSurfaceVariant.withOpacity(0.7),
+            fontSize: 12,
+          ),
         ),
       ],
     );
@@ -6382,9 +6396,9 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
                           ).colorScheme.surfaceContainerHighest,
                           borderRadius: BorderRadius.circular(10),
                         ),
-                        child: const Icon(
+                        child: Icon(
                           Icons.arrow_back,
-                          color: Colors.white,
+                          color: Theme.of(context).colorScheme.onSurface,
                           size: 20,
                         ),
                       ),
@@ -6773,6 +6787,7 @@ class _TimeTrackerScreenState extends ConsumerState<TimeTrackerScreen>
           children: [
             TextField(
               controller: _taskNameController,
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
               decoration: const InputDecoration(
                 labelText: 'Nome da tarefa',
                 hintText: 'Ex: Estudar Flutter',

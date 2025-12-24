@@ -260,6 +260,7 @@ class _TimerTaskSelectorState extends ConsumerState<TimerTaskSelector> {
               // Campo nome
               TextField(
                 controller: nameController,
+                style: TextStyle(color: colorScheme.onSurface),
                 decoration: InputDecoration(
                   labelText: 'Nome da Tarefa',
                   prefixIcon: Icon(Icons.edit_outlined, color: currentColor),
@@ -285,6 +286,7 @@ class _TimerTaskSelectorState extends ConsumerState<TimerTaskSelector> {
                   Expanded(
                     child: TextField(
                       controller: categoryController,
+                      style: TextStyle(color: colorScheme.onSurface),
                       decoration: InputDecoration(
                         labelText: 'Categoria',
                         prefixIcon: Icon(
@@ -306,6 +308,7 @@ class _TimerTaskSelectorState extends ConsumerState<TimerTaskSelector> {
                   Expanded(
                     child: TextField(
                       controller: projectController,
+                      style: TextStyle(color: colorScheme.onSurface),
                       decoration: InputDecoration(
                         labelText: 'Projeto',
                         prefixIcon: Icon(
@@ -426,6 +429,7 @@ class _TimerTaskSelectorState extends ConsumerState<TimerTaskSelector> {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     final mainColor = _getMainColor();
     final hasTask =
         widget.customTaskName != null ||
@@ -442,7 +446,7 @@ class _TimerTaskSelectorState extends ConsumerState<TimerTaskSelector> {
               Text(
                 '📋 Tarefa',
                 style: TextStyle(
-                  color: Colors.white.withOpacity(0.9),
+                  color: colorScheme.onSurface.withOpacity(0.9),
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
                 ),
@@ -551,30 +555,22 @@ class _TimerTaskSelectorState extends ConsumerState<TimerTaskSelector> {
                       vertical: 12,
                     ),
                     decoration: BoxDecoration(
-                      gradient: isSelected
-                          ? LinearGradient(
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                              colors: [
-                                color.withOpacity(0.35),
-                                color.withOpacity(0.15),
-                              ],
-                            )
-                          : null,
-                      color: isSelected ? null : Colors.white.withOpacity(0.08),
+                      color: isSelected
+                          ? color
+                          : colorScheme.onSurface.withOpacity(0.05),
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(
                         color: isSelected
-                            ? color.withOpacity(0.6)
-                            : Colors.white.withOpacity(0.1),
+                            ? color
+                            : colorScheme.onSurface.withOpacity(0.1),
                         width: isSelected ? 2 : 1,
                       ),
                       boxShadow: isSelected
                           ? [
                               BoxShadow(
-                                color: color.withOpacity(0.2),
-                                blurRadius: 8,
-                                offset: const Offset(0, 2),
+                                color: color.withOpacity(0.3),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
                               ),
                             ]
                           : null,
@@ -588,13 +584,15 @@ class _TimerTaskSelectorState extends ConsumerState<TimerTaskSelector> {
                           height: 28,
                           decoration: BoxDecoration(
                             color: isSelected
-                                ? color.withOpacity(0.3)
-                                : Colors.white.withOpacity(0.1),
+                                ? Colors.white.withOpacity(0.2)
+                                : colorScheme.onSurface.withOpacity(0.05),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Icon(
                             icon,
-                            color: isSelected ? color : Colors.white60,
+                            color: isSelected
+                                ? Colors.white
+                                : colorScheme.onSurfaceVariant,
                             size: 16,
                           ),
                         ),
@@ -605,7 +603,9 @@ class _TimerTaskSelectorState extends ConsumerState<TimerTaskSelector> {
                               ? '${name.substring(0, 12)}...'
                               : name,
                           style: TextStyle(
-                            color: isSelected ? Colors.white : Colors.white70,
+                            color: isSelected
+                                ? Colors.white
+                                : colorScheme.onSurface,
                             fontSize: 13,
                             fontWeight: isSelected
                                 ? FontWeight.w600
@@ -642,6 +642,7 @@ class _TimerTaskSelectorState extends ConsumerState<TimerTaskSelector> {
   }
 
   Widget _buildSelectedTimerTask() {
+    final colorScheme = Theme.of(context).colorScheme;
     final taskName = widget.customTaskName ?? widget.taskNameController.text;
     final color = _getActivityColor(taskName);
     final activityData = widget.activities.firstWhere(
@@ -656,7 +657,7 @@ class _TimerTaskSelectorState extends ConsumerState<TimerTaskSelector> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.08),
+        color: colorScheme.surfaceContainerHighest.withOpacity(0.5),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: color.withOpacity(0.3)),
       ),
@@ -681,8 +682,8 @@ class _TimerTaskSelectorState extends ConsumerState<TimerTaskSelector> {
               children: [
                 Text(
                   taskName,
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: colorScheme.onSurface,
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
                   ),
@@ -696,7 +697,9 @@ class _TimerTaskSelectorState extends ConsumerState<TimerTaskSelector> {
                         Text(
                           activityData['project'],
                           style: TextStyle(
-                            color: Colors.white.withOpacity(0.6),
+                            color: colorScheme.onSurfaceVariant.withOpacity(
+                              0.7,
+                            ),
                             fontSize: 12,
                           ),
                         ),
@@ -705,7 +708,9 @@ class _TimerTaskSelectorState extends ConsumerState<TimerTaskSelector> {
                         Text(
                           ' • ',
                           style: TextStyle(
-                            color: Colors.white.withOpacity(0.4),
+                            color: colorScheme.onSurfaceVariant.withOpacity(
+                              0.5,
+                            ),
                             fontSize: 12,
                           ),
                         ),
@@ -742,7 +747,7 @@ class _TimerTaskSelectorState extends ConsumerState<TimerTaskSelector> {
             },
             icon: Icon(
               Icons.close_rounded,
-              color: Colors.white.withOpacity(0.5),
+              color: colorScheme.onSurfaceVariant.withOpacity(0.7),
               size: 20,
             ),
           ),
@@ -752,15 +757,16 @@ class _TimerTaskSelectorState extends ConsumerState<TimerTaskSelector> {
   }
 
   Widget _buildTaskPlaceholder() {
+    final colorScheme = Theme.of(context).colorScheme;
     return GestureDetector(
       onTap: widget.onNewTaskTap,
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.05),
+          color: colorScheme.surfaceContainerHighest.withOpacity(0.3),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: Colors.white.withOpacity(0.1),
+            color: colorScheme.outlineVariant.withOpacity(0.2),
             style: BorderStyle.solid,
           ),
         ),
@@ -769,12 +775,12 @@ class _TimerTaskSelectorState extends ConsumerState<TimerTaskSelector> {
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.1),
+                color: colorScheme.primary.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(
                 Icons.add_task_rounded,
-                color: Colors.white.withOpacity(0.7),
+                color: colorScheme.primary.withOpacity(0.8),
                 size: 24,
               ),
             ),
@@ -786,7 +792,7 @@ class _TimerTaskSelectorState extends ConsumerState<TimerTaskSelector> {
                   Text(
                     'O que vamos focar?',
                     style: TextStyle(
-                      color: Colors.white.withOpacity(0.9),
+                      color: colorScheme.onSurface,
                       fontSize: 16,
                       fontWeight: FontWeight.w500,
                     ),
@@ -795,7 +801,7 @@ class _TimerTaskSelectorState extends ConsumerState<TimerTaskSelector> {
                   Text(
                     'Selecione ou crie uma tarefa',
                     style: TextStyle(
-                      color: Colors.white.withOpacity(0.5),
+                      color: colorScheme.onSurfaceVariant.withOpacity(0.6),
                       fontSize: 12,
                     ),
                   ),
@@ -804,7 +810,7 @@ class _TimerTaskSelectorState extends ConsumerState<TimerTaskSelector> {
             ),
             Icon(
               Icons.arrow_forward_ios_rounded,
-              color: Colors.white.withOpacity(0.3),
+              color: colorScheme.onSurfaceVariant.withOpacity(0.3),
               size: 16,
             ),
           ],

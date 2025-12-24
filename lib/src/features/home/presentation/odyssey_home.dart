@@ -650,18 +650,19 @@ class _OdysseyHomeState extends ConsumerState<OdysseyHome>
       }
     });
 
-    return WillPopScope(
-      onWillPop: () async {
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
         if (_isMenuOpen) {
           _toggleSideMenu();
-          return false;
+          return;
         }
         if (_currentIndex == 0) {
           SystemNavigator.pop();
-          return true;
+          return;
         }
         _onNavigationTap(0);
-        return false;
       },
       child: Scaffold(
         backgroundColor: menuBgColor,

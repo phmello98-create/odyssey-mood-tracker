@@ -241,11 +241,15 @@ class _NotesScreenState extends State<NotesScreen>
             crossAxisSpacing: 10,
             itemCount: notes.length,
             itemBuilder: (context, index) {
-              final key = notes[index] as String;
-              final data = Map<String, dynamic>.from(box.get(key) as Map);
+              final key = notes[index];
+              final rawData = box.get(key);
+              if (rawData == null || rawData is! Map)
+                return const SizedBox.shrink();
+
+              final data = Map<String, dynamic>.from(rawData);
               return StaggeredListAnimation(
                 index: index,
-                child: _buildNoteCard(key, data, index, colors),
+                child: _buildNoteCard(key.toString(), data, index, colors),
               );
             },
           );
@@ -254,11 +258,15 @@ class _NotesScreenState extends State<NotesScreen>
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
             itemCount: notes.length,
             itemBuilder: (context, index) {
-              final key = notes[index] as String;
-              final data = Map<String, dynamic>.from(box.get(key) as Map);
+              final key = notes[index];
+              final rawData = box.get(key);
+              if (rawData == null || rawData is! Map)
+                return const SizedBox.shrink();
+
+              final data = Map<String, dynamic>.from(rawData);
               return StaggeredListAnimation(
                 index: index,
-                child: _buildNoteListItem(key, data, index, colors),
+                child: _buildNoteListItem(key.toString(), data, index, colors),
               );
             },
           );
@@ -269,7 +277,12 @@ class _NotesScreenState extends State<NotesScreen>
 
   List<String> _sortNotes(List<String> notes, Box box) {
     final notesList = notes
-        .map((key) => {'key': key, 'data': box.get(key) as Map})
+        .map((key) {
+          final data = box.get(key);
+          if (data == null || data is! Map) return null;
+          return {'key': key, 'data': Map<String, dynamic>.from(data)};
+        })
+        .whereType<Map<String, dynamic>>()
         .toList();
 
     switch (_sortBy) {
@@ -568,18 +581,17 @@ class _NotesScreenState extends State<NotesScreen>
                       ],
                     ),
                   ),
-                Expanded(
-                  child: Text(
-                    content,
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: title != null
-                          ? colors.onSurfaceVariant
-                          : colors.onSurface,
-                      height: 1.5,
-                    ),
-                    overflow: TextOverflow.fade,
+                Text(
+                  content,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: title != null
+                        ? colors.onSurfaceVariant
+                        : colors.onSurface,
+                    height: 1.5,
                   ),
+                  maxLines: 8,
+                  overflow: TextOverflow.fade,
                 ),
                 if (date != null) ...[
                   const SizedBox(height: 12),

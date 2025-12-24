@@ -90,7 +90,7 @@ final selectedTagProvider = StateProvider<String?>((ref) => null);
 
 /// Stream provider para o feed de posts (com filtros e fallback para mock data)
 /// Inclui timeout para evitar loading infinito no mobile
-final feedProvider = StreamProvider<List<Post>>((ref) {
+final feedProvider = StreamProvider.autoDispose<List<Post>>((ref) {
   final topic = ref.watch(selectedTopicProvider);
   final postType = ref.watch(selectedPostTypeProvider);
   final selectedTag = ref.watch(selectedTagProvider);
@@ -190,91 +190,85 @@ List<Post> _getMockPosts(
   return posts;
 }
 
-/// Provider para posts de um tópico específico
-final topicPostsProvider = StreamProvider.family<List<Post>, CommunityTopic>((
-  ref,
-  topic,
-) {
-  final isOffline = ref.watch(isOfflineModeProvider);
-  if (isOffline) {
-    final mockRepo = ref.watch(mockCommunityRepositoryProvider);
-    return mockRepo
-        .watchFeed(limit: 50)
-        .map(
-          (posts) =>
-              posts.where((p) => p.categories.contains(topic.name)).toList(),
-        );
-  }
-  final repo = ref.watch(communityRepositoryProvider);
-  if (repo == null) {
-    return Stream.value(MockCommunityData.getPostsByTopic(topic));
-  }
-  return repo
-      .watchFeed(limit: 50)
-      .map(
-        (posts) =>
-            posts.where((p) => p.categories.contains(topic.name)).toList(),
-      );
-});
+final topicPostsProvider = StreamProvider.autoDispose
+    .family<List<Post>, CommunityTopic>((ref, topic) {
+      final isOffline = ref.watch(isOfflineModeProvider);
+      if (isOffline) {
+        final mockRepo = ref.watch(mockCommunityRepositoryProvider);
+        return mockRepo
+            .watchFeed(limit: 50)
+            .map(
+              (posts) => posts
+                  .where((p) => p.categories.contains(topic.name))
+                  .toList(),
+            );
+      }
+      final repo = ref.watch(communityRepositoryProvider);
+      if (repo == null) {
+        return Stream.value(MockCommunityData.getPostsByTopic(topic));
+      }
+      return repo
+          .watchFeed(limit: 50)
+          .map(
+            (posts) =>
+                posts.where((p) => p.categories.contains(topic.name)).toList(),
+          );
+    });
 
-/// Provider para posts do usuário
-final userPostsProvider = FutureProvider.family<List<Post>, String>((
-  ref,
-  userId,
-) async {
-  final isOffline = ref.watch(isOfflineModeProvider);
-  if (isOffline) {
-    final mockRepo = ref.watch(mockCommunityRepositoryProvider);
-    final allPosts = await mockRepo.getFeed(limit: 100);
+final userPostsProvider = FutureProvider.autoDispose.family<List<Post>, String>(
+  (ref, userId) async {
+    final isOffline = ref.watch(isOfflineModeProvider);
+    if (isOffline) {
+      final mockRepo = ref.watch(mockCommunityRepositoryProvider);
+      final allPosts = await mockRepo.getFeed(limit: 100);
+      return allPosts.where((p) => p.userId == userId).toList();
+    }
+    final repo = ref.watch(communityRepositoryProvider);
+    if (repo == null) return [];
+    final allPosts = await repo.getFeed(limit: 100);
     return allPosts.where((p) => p.userId == userId).toList();
-  }
-  final repo = ref.watch(communityRepositoryProvider);
-  if (repo == null) return [];
-  final allPosts = await repo.getFeed(limit: 100);
-  return allPosts.where((p) => p.userId == userId).toList();
-});
+  },
+);
 
-/// Future provider para perfil público de um usuário
-final userProfileProvider = FutureProvider.family<PublicUserProfile, String>((
-  ref,
-  userId,
-) async {
-  final isOffline = ref.watch(isOfflineModeProvider);
-  if (isOffline) {
-    final mockRepo = ref.watch(mockCommunityRepositoryProvider);
-    return mockRepo.getProfile(userId);
-  }
-  final repo = ref.watch(communityRepositoryProvider);
-  if (repo == null) {
-    return PublicUserProfile(
-      userId: userId,
-      displayName: 'Usuário',
-      level: 1,
-      totalXP: 0,
-      createdAt: DateTime.now(),
-      lastActive: DateTime.now(),
-    );
-  }
-  return repo.getProfile(userId);
-});
+final userProfileProvider = FutureProvider.autoDispose
+    .family<PublicUserProfile, String>((ref, userId) async {
+      final isOffline = ref.watch(isOfflineModeProvider);
+      if (isOffline) {
+        final mockRepo = ref.watch(mockCommunityRepositoryProvider);
+        return mockRepo.getProfile(userId);
+      }
+      final repo = ref.watch(communityRepositoryProvider);
+      if (repo == null) {
+        return PublicUserProfile(
+          userId: userId,
+          displayName: 'Usuário',
+          level: 1,
+          totalXP: 0,
+          createdAt: DateTime.now(),
+          lastActive: DateTime.now(),
+        );
+      }
+      return repo.getProfile(userId);
+    });
 
-/// Stream provider para comentários de um post
-final commentsProvider = StreamProvider.family<List<Comment>, String>((
-  ref,
-  postId,
-) {
-  final isOffline = ref.watch(isOfflineModeProvider);
-  if (isOffline) {
-    // No modo offline, usa comentários mock
-    return Stream.value(MockCommunityData.getComments(postId));
-  }
-  final repo = ref.watch(commentRepositoryProvider);
-  if (repo == null) return Stream.value(MockCommunityData.getComments(postId));
-  return repo.watchComments(postId);
-});
+final commentsProvider = StreamProvider.autoDispose
+    .family<List<Comment>, String>((ref, postId) {
+      final isOffline = ref.watch(isOfflineModeProvider);
+      if (isOffline) {
+        // No modo offline, usa comentários mock
+        return Stream.value(MockCommunityData.getComments(postId));
+      }
+      final repo = ref.watch(commentRepositoryProvider);
+      if (repo == null)
+        return Stream.value(MockCommunityData.getComments(postId));
+      return repo.watchComments(postId);
+    });
 
 /// Provider para verificar se está seguindo um usuário
-final isFollowingProvider = FutureProvider.family<bool, String>((ref, userId) {
+final isFollowingProvider = FutureProvider.autoDispose.family<bool, String>((
+  ref,
+  userId,
+) {
   final isOffline = ref.watch(isOfflineModeProvider);
   if (isOffline) return Future.value(false);
   final repo = ref.watch(followRepositoryProvider);
@@ -282,64 +276,58 @@ final isFollowingProvider = FutureProvider.family<bool, String>((ref, userId) {
   return repo.isFollowing(userId);
 });
 
-/// Provider para estatísticas de follow
-final followStatsProvider = FutureProvider.family<FollowStats, String>((
-  ref,
-  userId,
-) {
-  final isOffline = ref.watch(isOfflineModeProvider);
-  if (isOffline) {
-    final mockRepo = ref.watch(mockCommunityRepositoryProvider);
-    return mockRepo.getFollowStats(userId);
-  }
-  final repo = ref.watch(followRepositoryProvider);
-  if (repo == null) {
-    return Future.value(
-      FollowStats(userId: userId, followersCount: 0, followingCount: 0),
-    );
-  }
-  return repo.getFollowStats(userId);
-});
+final followStatsProvider = FutureProvider.autoDispose
+    .family<FollowStats, String>((ref, userId) {
+      final isOffline = ref.watch(isOfflineModeProvider);
+      if (isOffline) {
+        final mockRepo = ref.watch(mockCommunityRepositoryProvider);
+        return mockRepo.getFollowStats(userId);
+      }
+      final repo = ref.watch(followRepositoryProvider);
+      if (repo == null) {
+        return Future.value(
+          FollowStats(userId: userId, followersCount: 0, followingCount: 0),
+        );
+      }
+      return repo.getFollowStats(userId);
+    });
 
-/// Provider para busca de posts
-final searchPostsProvider = FutureProvider.family<List<Post>, String>((
-  ref,
-  query,
-) async {
-  if (query.trim().isEmpty) return [];
-  final isOffline = ref.watch(isOfflineModeProvider);
-  if (isOffline) {
-    return MockCommunityData.searchPosts(query);
-  }
+final searchPostsProvider = FutureProvider.autoDispose
+    .family<List<Post>, String>((ref, query) async {
+      if (query.trim().isEmpty) return [];
+      final isOffline = ref.watch(isOfflineModeProvider);
+      if (isOffline) {
+        return MockCommunityData.searchPosts(query);
+      }
 
-  try {
-    final repo = ref.watch(communityRepositoryProvider);
-    if (repo == null) return MockCommunityData.searchPosts(query);
-    final allPosts = await repo
-        .getFeed(limit: 100)
-        .timeout(const Duration(seconds: 5), onTimeout: () => <Post>[]);
-    if (allPosts.isEmpty) {
-      // Fallback para mock data se Firestore retornou vazio
-      return MockCommunityData.searchPosts(query);
-    }
-    final lowerQuery = query.toLowerCase();
-    return allPosts
-        .where(
-          (p) =>
-              p.content.toLowerCase().contains(lowerQuery) ||
-              p.userName.toLowerCase().contains(lowerQuery),
-        )
-        .toList();
-  } catch (e) {
-    debugPrint('searchPostsProvider error: $e');
-    // Fallback para mock data se Firestore falhar
-    return MockCommunityData.searchPosts(query);
-  }
-});
+      try {
+        final repo = ref.watch(communityRepositoryProvider);
+        if (repo == null) return MockCommunityData.searchPosts(query);
+        final allPosts = await repo
+            .getFeed(limit: 100)
+            .timeout(const Duration(seconds: 5), onTimeout: () => <Post>[]);
+        if (allPosts.isEmpty) {
+          // Fallback para mock data se Firestore retornou vazio
+          return MockCommunityData.searchPosts(query);
+        }
+        final lowerQuery = query.toLowerCase();
+        return allPosts
+            .where(
+              (p) =>
+                  p.content.toLowerCase().contains(lowerQuery) ||
+                  p.userName.toLowerCase().contains(lowerQuery),
+            )
+            .toList();
+      } catch (e) {
+        debugPrint('searchPostsProvider error: $e');
+        // Fallback para mock data se Firestore falhar
+        return MockCommunityData.searchPosts(query);
+      }
+    });
 
 /// Provider para busca de usuários
-final searchUsersProvider =
-    FutureProvider.family<List<PublicUserProfile>, String>((ref, query) async {
+final searchUsersProvider = FutureProvider.autoDispose
+    .family<List<PublicUserProfile>, String>((ref, query) async {
       if (query.trim().isEmpty) return [];
       final isOffline = ref.watch(isOfflineModeProvider);
       if (isOffline) {
@@ -357,7 +345,9 @@ final isCreatingPostProvider = StateProvider<bool>((ref) => false);
 final selectedPostProvider = StateProvider<Post?>((ref) => null);
 
 /// Provider para posts em destaque/trending
-final trendingPostsProvider = FutureProvider<List<Post>>((ref) async {
+final trendingPostsProvider = FutureProvider.autoDispose<List<Post>>((
+  ref,
+) async {
   final isOffline = ref.watch(isOfflineModeProvider);
   if (isOffline) {
     return MockCommunityData.getTrendingPosts(limit: 5);

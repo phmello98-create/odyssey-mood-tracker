@@ -12,7 +12,6 @@ environment:
 dependencies:
 
   collection: ^1.17.0
-  dynamic_color: ^1.6.3
   fl_chart: ^1.1.1
   rive: ^0.13.4
   flutter:
@@ -89,7 +88,6 @@ dependencies:
   
   # In-App Purchases para assinaturas PRO
   in_app_purchase: ^3.2.0
-  tflite_flutter: ^0.12.1
   
   # Timeago para formatação de tempo relativo
   timeago: ^3.7.0

@@ -134,13 +134,13 @@ class _EditPostScreenState extends ConsumerState<EditPostScreen> {
     final charCount = _contentController.text.length;
     final isValid = charCount > 0 && charCount <= 500;
 
-    return WillPopScope(
-      onWillPop: () async {
+    return PopScope(
+      canPop: !_hasChanges,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
         if (_hasChanges) {
           await _confirmDiscard();
-          return false;
         }
-        return true;
       },
       child: Scaffold(
         backgroundColor: colors.surface,
