@@ -128,10 +128,10 @@ final waterTrackerProvider =
     });
 
 /// Provider para estatísticas semanais
-final waterWeekStatsProvider = FutureProvider<Map<String, dynamic>>((
-  ref,
-) async {
-  final repository = ref.watch(waterTrackerRepositoryProvider);
-  await repository.init();
-  return repository.getWeekStats();
-});
+final waterWeekStatsProvider = FutureProvider.autoDispose<Map<String, dynamic>>(
+  (ref) async {
+    final repository = ref.watch(waterTrackerRepositoryProvider);
+    await repository.init();
+    return repository.getWeekStats();
+  },
+);

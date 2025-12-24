@@ -342,22 +342,59 @@ class SyncState {
 // ============================================
 
 /// Controller para gerenciar operações de sincronização
+///
+/// Inclui rate limiting para evitar chamadas excessivas ao Firebase.
 class SyncController extends StateNotifier<SyncState> {
   final SyncService? _syncService;
+
+  /// Intervalo mínimo entre syncs (30 segundos)
+  static const Duration _minSyncInterval = Duration(seconds: 30);
+
+  /// Timestamp da última tentativa de sync
+  DateTime? _lastSyncAttempt;
 
   SyncController(this._syncService) : super(const SyncState());
 
   /// Verifica se o sync está disponível
   bool get isAvailable => _syncService != null;
 
+  /// Verifica se pode sincronizar (rate limiting)
+  bool get _canSync {
+    if (_lastSyncAttempt == null) return true;
+    final elapsed = DateTime.now().difference(_lastSyncAttempt!);
+    return elapsed >= _minSyncInterval;
+  }
+
+  /// Tempo restante até poder sincronizar novamente
+  Duration get timeUntilNextSync {
+    if (_lastSyncAttempt == null) return Duration.zero;
+    final elapsed = DateTime.now().difference(_lastSyncAttempt!);
+    final remaining = _minSyncInterval - elapsed;
+    return remaining.isNegative ? Duration.zero : remaining;
+  }
+
   /// Sincroniza todos os dados locais com o Firestore
-  Future<void> syncAll() async {
+  ///
+  /// Inclui rate limiting para evitar chamadas excessivas.
+  /// [force] ignora o rate limiting (use com cuidado).
+  Future<void> syncAll({bool force = false}) async {
     if (_syncService == null) {
       state = state.copyWith(
         errorMessage: 'Sync não disponível. Faça login para sincronizar.',
       );
       return;
     }
+
+    // Rate limiting check
+    if (!force && !_canSync) {
+      final remaining = timeUntilNextSync.inSeconds;
+      state = state.copyWith(
+        errorMessage: 'Aguarde ${remaining}s antes de sincronizar novamente.',
+      );
+      return;
+    }
+
+    _lastSyncAttempt = DateTime.now();
 
     state = state.copyWith(
       isSyncing: true,
