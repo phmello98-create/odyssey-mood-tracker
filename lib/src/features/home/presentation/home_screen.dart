@@ -30,13 +30,13 @@ import 'package:odyssey/src/utils/animations/animations.dart';
 import 'package:odyssey/src/features/tasks/presentation/tasks_screen.dart';
 import 'package:odyssey/src/features/tasks/presentation/widgets/task_form_sheet.dart';
 import 'package:odyssey/src/features/notes/presentation/notes_screen.dart';
-import 'package:odyssey/src/features/library/presentation/library_screen.dart';
 
 import 'package:odyssey/src/features/library/domain/book.dart';
 import 'package:odyssey/src/features/tasks/data/task_repository.dart';
 import 'package:odyssey/src/features/tasks/data/synced_task_repository.dart';
 import 'package:odyssey/src/features/habits/presentation/habits_calendar_screen.dart';
 import 'package:odyssey/src/utils/smart_classifier.dart';
+import 'package:odyssey/src/utils/widgets/smart_quick_add.dart';
 import 'package:odyssey/src/features/home/data/home_widgets_provider.dart';
 import 'package:odyssey/src/features/home/presentation/widgets/quick_notes_widget.dart';
 import 'package:odyssey/src/features/home/presentation/widgets/streak_widget.dart';
@@ -50,6 +50,7 @@ import 'package:odyssey/src/features/home/presentation/widgets/water_tracker_wid
 import 'package:odyssey/src/features/home/presentation/widgets/home_quick_stats_widget.dart';
 import 'package:odyssey/src/features/home/presentation/widgets/home_news_carousel_widget.dart';
 import 'package:odyssey/src/features/home/presentation/widgets/home_notes_readings_widget.dart';
+import 'package:odyssey/src/features/home/presentation/widgets/home_habits_compact_widget.dart';
 import 'package:odyssey/src/features/home/presentation/widgets/task_checkbox.dart';
 import 'package:odyssey/src/features/home/presentation/widgets/header_arrow_button.dart';
 import 'package:odyssey/src/features/onboarding/services/showcase_service.dart'
@@ -730,7 +731,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       case HomeWidgetType.dailyGoals:
         return const DailyGoalsWidget();
       case HomeWidgetType.habits:
-        return _buildHabitsWidgetCompact();
+        return const HomeHabitsCompactWidget();
       case HomeWidgetType.activityGrid:
         return const ActivityGridWidget();
       case HomeWidgetType.quickMood:
@@ -743,64 +744,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         return const WaterTrackerWidget();
     }
   }
-
-  Widget _buildHabitsWidgetCompact() {
-    final colors = Theme.of(context).colorScheme;
-    return GestureDetector(
-      onTap: () => Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => const HabitsCalendarScreen()),
-      ),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: colors.surface,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: colors.outline.withValues(alpha: 0.1)),
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: const Color(0xFF5C6BC0).withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Icon(
-                Icons.repeat_rounded,
-                color: Color(0xFF5C6BC0),
-                size: 20,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Hábitos do Dia',
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                      color: colors.onSurface,
-                    ),
-                  ),
-                  Text(
-                    'Toque para ver seus hábitos',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: colors.onSurfaceVariant,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Icon(Icons.chevron_right_rounded, color: colors.onSurfaceVariant),
-          ],
-        ),
-      ),
-    );
-  }
+  // NOTE: _buildHabitsWidgetCompact foi extraído para HomeHabitsCompactWidget
+  // em lib/src/features/home/presentation/widgets/home_habits_compact_widget.dart
 
   // ==========================================
   // MOOD SECTION COMPACTO
