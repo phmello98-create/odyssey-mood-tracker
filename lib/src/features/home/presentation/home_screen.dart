@@ -52,6 +52,7 @@ import 'package:odyssey/src/features/home/presentation/widgets/home_news_carouse
 import 'package:odyssey/src/features/home/presentation/widgets/home_notes_readings_widget.dart';
 import 'package:odyssey/src/features/home/presentation/widgets/home_habits_compact_widget.dart';
 import 'package:odyssey/src/features/home/presentation/widgets/home_empty_habits_widget.dart';
+import 'package:odyssey/src/features/home/presentation/widgets/home_empty_tasks_widget.dart';
 import 'package:odyssey/src/features/home/presentation/widgets/task_checkbox.dart';
 import 'package:odyssey/src/features/home/presentation/widgets/header_arrow_button.dart';
 import 'package:odyssey/src/features/onboarding/services/showcase_service.dart'
@@ -1612,7 +1613,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 return FadeTransition(opacity: animation, child: child);
               },
               child: tasks.isEmpty
-                  ? _buildEmptyTasksContent(context, colors)
+                  ? HomeEmptyTasksWidget(
+                      isToday: _isSameDay(_selectedDate, DateTime.now()),
+                    )
                   : _buildTasksContent(
                       context,
                       colors,
@@ -1708,47 +1711,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     );
   }
 
-  // Conteúdo quando não há tarefas
-  Widget _buildEmptyTasksContent(BuildContext context, ColorScheme colors) {
-    return Container(
-      key: const ValueKey('empty_tasks'),
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: colors.surfaceContainerHighest.withValues(alpha: 0.3),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: colors.outline.withValues(alpha: 0.1)),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            Icons.task_alt_rounded,
-            size: 48,
-            color: UltravioletColors.accentGreen.withValues(alpha: 0.6),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            _isSameDay(_selectedDate, DateTime.now())
-                ? 'Nenhuma tarefa para hoje!'
-                : 'Nenhuma tarefa para este dia',
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-              color: colors.onSurfaceVariant,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'Digite acima para criar',
-            style: TextStyle(
-              fontSize: 12,
-              color: colors.onSurfaceVariant.withValues(alpha: 0.7),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  // NOTE: _buildEmptyTasksContent foi extraído para HomeEmptyTasksWidget
+  // em lib/src/features/home/presentation/widgets/home_empty_tasks_widget.dart
 
   // Conteúdo quando há tarefas
   Widget _buildTasksContent(
