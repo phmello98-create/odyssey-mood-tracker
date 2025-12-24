@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 import 'dart:ui' as ui;
@@ -9,10 +8,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:odyssey/src/constants/app_theme.dart';
-import 'package:odyssey/src/utils/widgets/odyssey_card.dart';
 import 'package:odyssey/src/utils/navigation_provider.dart';
 import 'package:odyssey/src/features/mood_records/presentation/add_mood_record/add_mood_record_form.dart';
 import 'package:odyssey/src/features/mood_records/data/mood_log/mood_record_repository.dart';
@@ -39,11 +36,7 @@ import 'package:odyssey/src/features/library/domain/book.dart';
 import 'package:odyssey/src/features/tasks/data/task_repository.dart';
 import 'package:odyssey/src/features/tasks/data/synced_task_repository.dart';
 import 'package:odyssey/src/features/habits/presentation/habits_calendar_screen.dart';
-import 'package:odyssey/src/features/news/presentation/news_screen.dart';
 import 'package:odyssey/src/utils/smart_classifier.dart';
-import 'package:odyssey/src/utils/widgets/smart_quick_add.dart';
-import 'package:url_launcher/url_launcher.dart';
-import 'package:odyssey/src/features/news/data/news_image_fetcher.dart';
 import 'package:odyssey/src/features/home/data/home_widgets_provider.dart';
 import 'package:odyssey/src/features/home/presentation/widgets/quick_notes_widget.dart';
 import 'package:odyssey/src/features/home/presentation/widgets/streak_widget.dart';
@@ -56,6 +49,7 @@ import 'package:odyssey/src/features/home/presentation/widgets/quick_mood_widget
 import 'package:odyssey/src/features/home/presentation/widgets/water_tracker_widget.dart';
 import 'package:odyssey/src/features/home/presentation/widgets/home_quick_stats_widget.dart';
 import 'package:odyssey/src/features/home/presentation/widgets/home_news_carousel_widget.dart';
+import 'package:odyssey/src/features/home/presentation/widgets/home_notes_readings_widget.dart';
 import 'package:odyssey/src/features/home/presentation/widgets/task_checkbox.dart';
 import 'package:odyssey/src/features/home/presentation/widgets/header_arrow_button.dart';
 import 'package:odyssey/src/features/onboarding/services/showcase_service.dart'
@@ -526,7 +520,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   SliverToBoxAdapter(
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-                      child: _buildNotesAndReadingsSection(context),
+                      child: const HomeNotesReadingsWidget(),
                     ),
                   ),
 
@@ -4892,152 +4886,9 @@ extension _HomeScreenStateDataInsights on _HomeScreenState {
   // ==========================================
   // WIDGET DE NOTAS E LEITURAS (PILLS UNIFICADA)
   // ==========================================
-  Widget _buildNotesAndReadingsSection(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    return Container(
-      padding: const EdgeInsets.all(6),
-      decoration: BoxDecoration(
-        color: colors.surface,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: colors.outline.withValues(alpha: 0.06)),
-      ),
-      child: Row(
-        children: [
-          Expanded(child: _buildNotesPill(context)),
-          const SizedBox(width: 8),
-          Container(
-            width: 1,
-            height: 32,
-            color: colors.outlineVariant.withValues(alpha: 0.3),
-          ),
-          const SizedBox(width: 8),
-          Expanded(child: _buildReadingsPill(context)),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildNotesPill(BuildContext context) {
-    return FutureBuilder<Box>(
-      future: Hive.openBox('notes'),
-      builder: (context, snapshot) {
-        int noteCount = 0;
-        if (snapshot.hasData) {
-          noteCount = snapshot.data!.length;
-        }
-
-        return _buildPillItem(
-          context,
-          label: 'Notas',
-          count: noteCount.toString(),
-          icon: Icons.sticky_note_2_rounded,
-          color: Theme.of(context).colorScheme.tertiary,
-          onTap: () {
-            HapticFeedback.lightImpact();
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const NotesScreen()),
-            );
-          },
-        );
-      },
-    );
-  }
-
-  Widget _buildReadingsPill(BuildContext context) {
-    return FutureBuilder<Box<Book>>(
-      future: _openBooksBox(),
-      builder: (context, snapshot) {
-        int readingCount = 0;
-        if (snapshot.hasData) {
-          final box = snapshot.data!;
-          readingCount = box.values
-              .where((b) => b.status == BookStatus.inProgress)
-              .length;
-        }
-
-        return _buildPillItem(
-          context,
-          label: 'Lendo',
-          count: readingCount.toString(),
-          icon: Icons.menu_book_rounded,
-          color: Theme.of(context).colorScheme.secondary,
-          onTap: () {
-            HapticFeedback.lightImpact();
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const LibraryScreen()),
-            );
-          },
-        );
-      },
-    );
-  }
-
-  Widget _buildPillItem(
-    BuildContext context, {
-    required String label,
-    required String count,
-    required IconData icon,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    final colors = Theme.of(context).colorScheme;
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(18),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: color.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Icon(icon, size: 18, color: color),
-                ),
-                const SizedBox(width: 10),
-                Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: colors.onSurface,
-                  ),
-                ),
-              ],
-            ),
-            Text(
-              count,
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-                color: colors.onSurface,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Future<Box<Book>> _openBooksBox() async {
-    if (!Hive.isAdapterRegistered(BookAdapter().typeId)) {
-      Hive.registerAdapter(BookAdapter());
-    }
-    if (!Hive.isAdapterRegistered(ReadingPeriodAdapter().typeId)) {
-      Hive.registerAdapter(ReadingPeriodAdapter());
-    }
-    if (Hive.isBoxOpen('books_v3')) {
-      return Hive.box<Book>('books_v3');
-    }
-    return await Hive.openBox<Book>('books_v3');
-  }
+  // NOTE: _buildNotesAndReadingsSection, _buildNotesPill, _buildReadingsPill,
+  // _buildPillItem e _openBooksBox foram extraídos para HomeNotesReadingsWidget
+  // em lib/src/features/home/presentation/widgets/home_notes_readings_widget.dart
 }
 
 // Extension para capitalizar primeira letra
