@@ -53,6 +53,7 @@ import 'package:odyssey/src/features/home/presentation/widgets/home_notes_readin
 import 'package:odyssey/src/features/home/presentation/widgets/home_habits_compact_widget.dart';
 import 'package:odyssey/src/features/home/presentation/widgets/home_empty_habits_widget.dart';
 import 'package:odyssey/src/features/home/presentation/widgets/home_empty_tasks_widget.dart';
+import 'package:odyssey/src/features/home/presentation/widgets/home_mini_stat_widget.dart';
 import 'package:odyssey/src/features/home/presentation/widgets/task_checkbox.dart';
 import 'package:odyssey/src/features/home/presentation/widgets/header_arrow_button.dart';
 import 'package:odyssey/src/features/onboarding/services/showcase_service.dart'
@@ -3300,7 +3301,7 @@ extension _HomeScreenStateDataInsights on _HomeScreenState {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceAround,
                       children: [
-                        _buildMiniStat(
+                        HomeMiniStatWidget(
                           icon: Icons.repeat_rounded,
                           value: '${allHabits.length}',
                           label: 'Hábitos',
@@ -3311,7 +3312,7 @@ extension _HomeScreenStateDataInsights on _HomeScreenState {
                           height: 30,
                           color: colors.outline.withValues(alpha: 0.2),
                         ),
-                        _buildMiniStat(
+                        HomeMiniStatWidget(
                           icon: Icons.check_circle_rounded,
                           value: '${allTasks.length}',
                           label: 'Tarefas',
@@ -3322,7 +3323,7 @@ extension _HomeScreenStateDataInsights on _HomeScreenState {
                           height: 30,
                           color: colors.outline.withValues(alpha: 0.2),
                         ),
-                        _buildMiniStat(
+                        HomeMiniStatWidget(
                           icon: Icons.mood_rounded,
                           value: '${allMoods.length}',
                           label: 'Moods',
@@ -3333,7 +3334,7 @@ extension _HomeScreenStateDataInsights on _HomeScreenState {
                           height: 30,
                           color: colors.outline.withValues(alpha: 0.2),
                         ),
-                        _buildMiniStat(
+                        HomeMiniStatWidget(
                           icon: Icons.note_rounded,
                           value: '${allNotes.length}',
                           label: 'Notas',
@@ -3351,35 +3352,8 @@ extension _HomeScreenStateDataInsights on _HomeScreenState {
     );
   }
 
-  Widget _buildMiniStat({
-    required IconData icon,
-    required String value,
-    required String label,
-    required Color color,
-  }) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, color: color, size: 18),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w800,
-            color: color,
-          ),
-        ),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 10,
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
-          ),
-        ),
-      ],
-    );
-  }
+  // NOTE: _buildMiniStat foi extraído para HomeMiniStatWidget
+  // em lib/src/features/home/presentation/widgets/home_mini_stat_widget.dart
 
   // ==========================================
   // RESUMO MENSAL
