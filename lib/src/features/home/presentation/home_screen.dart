@@ -51,6 +51,7 @@ import 'package:odyssey/src/features/home/presentation/widgets/home_quick_stats_
 import 'package:odyssey/src/features/home/presentation/widgets/home_news_carousel_widget.dart';
 import 'package:odyssey/src/features/home/presentation/widgets/home_notes_readings_widget.dart';
 import 'package:odyssey/src/features/home/presentation/widgets/home_habits_compact_widget.dart';
+import 'package:odyssey/src/features/home/presentation/widgets/home_empty_habits_widget.dart';
 import 'package:odyssey/src/features/home/presentation/widgets/task_checkbox.dart';
 import 'package:odyssey/src/features/home/presentation/widgets/header_arrow_button.dart';
 import 'package:odyssey/src/features/onboarding/services/showcase_service.dart'
@@ -2152,7 +2153,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         final allHabits = habitRepo.getHabitsForDate(_selectedDate);
 
         if (allHabits.isEmpty) {
-          return _buildEmptyHabitsState(context);
+          return HomeEmptyHabitsWidget(
+            onCreateHabit: () => _showAddHabitDialog(context),
+          );
         }
 
         // Separar pendentes e concluídos
@@ -2782,53 +2785,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     );
   }
 
-  Widget _buildEmptyHabitsState(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(40),
-      decoration: BoxDecoration(
-        color: UltravioletColors.surfaceVariant.withValues(alpha: 0.2),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        children: [
-          const Icon(
-            Icons.event_repeat_rounded,
-            size: 48,
-            color: Colors.white24,
-          ),
-          const SizedBox(height: 12),
-          const Text(
-            'Nenhum hábito para este dia',
-            style: TextStyle(
-              color: Colors.white54,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const SizedBox(height: 12),
-          GestureDetector(
-            onTap: () => _showAddHabitDialog(context),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-              decoration: BoxDecoration(
-                color: UltravioletColors.primary.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: UltravioletColors.primary.withValues(alpha: 0.5),
-                ),
-              ),
-              child: const Text(
-                '+ Criar hábito',
-                style: TextStyle(
-                  color: UltravioletColors.primary,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  // NOTE: _buildEmptyHabitsState foi extraído para HomeEmptyHabitsWidget
+  // em lib/src/features/home/presentation/widgets/home_empty_habits_widget.dart
 
   // ==========================================
   // ESTATÍSTICAS RÁPIDAS
