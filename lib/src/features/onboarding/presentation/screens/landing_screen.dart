@@ -143,6 +143,7 @@ class _LandingScreenState extends ConsumerState<LandingScreen>
                                   fontWeight: FontWeight.bold,
                                   fontSize: 36,
                                   height: 1.2,
+                                  color: theme.colorScheme.onSurface,
                                 ),
                               ),
                             ),
@@ -155,9 +156,13 @@ class _LandingScreenState extends ConsumerState<LandingScreen>
                                   ? "Não apenas registre, evolua. Gamifique sua rotina, controle seu humor e construa hábitos duradouros."
                                   : "Don't just record, evolve. Gamify your routine, control your mood and build lasting habits.",
                               style: theme.textTheme.bodyLarge?.copyWith(
-                                color: theme.colorScheme.onSurface.withOpacity(
-                                  0.7,
-                                ),
+                                color: theme.brightness == Brightness.dark
+                                    ? theme.colorScheme.onSurface.withOpacity(
+                                        0.7,
+                                      )
+                                    : theme.colorScheme.onSurface.withOpacity(
+                                        0.65,
+                                      ),
                                 fontFamily: "Inter",
                                 fontSize: 16,
                               ),
@@ -237,7 +242,9 @@ class _LandingScreenState extends ConsumerState<LandingScreen>
                         Text(
                           AppLocalizations.of(context)!.dontHaveAccount,
                           style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurface.withOpacity(0.5),
+                            color: theme.brightness == Brightness.dark
+                                ? theme.colorScheme.onSurface.withOpacity(0.5)
+                                : theme.colorScheme.onSurface.withOpacity(0.65),
                             fontFamily: "Inter",
                             fontSize: 13,
                           ),
@@ -271,7 +278,9 @@ class _LandingScreenState extends ConsumerState<LandingScreen>
                     Text(
                       "✨ Desbloqueie conquistas, temas e estatísticas com uso contínuo.",
                       style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurface.withOpacity(0.5),
+                        color: theme.brightness == Brightness.dark
+                            ? theme.colorScheme.onSurface.withOpacity(0.5)
+                            : theme.colorScheme.onSurface.withOpacity(0.6),
                         fontFamily: "Inter",
                         fontSize: 12,
                       ),
@@ -352,10 +361,14 @@ class _LandingScreenState extends ConsumerState<LandingScreen>
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: theme.colorScheme.surface.withOpacity(0.3),
+          color: theme.brightness == Brightness.dark
+              ? theme.colorScheme.surface.withOpacity(0.3)
+              : theme.colorScheme.surfaceContainerHighest.withOpacity(0.8),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: theme.colorScheme.onSurface.withOpacity(0.15),
+            color: theme.brightness == Brightness.dark
+                ? theme.colorScheme.onSurface.withOpacity(0.15)
+                : theme.colorScheme.outline.withOpacity(0.25),
           ),
         ),
         child: Row(
@@ -364,14 +377,18 @@ class _LandingScreenState extends ConsumerState<LandingScreen>
             Icon(
               Icons.language_rounded,
               size: 18,
-              color: theme.colorScheme.onSurface.withOpacity(0.8),
+              color: theme.brightness == Brightness.dark
+                  ? theme.colorScheme.onSurface.withOpacity(0.8)
+                  : theme.colorScheme.onSurface.withOpacity(0.75),
             ),
             const SizedBox(width: 6),
             Text(
               isPortuguese ? 'PT' : 'EN',
               style: theme.textTheme.bodyMedium?.copyWith(
                 fontWeight: FontWeight.w600,
-                color: theme.colorScheme.onSurface.withOpacity(0.9),
+                color: theme.brightness == Brightness.dark
+                    ? theme.colorScheme.onSurface.withOpacity(0.9)
+                    : theme.colorScheme.onSurface.withOpacity(0.85),
               ),
             ),
             const SizedBox(width: 4),

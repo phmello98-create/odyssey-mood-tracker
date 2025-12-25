@@ -304,10 +304,15 @@ class _SignInDialogState extends ConsumerState<SignInDialog> {
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(20),
                     gradient: LinearGradient(
-                      colors: [
-                        theme.colorScheme.surface.withOpacity(0.9),
-                        theme.colorScheme.surface.withOpacity(0.4),
-                      ],
+                      colors: theme.brightness == Brightness.dark
+                          ? [
+                              theme.colorScheme.surface.withOpacity(0.9),
+                              theme.colorScheme.surface.withOpacity(0.4),
+                            ]
+                          : [
+                              theme.colorScheme.primary.withOpacity(0.1),
+                              Colors.white.withOpacity(0.95),
+                            ],
                     ),
                   ),
                   child: Container(
@@ -316,20 +321,20 @@ class _SignInDialogState extends ConsumerState<SignInDialog> {
                       borderRadius: BorderRadius.circular(20),
                       boxShadow: [
                         BoxShadow(
-                          color: shadowColor.withOpacity(0.3),
+                          color: shadowColor.withOpacity(0.15),
                           offset: const Offset(0, 3),
-                          blurRadius: 5,
+                          blurRadius: 8,
                         ),
                         BoxShadow(
-                          color: shadowColor.withOpacity(0.3),
-                          offset: const Offset(0, 30),
-                          blurRadius: 30,
+                          color: shadowColor.withOpacity(0.1),
+                          offset: const Offset(0, 20),
+                          blurRadius: 40,
                         ),
                       ],
                       color: theme.brightness == Brightness.dark
                           ? theme.colorScheme.surfaceContainerHighest
                                 .withOpacity(0.95)
-                          : CupertinoColors.secondarySystemBackground,
+                          : Colors.white,
                       backgroundBlendMode: BlendMode.srcOver,
                     ),
                     child: Column(
@@ -340,6 +345,7 @@ class _SignInDialogState extends ConsumerState<SignInDialog> {
                           style: theme.textTheme.headlineMedium?.copyWith(
                             fontWeight: FontWeight.bold,
                             fontFamily: "Poppins",
+                            color: theme.colorScheme.onSurface,
                           ),
                         ),
                         const SizedBox(height: 16),
@@ -348,7 +354,9 @@ class _SignInDialogState extends ConsumerState<SignInDialog> {
                           textAlign: TextAlign.center,
                           style: theme.textTheme.bodyMedium?.copyWith(
                             fontFamily: "Inter",
-                            color: theme.colorScheme.onSurfaceVariant,
+                            color: theme.brightness == Brightness.dark
+                                ? theme.colorScheme.onSurfaceVariant
+                                : theme.colorScheme.onSurface.withOpacity(0.7),
                           ),
                         ),
                         const SizedBox(height: 24),
@@ -359,9 +367,14 @@ class _SignInDialogState extends ConsumerState<SignInDialog> {
                           child: Text(
                             "Email",
                             style: TextStyle(
-                              color: theme.colorScheme.onSurfaceVariant,
+                              color: theme.brightness == Brightness.dark
+                                  ? theme.colorScheme.onSurfaceVariant
+                                  : theme.colorScheme.onSurface.withOpacity(
+                                      0.8,
+                                    ),
                               fontFamily: "Inter",
                               fontSize: 15,
+                              fontWeight: FontWeight.w500,
                             ),
                           ),
                         ),
@@ -383,9 +396,14 @@ class _SignInDialogState extends ConsumerState<SignInDialog> {
                           child: Text(
                             "Senha",
                             style: TextStyle(
-                              color: theme.colorScheme.onSurfaceVariant,
+                              color: theme.brightness == Brightness.dark
+                                  ? theme.colorScheme.onSurfaceVariant
+                                  : theme.colorScheme.onSurface.withOpacity(
+                                      0.8,
+                                    ),
                               fontFamily: "Inter",
                               fontSize: 15,
+                              fontWeight: FontWeight.w500,
                             ),
                           ),
                         ),
@@ -533,8 +551,10 @@ class _SignInDialogState extends ConsumerState<SignInDialog> {
                           "Como visitante, seus dados ficam apenas no dispositivo",
                           textAlign: TextAlign.center,
                           style: TextStyle(
-                            color: theme.colorScheme.onSurfaceVariant
-                                .withOpacity(0.7),
+                            color: theme.brightness == Brightness.dark
+                                ? theme.colorScheme.onSurfaceVariant
+                                      .withOpacity(0.7)
+                                : theme.colorScheme.onSurface.withOpacity(0.55),
                             fontFamily: "Inter",
                             fontSize: 12,
                           ),
@@ -548,7 +568,11 @@ class _SignInDialogState extends ConsumerState<SignInDialog> {
                             Text(
                               AppLocalizations.of(context)!.dontHaveAccount,
                               style: TextStyle(
-                                color: theme.colorScheme.onSurfaceVariant,
+                                color: theme.brightness == Brightness.dark
+                                    ? theme.colorScheme.onSurfaceVariant
+                                    : theme.colorScheme.onSurface.withOpacity(
+                                        0.7,
+                                      ),
                                 fontFamily: "Inter",
                                 fontSize: 14,
                               ),
@@ -663,17 +687,25 @@ class _SignInDialogState extends ConsumerState<SignInDialog> {
     String hint,
   ) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return InputDecoration(
       filled: true,
-      fillColor: theme.colorScheme.surfaceContainerHighest.withOpacity(0.5),
+      fillColor: isDark
+          ? theme.colorScheme.surfaceContainerHighest.withOpacity(0.5)
+          : theme.colorScheme.surfaceContainerHighest.withOpacity(0.7),
       hintText: hint,
       hintStyle: TextStyle(
-        color: theme.colorScheme.onSurfaceVariant.withOpacity(0.5),
+        color: isDark
+            ? theme.colorScheme.onSurfaceVariant.withOpacity(0.5)
+            : theme.colorScheme.onSurface.withOpacity(0.4),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
         borderSide: BorderSide(
-          color: theme.colorScheme.outline.withOpacity(0.15),
+          color: isDark
+              ? theme.colorScheme.outline.withOpacity(0.15)
+              : theme.colorScheme.outline.withOpacity(0.3),
         ),
       ),
       focusedBorder: OutlineInputBorder(
@@ -683,7 +715,9 @@ class _SignInDialogState extends ConsumerState<SignInDialog> {
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       prefixIcon: Icon(
         icon,
-        color: theme.colorScheme.onSurfaceVariant,
+        color: isDark
+            ? theme.colorScheme.onSurfaceVariant
+            : theme.colorScheme.primary.withOpacity(0.7),
         size: 22,
       ),
     );
@@ -707,6 +741,7 @@ class _SocialLoginButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
     return Material(
       color: Colors.transparent,
@@ -716,10 +751,14 @@ class _SocialLoginButton extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
           decoration: BoxDecoration(
-            color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.3),
+            color: isDark
+                ? theme.colorScheme.surfaceContainerHighest.withOpacity(0.3)
+                : theme.colorScheme.surfaceContainerHighest.withOpacity(0.8),
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: theme.colorScheme.outline.withOpacity(0.15),
+              color: isDark
+                  ? theme.colorScheme.outline.withOpacity(0.15)
+                  : theme.colorScheme.outline.withOpacity(0.25),
             ),
           ),
           child: Row(
@@ -733,7 +772,7 @@ class _SocialLoginButton extends StatelessWidget {
                   color: theme.colorScheme.onSurface,
                   fontFamily: "Inter",
                   fontSize: 14,
-                  fontWeight: FontWeight.w500,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ],

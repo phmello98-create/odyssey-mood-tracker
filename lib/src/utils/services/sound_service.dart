@@ -135,16 +135,6 @@ class SoundService {
     'snd_toggle_off': 'sounds/toggle_off.wav',
     'snd_transition_up': 'sounds/transition_up.wav',
     'snd_transition_down': 'sounds/transition_down.wav',
-    'snd_swipe_01': 'sounds/swipe_01.wav',
-    'snd_swipe_02': 'sounds/swipe_02.wav',
-    'snd_swipe_03': 'sounds/swipe_03.wav',
-    'snd_swipe_04': 'sounds/swipe_04.wav',
-    'snd_swipe_05': 'sounds/swipe_05.wav',
-    'snd_type_01': 'sounds/type_01.wav',
-    'snd_type_02': 'sounds/type_02.wav',
-    'snd_type_03': 'sounds/type_03.wav',
-    'snd_type_04': 'sounds/type_04.wav',
-    'snd_type_05': 'sounds/type_05.wav',
     'snd_notification': 'sounds/notification.wav',
     'snd_caution': 'sounds/caution.wav',
     'snd_celebration': 'sounds/celebration.wav',
@@ -612,8 +602,8 @@ class SoundService {
   }
 
   Future<void> playSndSwipe() async {
-    final variation = 1 + (DateTime.now().millisecond % 5);
-    await _play('snd_swipe_0$variation', volume: 0.28);
+    // Usar transition_up como fallback (swipe_xx não existem mais)
+    await _play('snd_transition_up', volume: 0.28);
     await HapticFeedback.selectionClick();
   }
 

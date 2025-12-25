@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:odyssey/src/utils/navigation_provider.dart';
 import 'package:odyssey/src/providers/timer_provider.dart';
 import 'package:odyssey/src/constants/app_theme.dart';
+import 'package:odyssey/src/features/time_tracker/data/time_tracking_repository.dart';
 
 class QuickPomodoroWidget extends ConsumerStatefulWidget {
   const QuickPomodoroWidget({super.key});
@@ -216,10 +217,16 @@ class _QuickPomodoroWidgetState extends ConsumerState<QuickPomodoroWidget> {
                     ),
                   ),
           ),
+
+          // Histórico de pomodoros
+          const SizedBox(height: 12),
+          _PomodoroHistorySection(onExpand: _showHistoryToggle),
         ],
       ),
     );
   }
+
+  bool _showHistoryToggle = false;
 
   Widget _buildTimeOption(
     int minutes,
@@ -305,6 +312,201 @@ class _QuickPomodoroWidgetState extends ConsumerState<QuickPomodoroWidget> {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Seção de histórico de pomodoros
+class _PomodoroHistorySection extends ConsumerStatefulWidget {
+  final bool onExpand;
+
+  const _PomodoroHistorySection({required this.onExpand});
+
+  @override
+  ConsumerState<_PomodoroHistorySection> createState() =>
+      _PomodoroHistorySectionState();
+}
+
+class _PomodoroHistorySectionState
+    extends ConsumerState<_PomodoroHistorySection> {
+  bool _isExpanded = false;
+  static const Color _pomodoroColor = Color(0xFFFF6B6B);
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+
+    // Buscar registros de hoje
+    final todayRecords = ref.watch(
+      timeTrackingRecordsByDateProvider(DateTime.now()),
+    );
+
+    final completedToday = todayRecords.where((r) => r.isCompleted).toList();
+    final totalMinutes = completedToday.fold<int>(
+      0,
+      (sum, r) => sum + r.duration.inMinutes,
+    );
+
+    if (completedToday.isEmpty && !_isExpanded) {
+      // Mostrar apenas o botão para expandir quando não há histórico
+      return GestureDetector(
+        onTap: () => setState(() => _isExpanded = true),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.history_rounded,
+                size: 14,
+                color: colors.onSurfaceVariant.withOpacity(0.5),
+              ),
+              const SizedBox(width: 6),
+              Text(
+                'Sem pomodoros hoje ainda',
+                style: TextStyle(
+                  fontSize: 11,
+                  color: colors.onSurfaceVariant.withOpacity(0.6),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Column(
+      children: [
+        // Header com toggle
+        GestureDetector(
+          onTap: () {
+            HapticFeedback.lightImpact();
+            setState(() => _isExpanded = !_isExpanded);
+          },
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: _pomodoroColor.withOpacity(0.08),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: _pomodoroColor.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(
+                    Icons.check_circle_rounded,
+                    color: _pomodoroColor,
+                    size: 16,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '${completedToday.length} pomodoro${completedToday.length != 1 ? 's' : ''} hoje',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: colors.onSurface,
+                        ),
+                      ),
+                      Text(
+                        '$totalMinutes min de foco',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: colors.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(
+                  _isExpanded
+                      ? Icons.keyboard_arrow_up_rounded
+                      : Icons.keyboard_arrow_down_rounded,
+                  color: colors.onSurfaceVariant,
+                  size: 20,
+                ),
+              ],
+            ),
+          ),
+        ),
+
+        // Lista expandida
+        AnimatedCrossFade(
+          duration: const Duration(milliseconds: 200),
+          crossFadeState: _isExpanded
+              ? CrossFadeState.showFirst
+              : CrossFadeState.showSecond,
+          firstChild: Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Column(
+              children: completedToday.take(3).map((record) {
+                final time = record.startTime;
+                final duration = record.duration.inMinutes;
+
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: colors.surfaceContainerHighest.withOpacity(0.4),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.timer_rounded,
+                        size: 16,
+                        color: _pomodoroColor.withOpacity(0.7),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          record.activityName.isNotEmpty
+                              ? record.activityName
+                              : 'Pomodoro',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: colors.onSurface,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      Text(
+                        '$duration min',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: _pomodoroColor,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}',
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: colors.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+          secondChild: const SizedBox.shrink(),
+        ),
+      ],
     );
   }
 }

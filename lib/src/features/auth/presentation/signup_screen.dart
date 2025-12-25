@@ -189,7 +189,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen>
           borderSide: BorderSide(color: colors.primary, width: 2),
         ),
         filled: true,
-        fillColor: colors.surfaceContainerHighest.withValues(alpha: 0.3),
+        fillColor: colors.surfaceContainerHighest.withValues(alpha: 0.5),
       ),
       validator: (value) {
         if (value == null || value.isEmpty) {
@@ -225,7 +225,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen>
           borderSide: BorderSide(color: colors.primary, width: 2),
         ),
         filled: true,
-        fillColor: colors.surfaceContainerHighest.withValues(alpha: 0.3),
+        fillColor: colors.surfaceContainerHighest.withValues(alpha: 0.5),
       ),
       validator: (value) {
         if (value == null || value.isEmpty) {
@@ -269,7 +269,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen>
           borderSide: BorderSide(color: colors.primary, width: 2),
         ),
         filled: true,
-        fillColor: colors.surfaceContainerHighest.withValues(alpha: 0.3),
+        fillColor: colors.surfaceContainerHighest.withValues(alpha: 0.5),
       ),
       validator: (value) {
         if (value == null || value.isEmpty) {
@@ -315,7 +315,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen>
           borderSide: BorderSide(color: colors.primary, width: 2),
         ),
         filled: true,
-        fillColor: colors.surfaceContainerHighest.withValues(alpha: 0.3),
+        fillColor: colors.surfaceContainerHighest.withValues(alpha: 0.5),
       ),
       validator: (value) {
         if (value == null || value.isEmpty) {

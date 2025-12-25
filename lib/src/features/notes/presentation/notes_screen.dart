@@ -1,7 +1,7 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import 'package:intl/intl.dart';
 import 'package:odyssey/src/utils/widgets/staggered_list_animation.dart';
 import 'package:odyssey/src/utils/services/sound_service.dart';
 import 'package:odyssey/src/features/notes/presentation/note_editor_screen.dart';
@@ -109,87 +109,180 @@ class _NotesScreenState extends State<NotesScreen>
       body: SafeArea(
         child: Column(
           children: [
-            // iOS-style header
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-              child: Row(
-                children: [
-                  GestureDetector(
-                    onTap: () => Navigator.pop(context),
-                    child: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: colors.surfaceContainerHighest.withValues(
-                          alpha: 0.5,
-                        ),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Icon(
-                        Icons.arrow_back_ios_new,
-                        size: 18,
-                        color: colors.onSurface,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Text(
-                    'Notas',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w600,
-                      color: colors.onSurface,
-                    ),
-                  ),
-                  const Spacer(),
-                  _buildHeaderButton(
-                    icon: Icons.sort,
-                    onTap: _showSortOptions,
-                    colors: colors,
-                  ),
-                  const SizedBox(width: 8),
-                  _buildHeaderButton(
-                    icon: _isGridView ? Icons.view_list : Icons.grid_view,
-                    onTap: () => setState(() => _isGridView = !_isGridView),
-                    colors: colors,
-                  ),
-                  const SizedBox(width: 8),
-                  _buildHeaderButton(
-                    icon: Icons.search,
-                    onTap: _showSearchSheet,
-                    colors: colors,
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
+            // Header Premium
+            _buildPremiumHeader(colors),
+            const SizedBox(height: 8),
             Expanded(child: _buildNotesTab(colors)),
           ],
         ),
       ),
-      floatingActionButton: Container(
-        width: 56,
-        height: 56,
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [colors.primary, colors.tertiary],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
+      floatingActionButton: _buildPremiumFAB(colors),
+    );
+  }
+
+  /// Header premium com pesquisa integrada
+  Widget _buildPremiumHeader(ColorScheme colors) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Top row: back button, title, actions
+          Row(
+            children: [
+              GestureDetector(
+                onTap: () => Navigator.pop(context),
+                child: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: colors.surfaceContainerHighest.withValues(
+                      alpha: 0.5,
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    Icons.arrow_back_ios_new,
+                    size: 18,
+                    color: colors.onSurface,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '📝 Minhas Notas',
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: colors.onSurface,
+                      ),
+                    ),
+                    if (_notesBox != null)
+                      Text(
+                        '${_notesBox!.length} ${_notesBox!.length == 1 ? 'nota' : 'notas'}',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: colors.onSurfaceVariant,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              _buildHeaderButton(
+                icon: Icons.sort_rounded,
+                onTap: _showSortOptions,
+                colors: colors,
+              ),
+              const SizedBox(width: 8),
+              _buildHeaderButton(
+                icon: _isGridView
+                    ? Icons.view_list_rounded
+                    : Icons.grid_view_rounded,
+                onTap: () => setState(() => _isGridView = !_isGridView),
+                colors: colors,
+              ),
+            ],
           ),
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: colors.primary.withValues(alpha: 0.3),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
+          const SizedBox(height: 16),
+
+          // Search bar sempre visível
+          GestureDetector(
+            onTap: _showSearchSheet,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              decoration: BoxDecoration(
+                color: colors.surfaceContainerHighest.withValues(alpha: 0.4),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: colors.outline.withValues(alpha: 0.1),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.search_rounded,
+                    size: 22,
+                    color: colors.onSurfaceVariant.withValues(alpha: 0.6),
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    'Buscar em suas notas...',
+                    style: TextStyle(
+                      fontSize: 15,
+                      color: colors.onSurfaceVariant.withValues(alpha: 0.6),
+                    ),
+                  ),
+                  const Spacer(),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: colors.primary.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      '⌘K',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: colors.primary,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// FAB Premium com label expandido
+  Widget _buildPremiumFAB(ColorScheme colors) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [colors.primary, colors.tertiary],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: _showAddDialog,
-            borderRadius: BorderRadius.circular(16),
-            child: Icon(Icons.add, color: colors.onPrimary, size: 28),
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: [
+          BoxShadow(
+            color: colors.primary.withValues(alpha: 0.25),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: _showAddDialog,
+          borderRadius: BorderRadius.circular(18),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.edit_rounded, color: colors.onPrimary, size: 22),
+                const SizedBox(width: 10),
+                Text(
+                  'Nova Nota',
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: colors.onPrimary,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -243,8 +336,9 @@ class _NotesScreenState extends State<NotesScreen>
             itemBuilder: (context, index) {
               final key = notes[index];
               final rawData = box.get(key);
-              if (rawData == null || rawData is! Map)
+              if (rawData == null || rawData is! Map) {
                 return const SizedBox.shrink();
+              }
 
               final data = Map<String, dynamic>.from(rawData);
               return StaggeredListAnimation(
@@ -260,8 +354,9 @@ class _NotesScreenState extends State<NotesScreen>
             itemBuilder: (context, index) {
               final key = notes[index];
               final rawData = box.get(key);
-              if (rawData == null || rawData is! Map)
+              if (rawData == null || rawData is! Map) {
                 return const SizedBox.shrink();
+              }
 
               final data = Map<String, dynamic>.from(rawData);
               return StaggeredListAnimation(
@@ -412,24 +507,45 @@ class _NotesScreenState extends State<NotesScreen>
     final dateStr = data['createdAt'] as String?;
     final date = dateStr != null ? DateTime.tryParse(dateStr) : null;
     final isPinned = data['isPinned'] as bool? ?? false;
-    final accentColors = [colors.primary, colors.secondary, colors.tertiary];
-    final color = accentColors[index % accentColors.length];
+    final imagePath = data['imagePath'] as String?;
+
+    // Paleta de cores moderna e sofisticada (Pastel / Muted)
+    final cardColors = [
+      const Color(0xFF818CF8), // Indigo Soft
+      const Color(0xFFA78BFA), // Violet Soft
+      const Color(0xFFF472B6), // Pink Soft
+      const Color(0xFF2DD4BF), // Teal Soft
+      const Color(0xFFFBBF24), // Amber Soft
+      const Color(0xFF60A5FA), // Blue Soft
+    ];
+    final accentColor = cardColors[index % cardColors.length];
+
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
+    // Métricas
+    final wordCount = content
+        .split(RegExp(r'\s+'))
+        .where((w) => w.isNotEmpty)
+        .length;
+    final readingTimeMinutes = (wordCount / 200).ceil();
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: colors.surface,
-        borderRadius: BorderRadius.circular(16),
+        color: isDarkMode ? colors.surfaceContainer : Colors.white,
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: isPinned
-              ? color.withValues(alpha: 0.3)
-              : colors.outline.withValues(alpha: 0.1),
+          color: isDarkMode
+              ? Colors.white.withValues(alpha: 0.05)
+              : colors.outline.withValues(alpha: 0.05),
+          width: 1,
         ),
         boxShadow: [
           BoxShadow(
-            color: colors.shadow.withValues(alpha: isPinned ? 0.08 : 0.04),
-            blurRadius: 10,
+            color: accentColor.withValues(alpha: isDarkMode ? 0 : 0.05),
+            blurRadius: 16,
             offset: const Offset(0, 4),
+            spreadRadius: -4,
           ),
         ],
       ),
@@ -438,68 +554,134 @@ class _NotesScreenState extends State<NotesScreen>
         child: InkWell(
           onTap: () => _showNoteEditor(id: id, initialData: data),
           onLongPress: () => _deleteNote(id),
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(20),
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (isPinned)
-                  Padding(
-                    padding: const EdgeInsets.only(right: 12, top: 2),
-                    child: Icon(Icons.push_pin, size: 16, color: color),
-                  )
-                else
-                  Padding(
-                    padding: const EdgeInsets.only(right: 12, top: 2),
-                    child: Icon(
-                      Icons.description_outlined,
-                      size: 18,
-                      color: colors.onSurfaceVariant.withValues(alpha: 0.5),
-                    ),
+                // Indicador visual (Barra ou Ícone)
+                Container(
+                  width: 4,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: isPinned
+                        ? accentColor
+                        : accentColor.withValues(alpha: 0.3),
+                    borderRadius: BorderRadius.circular(2),
                   ),
+                ),
+
+                const SizedBox(width: 16),
+
+                // Conteúdo
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        title ?? content.split('\n').first,
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: colors.onSurface,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      if (title != null && content.isNotEmpty) ...[
-                        const SizedBox(height: 4),
-                        Text(
-                          content,
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: colors.onSurfaceVariant,
-                            height: 1.4,
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
-                      if (date != null) ...[
-                        const SizedBox(height: 8),
-                        Text(
-                          _formatDate(date),
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: colors.onSurfaceVariant.withValues(
-                              alpha: 0.6,
+                      // Header: Título e Data
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              (title != null && title.isNotEmpty)
+                                  ? title
+                                  : content
+                                        .split('\n')
+                                        .first, // Fallback para primeira linha do conteúdo
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: colors.onSurface,
+                                letterSpacing: -0.3,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
+                          const SizedBox(width: 8),
+                          if (date != null)
+                            Text(
+                              '${date.day}/${date.month}',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w500,
+                                color: colors.onSurfaceVariant.withValues(
+                                  alpha: 0.6,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 6),
+
+                      // Preview
+                      Text(
+                        content.replaceAll('\n', ' '), // Preview em uma linha
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: colors.onSurfaceVariant.withValues(alpha: 0.8),
+                          height: 1.4,
                         ),
-                      ],
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+
+                      const SizedBox(height: 10),
+
+                      // Footer: Métricas e Pin
+                      Row(
+                        children: [
+                          if (isPinned) ...[
+                            Icon(Icons.push_pin, size: 12, color: accentColor),
+                            const SizedBox(width: 8),
+                          ],
+
+                          // Tempo de leitura
+                          Icon(
+                            Icons.access_time,
+                            size: 12,
+                            color: colors.onSurfaceVariant.withValues(
+                              alpha: 0.4,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            '${readingTimeMinutes} min',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: colors.onSurfaceVariant.withValues(
+                                alpha: 0.6,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ],
                   ),
                 ),
+
+                const SizedBox(width: 8),
+
+                if (imagePath != null && File(imagePath).existsSync())
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: Image.file(
+                      File(imagePath),
+                      width: 60,
+                      height: 60,
+                      fit: BoxFit.cover,
+                    ),
+                  )
+                else
+                  // Chevron sutil
+                  Icon(
+                    Icons.chevron_right_rounded,
+                    color: colors.onSurfaceVariant.withValues(alpha: 0.3),
+                    size: 20,
+                  ),
               ],
             ),
           ),
@@ -519,98 +701,185 @@ class _NotesScreenState extends State<NotesScreen>
     final dateStr = data['createdAt'] as String?;
     final date = dateStr != null ? DateTime.tryParse(dateStr) : null;
     final isPinned = data['isPinned'] as bool? ?? false;
-    final accentColors = [colors.primary, colors.secondary, colors.tertiary];
-    final color = accentColors[index % accentColors.length];
+    final imagePath = data['imagePath'] as String?;
+
+    // Paleta de cores moderna e sofisticada (Pastel / Muted)
+    final cardColors = [
+      const Color(0xFF818CF8), // Indigo Soft
+      const Color(0xFFA78BFA), // Violet Soft
+      const Color(0xFFF472B6), // Pink Soft
+      const Color(0xFF2DD4BF), // Teal Soft
+      const Color(0xFFFBBF24), // Amber Soft
+      const Color(0xFF60A5FA), // Blue Soft
+    ];
+    final accentColor = cardColors[index % cardColors.length];
+
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
+    // Métricas
+    final wordCount = content
+        .split(RegExp(r'\s+'))
+        .where((w) => w.isNotEmpty)
+        .length;
+    final readingTimeMinutes = (wordCount / 200).ceil();
+    final hasEmoji = RegExp(
+      r'[\u{1F300}-\u{1F9FF}]',
+      unicode: true,
+    ).hasMatch(content);
 
     return Container(
       decoration: BoxDecoration(
-        color: colors.surface,
-        borderRadius: BorderRadius.circular(20),
+        color: isDarkMode
+            ? colors
+                  .surfaceContainer // Dark mode: surface um pouco mais clara
+            : Colors.white, // Light mode: branco puro para limpeza
+        borderRadius: BorderRadius.circular(24),
         border: Border.all(
-          color: isPinned
-              ? color.withValues(alpha: 0.3)
-              : colors.outline.withValues(alpha: 0.1),
+          color: isDarkMode
+              ? Colors.white.withValues(alpha: 0.05)
+              : colors.outline.withValues(alpha: 0.05),
+          width: 1,
         ),
         boxShadow: [
           BoxShadow(
-            color: colors.shadow.withValues(alpha: isPinned ? 0.08 : 0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+            color: accentColor.withValues(alpha: isDarkMode ? 0 : 0.08),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+            spreadRadius: -8,
           ),
         ],
       ),
       child: Material(
         color: Colors.transparent,
+        clipBehavior: Clip.antiAlias,
+        borderRadius: BorderRadius.circular(24),
         child: InkWell(
           onTap: () => _showNoteEditor(id: id, initialData: data),
           onLongPress: () => _deleteNote(id),
-          borderRadius: BorderRadius.circular(20),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (isPinned || title != null)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Imagem de Capa
+              if (imagePath != null && File(imagePath).existsSync())
+                SizedBox(
+                  height: 140,
+                  width: double.infinity,
+                  child: Image.file(File(imagePath), fit: BoxFit.cover),
+                ),
+
+              Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Header: Data e Pin
+                    Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        if (title != null)
-                          Expanded(
-                            child: Text(
-                              title,
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: colors.onSurface,
+                        if (date != null)
+                          Text(
+                            '${date.day}/${date.month}',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                              color: colors.onSurfaceVariant.withValues(
+                                alpha: 0.5,
                               ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
+                              letterSpacing: 0.5,
                             ),
                           ),
                         if (isPinned)
-                          Container(
-                            padding: const EdgeInsets.all(4),
-                            decoration: BoxDecoration(
-                              color: color.withValues(alpha: 0.1),
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(Icons.push_pin, size: 12, color: color),
-                          ),
+                          Icon(Icons.push_pin, size: 14, color: accentColor)
+                        else if (hasEmoji)
+                          Text('✨', style: TextStyle(fontSize: 12)),
                       ],
                     ),
-                  ),
-                Text(
-                  content,
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: title != null
-                        ? colors.onSurfaceVariant
-                        : colors.onSurface,
-                    height: 1.5,
-                  ),
-                  maxLines: 8,
-                  overflow: TextOverflow.fade,
-                ),
-                if (date != null) ...[
-                  const SizedBox(height: 12),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
+
+                    const SizedBox(height: 12),
+
+                    // Título Grande
+                    if (title != null && title.isNotEmpty) ...[
                       Text(
-                        _formatDate(date),
+                        title,
                         style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w500,
-                          color: colors.onSurfaceVariant.withValues(alpha: 0.6),
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                          color: colors.onSurface,
+                          height: 1.2,
+                          letterSpacing: -0.5,
                         ),
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
                       ),
+                      const SizedBox(height: 8),
                     ],
-                  ),
-                ],
-              ],
-            ),
+
+                    // Conteúdo (se não tiver título, ele assume o destaque)
+                    if (title == null || title.isEmpty)
+                      Text(
+                        content,
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                          color: colors.onSurface.withValues(alpha: 0.9),
+                          height: 1.4,
+                        ),
+                        maxLines: 4,
+                        overflow: TextOverflow.ellipsis,
+                      )
+                    else if (content.isNotEmpty)
+                      Text(
+                        content,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: colors.onSurfaceVariant.withValues(alpha: 0.7),
+                          height: 1.4,
+                        ),
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+
+                    const SizedBox(height: 16),
+
+                    // Footer minimalista com "Tags" visuais
+                    Row(
+                      children: [
+                        // Tag de tempo
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: accentColor.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.timer_outlined,
+                                size: 10,
+                                color: accentColor,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                '${readingTimeMinutes}min',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w600,
+                                  color: accentColor.withValues(alpha: 0.8),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -948,20 +1217,5 @@ class _NotesScreenState extends State<NotesScreen>
         ],
       ),
     );
-  }
-
-  String _formatDate(DateTime date) {
-    final now = DateTime.now();
-    final diff = now.difference(date);
-    if (diff.inDays == 0) {
-      if (diff.inHours == 0) return 'Há ${diff.inMinutes} min';
-      return 'Há ${diff.inHours}h';
-    } else if (diff.inDays == 1) {
-      return 'Ontem';
-    } else if (diff.inDays < 7) {
-      return 'Há ${diff.inDays} dias';
-    } else {
-      return DateFormat('dd/MM/yyyy').format(date);
-    }
   }
 }

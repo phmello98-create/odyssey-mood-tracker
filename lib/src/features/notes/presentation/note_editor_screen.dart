@@ -1,18 +1,18 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:appflowy_editor/appflowy_editor.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:odyssey/src/constants/app_theme.dart';
-import 'package:odyssey/src/utils/widgets/feedback_widgets.dart';
-import 'package:odyssey/src/utils/services/speech_service.dart';
-import 'package:odyssey/src/utils/services/app_lifecycle_service.dart';
-import 'package:odyssey/src/localization/app_localizations.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:odyssey/src/features/notes/data/synced_notes_repository.dart';
+import 'package:odyssey/src/localization/app_localizations.dart';
 import 'package:odyssey/src/utils/services/sound_service.dart';
 import 'package:odyssey/src/features/onboarding/presentation/onboarding_providers.dart';
 import 'package:odyssey/src/utils/services/note_intelligence_service.dart';
+import 'package:odyssey/src/utils/widgets/feedback_widgets.dart';
+import 'package:odyssey/src/utils/services/app_lifecycle_service.dart';
 
 class NoteEditorScreen extends ConsumerStatefulWidget {
   final String? noteId;
@@ -38,6 +38,8 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen>
   int _previousTitleLength = 0;
   int _previousContentLength = 0;
   String? _currentNoteId; // ID da nota sendo editada/criada
+  String? _imagePath; // Caminho da imagem anexada
+  final ImagePicker _imagePicker = ImagePicker();
 
   @override
   void initState() {
@@ -119,6 +121,7 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen>
         // Atualiza o controlador de título com os dados carregados
         _titleController.text = noteData['title'] ?? '';
         _isPinned = noteData['isPinned'] ?? false;
+        _imagePath = noteData['imagePath'] as String?;
       }
     }
 
@@ -279,6 +282,7 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen>
       'createdAt':
           widget.initialData?['createdAt'] ?? DateTime.now().toIso8601String(),
       'updatedAt': DateTime.now().toIso8601String(),
+      'imagePath': _imagePath,
     };
 
     if (widget.noteId != null) {
@@ -367,12 +371,209 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen>
     );
   }
 
+  // Lista de prompts criativos para inspirar
+  static const _creativePrompts = [
+    '💭 O que te fez sorrir hoje?',
+    '🌟 Qual foi sua maior conquista recente?',
+    '🎯 Qual é seu próximo objetivo?',
+    '📚 O que você aprendeu de novo?',
+    '🌈 Algo que você é grato hoje...',
+    '💡 Uma ideia que você quer explorar...',
+    '🔮 Como você imagina amanhã?',
+    '🎨 Descreva algo bonito que você viu...',
+    '🚀 O que te motiva a continuar?',
+    '🌱 Como você cresceu ultimamente?',
+  ];
+
+  Widget _buildStatsPanel(ColorScheme colors) {
+    // Calcular estatísticas do conteúdo atual
+    final plainText = _editorState.document.root.children
+        .map((node) => node.delta?.toPlainText() ?? '')
+        .join('\n');
+    final title = _titleController.text;
+
+    final charCount = plainText.length + title.length;
+    final wordCount = '$plainText $title'
+        .split(RegExp(r'\s+'))
+        .where((w) => w.isNotEmpty)
+        .length;
+    final readingTime = (wordCount / 200).ceil();
+    final paragraphCount = plainText
+        .split('\n')
+        .where((p) => p.trim().isNotEmpty)
+        .length;
+
+    // Escolher prompt baseado no comprimento do texto
+    final promptIndex = charCount % _creativePrompts.length;
+    final showPrompt =
+        charCount < 50; // Mostrar prompt quando a nota ainda está vazia
+
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(20, 8, 20, 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Estatísticas
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                _buildStatChip(
+                  icon: Icons.text_fields_rounded,
+                  value: '$wordCount',
+                  label: 'palavras',
+                  colors: colors,
+                  isDarkMode: isDarkMode,
+                ),
+                const SizedBox(width: 10),
+                _buildStatChip(
+                  icon: Icons.abc_rounded,
+                  value: '$charCount',
+                  label: 'caracteres',
+                  colors: colors,
+                  isDarkMode: isDarkMode,
+                ),
+                const SizedBox(width: 10),
+                _buildStatChip(
+                  icon: Icons.schedule_rounded,
+                  value: '~$readingTime',
+                  label: 'min leitura',
+                  colors: colors,
+                  isDarkMode: isDarkMode,
+                ),
+                const SizedBox(width: 10),
+                _buildStatChip(
+                  icon: Icons.segment_rounded,
+                  value: '$paragraphCount',
+                  label: 'parágrafos',
+                  colors: colors,
+                  isDarkMode: isDarkMode,
+                ),
+              ],
+            ),
+          ),
+
+          // Prompt criativo (quando a nota está vazia)
+          if (showPrompt) ...[
+            const SizedBox(height: 10),
+            GestureDetector(
+              onTap: () {
+                // Inserir o prompt como texto inicial
+                HapticFeedback.lightImpact();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Toque no editor e comece a escrever! 🚀'),
+                    duration: Duration(seconds: 2),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              },
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      colors.primaryContainer.withValues(
+                        alpha: isDarkMode ? 0.3 : 0.4,
+                      ),
+                      colors.primaryContainer.withValues(
+                        alpha: isDarkMode ? 0.15 : 0.2,
+                      ),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: colors.primary.withValues(alpha: 0.2),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.auto_awesome_rounded,
+                      size: 18,
+                      color: colors.primary,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        _creativePrompts[promptIndex],
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: isDarkMode ? colors.onSurface : Colors.black87,
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatChip({
+    required IconData icon,
+    required String value,
+    required String label,
+    required ColorScheme colors,
+    required bool isDarkMode,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: isDarkMode
+            ? colors.surfaceContainerHighest.withValues(alpha: 0.5)
+            : colors.surfaceContainerHigh,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            icon,
+            size: 14,
+            color: isDarkMode
+                ? colors.onSurfaceVariant.withValues(alpha: 0.7)
+                : Colors.black54,
+          ),
+          const SizedBox(width: 5),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+              color: isDarkMode ? colors.onSurface : Colors.black87,
+            ),
+          ),
+          const SizedBox(width: 3),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 10,
+              color: isDarkMode
+                  ? colors.onSurfaceVariant.withValues(alpha: 0.6)
+                  : Colors.black45,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Scaffold(
-        backgroundColor: UltravioletColors.background,
-        body: Center(child: CircularProgressIndicator()),
+      return Scaffold(
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        body: const Center(child: CircularProgressIndicator()),
       );
     }
 
@@ -462,6 +663,56 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen>
                     },
                   ),
                 ),
+
+
+                // Preview da Imagem Anexada
+                if (_imagePath != null)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                    child: Stack(
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(16),
+                          child: Container(
+                            height: 200,
+                            width: double.infinity,
+                            decoration: BoxDecoration(
+                              color: colors.surfaceContainerHighest,
+                              image: DecorationImage(
+                                image: FileImage(File(_imagePath!)),
+                                fit: BoxFit.cover,
+                              ),
+                            ),
+                          ),
+                        ),
+                        Positioned(
+                          top: 8,
+                          right: 8,
+                          child: GestureDetector(
+                            onTap: () => setState(() {
+                              _imagePath = null;
+                              _hasChanges = true;
+                            }),
+                            child: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withValues(alpha: 0.6),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.close,
+                                color: Colors.white,
+                                size: 16,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                // Painel de estatísticas interativo
+                _buildStatsPanel(colors),
 
                 // Editor
                 Expanded(
@@ -713,8 +964,13 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen>
               ],
             ),
           ),
-          // Voice input - elegant inline
-          _buildVoiceButton(),
+          // Botão de Imagem
+          IconButton(
+            icon: const Icon(Icons.image_outlined),
+            onPressed: _pickImage,
+            tooltip: 'Adicionar imagem',
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
           // Close keyboard button
           Container(
             decoration: BoxDecoration(
@@ -738,23 +994,27 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen>
     );
   }
 
-  Widget _buildVoiceButton() {
-    return InlineMicButton(
-      onResult: (text) {
-        // Insert text at current cursor position
-        final selection = _editorState.selection;
-        if (selection == null) return;
+  Future<void> _pickImage() async {
+    try {
+      final XFile? image = await _imagePicker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 80,
+      );
 
-        // Get the node at the cursor position
-        final node = _editorState.getNodeAtPath(selection.start.path);
-        if (node == null) return;
+      if (image != null) {
+        setState(() {
+          _imagePath = image.path;
+          _hasChanges = true;
+        });
 
-        final transaction = _editorState.transaction;
-        transaction.insertText(node, selection.start.offset, text);
-        _editorState.apply(transaction);
-      },
-      activeColor: Theme.of(context).colorScheme.primary,
-    );
+        // Salvar caminho localmente se necessário para persistência rápida
+        // Mas por enquanto _imagePath é salvo no json da nota
+      }
+    } catch (e) {
+      if (mounted) {
+        FeedbackService.showError(context, 'Erro ao selecionar imagem: $e');
+      }
+    }
   }
 
   Widget _buildToolbarButton(

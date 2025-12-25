@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:odyssey/src/features/water_tracker/data/water_tracker_provider.dart';
+import 'package:odyssey/src/features/water_tracker/domain/water_record.dart';
+import 'package:odyssey/src/features/water_tracker/presentation/water_history_screen.dart';
 import 'package:odyssey/src/features/home/presentation/widgets/modern_home_card.dart';
 import 'package:odyssey/src/utils/services/sound_service.dart';
 import 'package:odyssey/src/localization/app_localizations.dart';
@@ -51,7 +53,37 @@ class WaterTrackerWidget extends ConsumerWidget {
             icon: Icons.water_drop_rounded,
             title: l10n.waterTrackerTitle,
             color: _waterColor,
-            trailing: _WaterSettingsButton(record: record),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Botão de histórico
+                GestureDetector(
+                  onTap: () {
+                    HapticFeedback.lightImpact();
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const WaterHistoryScreen(),
+                      ),
+                    );
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: _waterColor.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(
+                      Icons.bar_chart_rounded,
+                      color: _waterColor,
+                      size: 18,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                _WaterSettingsButton(record: record),
+              ],
+            ),
           ),
           const SizedBox(height: 16),
 
@@ -66,6 +98,10 @@ class WaterTrackerWidget extends ConsumerWidget {
 
           // Barra de progresso
           _WaterProgressBar(progress: progress, isComplete: isComplete),
+          const SizedBox(height: 12),
+
+          // Mini gráfico semanal
+          const _MiniWeekChart(),
           const SizedBox(height: 16),
 
           // Botões de ação
@@ -804,6 +840,159 @@ class _WaterSettingsButton extends ConsumerWidget {
               ),
             );
           },
+        );
+      },
+    );
+  }
+}
+
+/// Mini gráfico semanal de consumo de água
+class _MiniWeekChart extends ConsumerWidget {
+  const _MiniWeekChart();
+
+  static const Color _waterColor = Color(0xFF42A5F5);
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final colors = Theme.of(context).colorScheme;
+    final repository = ref.watch(waterTrackerRepositoryProvider);
+
+    return FutureBuilder<List<WaterRecord>>(
+      future: repository.getWeekRecords(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+          return const SizedBox.shrink();
+        }
+
+        final records = snapshot.data!;
+        final maxGlasses = records
+            .map((r) => r.goalGlasses)
+            .reduce((a, b) => a > b ? a : b);
+        final today = DateTime.now();
+        final weekDays = ['S', 'T', 'Q', 'Q', 'S', 'S', 'D'];
+
+        // Criar mapa de registros por data
+        final recordMap = <String, WaterRecord>{};
+        for (final record in records) {
+          recordMap[record.id] = record;
+        }
+
+        // Gerar os últimos 7 dias
+        final days = List.generate(7, (i) {
+          return today.subtract(Duration(days: 6 - i));
+        });
+
+        return Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: colors.surfaceContainerHighest.withValues(alpha: 0.3),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    Icons.bar_chart_rounded,
+                    size: 14,
+                    color: colors.onSurfaceVariant,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Últimos 7 dias',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: colors.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              SizedBox(
+                height: 50,
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: days.asMap().entries.map((entry) {
+                    final i = entry.key;
+                    final day = entry.value;
+                    final dateId =
+                        '${day.year}-${day.month.toString().padLeft(2, '0')}-${day.day.toString().padLeft(2, '0')}';
+                    final record = recordMap[dateId];
+                    final glasses = record?.glassesCount ?? 0;
+                    final isToday =
+                        day.day == today.day &&
+                        day.month == today.month &&
+                        day.year == today.year;
+                    final goalReached = record?.goalReached ?? false;
+                    final progress = maxGlasses > 0
+                        ? (glasses / maxGlasses).clamp(0.0, 1.0)
+                        : 0.0;
+
+                    return Expanded(
+                      child: Padding(
+                        padding: EdgeInsets.only(
+                          left: i == 0 ? 0 : 3,
+                          right: i == 6 ? 0 : 3,
+                        ),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            // Barra
+                            AnimatedContainer(
+                              duration: const Duration(milliseconds: 300),
+                              height:
+                                  28 * progress + 4, // Reduzido de 30 para 28
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: Alignment.bottomCenter,
+                                  end: Alignment.topCenter,
+                                  colors: goalReached
+                                      ? [
+                                          const Color(0xFF4CAF50),
+                                          const Color(0xFF81C784),
+                                        ]
+                                      : [_waterColor, const Color(0xFF64B5F6)],
+                                ),
+                                borderRadius: BorderRadius.circular(4),
+                                boxShadow: isToday
+                                    ? [
+                                        BoxShadow(
+                                          color: _waterColor.withValues(
+                                            alpha: 0.4,
+                                          ),
+                                          blurRadius: 4,
+                                          spreadRadius: 0,
+                                        ),
+                                      ]
+                                    : null,
+                              ),
+                            ),
+                            const SizedBox(height: 3), // Reduzido de 4 para 3
+                            // Dia
+                            Text(
+                              weekDays[day.weekday - 1],
+                              style: TextStyle(
+                                fontSize: 9,
+                                fontWeight: isToday
+                                    ? FontWeight.w700
+                                    : FontWeight.w500,
+                                color: isToday
+                                    ? _waterColor
+                                    : colors.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+            ],
+          ),
         );
       },
     );

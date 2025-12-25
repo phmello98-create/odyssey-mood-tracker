@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:odyssey/src/localization/app_localizations.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import 'package:odyssey/src/features/tasks/data/task_repository.dart';
 import 'package:odyssey/src/features/tasks/data/synced_task_repository.dart';
 import 'package:odyssey/src/features/tasks/presentation/tasks_screen.dart';
@@ -15,7 +16,6 @@ class TodayTasksWidget extends ConsumerStatefulWidget {
 
 class _TodayTasksWidgetState extends ConsumerState<TodayTasksWidget> {
   bool _initialized = false;
-  List<TaskData> _tasks = [];
   bool _isUpdating = false;
 
   @override
@@ -27,41 +27,53 @@ class _TodayTasksWidgetState extends ConsumerState<TodayTasksWidget> {
   Future<void> _init() async {
     final repo = ref.read(taskRepositoryProvider);
     await repo.init();
-    await _loadTasks();
+    if (mounted) {
+      setState(() => _initialized = true);
+    }
   }
 
-  Future<void> _loadTasks() async {
-    final repo = ref.read(taskRepositoryProvider);
-    final tasks = await repo.getTasksForDate(DateTime.now());
-    if (mounted) {
-      setState(() {
-        _tasks = tasks.take(4).toList();
-        _initialized = true;
-      });
+  List<TaskData> _getTasksForToday(Box box) {
+    final now = DateTime.now();
+    final tasks = <TaskData>[];
+
+    for (final key in box.keys) {
+      final value = box.get(key);
+      if (value is Map) {
+        final task = TaskData.fromMap(key, Map<String, dynamic>.from(value));
+        if (task.dueDate != null &&
+            task.dueDate!.year == now.year &&
+            task.dueDate!.month == now.month &&
+            task.dueDate!.day == now.day) {
+          tasks.add(task);
+        }
+      }
     }
+
+    // Ordena: não completadas primeiro, depois por prioridade
+    tasks.sort((a, b) {
+      if (a.completed != b.completed) {
+        return a.completed ? 1 : -1;
+      }
+      const priorityOrder = {'high': 0, 'medium': 1, 'low': 2};
+      return (priorityOrder[a.priority] ?? 1).compareTo(
+        priorityOrder[b.priority] ?? 1,
+      );
+    });
+
+    return tasks.take(4).toList();
   }
 
   Future<void> _toggleTask(TaskData task) async {
     if (_isUpdating) return;
 
     HapticFeedback.lightImpact();
+    setState(() => _isUpdating = true);
 
-    // Atualização otimista - atualiza UI imediatamente
-    final taskIndex = _tasks.indexWhere((t) => t.key == task.key);
-    if (taskIndex != -1) {
-      setState(() {
-        _isUpdating = true;
-        _tasks[taskIndex] = task.copyWith(completed: !task.completed);
-      });
-    }
-
-    // Persistir a mudança
     try {
       final syncedRepo = ref.read(syncedTaskRepositoryProvider);
       await syncedRepo.toggleTaskCompletion(task.key);
     } catch (e) {
-      // Reverter em caso de erro
-      await _loadTasks();
+      debugPrint('Erro ao alternar tarefa: $e');
     }
 
     if (mounted) {
@@ -72,6 +84,7 @@ class _TodayTasksWidgetState extends ConsumerState<TodayTasksWidget> {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
+    final repo = ref.watch(taskRepositoryProvider);
 
     if (!_initialized) {
       return _buildContainer(
@@ -86,60 +99,75 @@ class _TodayTasksWidgetState extends ConsumerState<TodayTasksWidget> {
       );
     }
 
-    return _buildContainer(
-      colors,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+    final boxListenable = repo.boxListenable;
+    if (boxListenable == null) {
+      return _buildContainer(
+        colors,
+        child: const Center(child: Text('Carregando...')),
+      );
+    }
+
+    return ValueListenableBuilder<Box>(
+      valueListenable: boxListenable,
+      builder: (context, box, _) {
+        final tasks = _getTasksForToday(box);
+
+        return _buildContainer(
+          colors,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: colors.primary.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(
-                  Icons.check_circle_outline_rounded,
-                  color: colors.primary,
-                  size: 18,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Text(
-                AppLocalizations.of(context)!.tarefasDoDia,
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                  color: colors.onSurface,
-                ),
-              ),
-              const Spacer(),
-              GestureDetector(
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const TasksScreen()),
-                ),
-                child: Text(
-                  AppLocalizations.of(context)!.verTodas,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: colors.primary,
-                    fontWeight: FontWeight.w500,
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: colors.primary.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(
+                      Icons.check_circle_outline_rounded,
+                      color: colors.primary,
+                      size: 18,
+                    ),
                   ),
-                ),
+                  const SizedBox(width: 10),
+                  Text(
+                    AppLocalizations.of(context)!.tarefasDoDia,
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: colors.onSurface,
+                    ),
+                  ),
+                  const Spacer(),
+                  GestureDetector(
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const TasksScreen()),
+                    ),
+                    child: Text(
+                      AppLocalizations.of(context)!.verTodas,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: colors.primary,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
               ),
+              const SizedBox(height: 12),
+              _buildTasksContent(colors, tasks),
             ],
           ),
-          const SizedBox(height: 12),
-          _buildTasksContent(colors),
-        ],
-      ),
+        );
+      },
     );
   }
 
-  Widget _buildTasksContent(ColorScheme colors) {
-    if (_tasks.isEmpty) {
+  Widget _buildTasksContent(ColorScheme colors, List<TaskData> tasks) {
+    if (tasks.isEmpty) {
       return Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
@@ -159,8 +187,8 @@ class _TodayTasksWidgetState extends ConsumerState<TodayTasksWidget> {
       );
     }
 
-    final completed = _tasks.where((t) => t.completed).length;
-    final total = _tasks.length;
+    final completed = tasks.where((t) => t.completed).length;
+    final total = tasks.length;
 
     return Column(
       children: [
@@ -192,7 +220,7 @@ class _TodayTasksWidgetState extends ConsumerState<TodayTasksWidget> {
         const SizedBox(height: 12),
 
         // Task list
-        ..._tasks.map((task) => _buildTaskItem(task, colors)),
+        ...tasks.map((task) => _buildTaskItem(task, colors)),
       ],
     );
   }
